@@ -73,9 +73,9 @@ live** unless noted.
 
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build).
-- `npm test` — **129/129 passing** across 13 files.
+- `npm test` — **138/138 passing** across 14 files.
 
-**Game modes (Phase 0 + Phase 1 + Phase 2 shipped):**
+**Game modes (Phase 0 + Phase 1 + Phase 2 + Phase 3 shipped):**
 - **Classic** — the standard 12-round climb.
 - **Endless** — no finish line (`maxRounds: Infinity`), escalating opponents, scored by
   rounds reached. New Run modal lets you pick the mode.
@@ -89,6 +89,15 @@ live** unless noted.
   Three shipped: Smash & Grab (1-life CL final), Hold the Line (survive 6, `finalMustWin:
   false`), Threadbare (broke + a man light). Listed in the **More** tab (ScenariosPanel).
   `runConfig(state)` resolves scenario > mode+mutator everywhere.
+- **Career / Dynasty** (`src/lib/career.ts`) — a meta-layer of many seasons; squad +
+  bankroll + relics persist between seasons. Each season is a classic 12-round climb with a
+  **board target** (`boardTarget(season)`: S1 round 6 → S4+ round 12). Go out before the
+  target = **sacked, career over**; meet it → between-seasons **review** (`CareerReview.tsx`):
+  board bonus, **academy youth intake** (generated prospects, promote ≤1), and **aging**
+  (veterans decline after a 2-season peak, youth grow for 3 seasons). `careerBest` =
+  most seasons survived (persisted). Generated/aged players resolve via a **pool overlay**
+  (`registerPlayers`/`clearOverlay` in `src/data/pool.ts`), re-registered on rehydrate.
+  Started from the New Run modal's Career card.
 
 ---
 
@@ -115,8 +124,11 @@ round-trip it). App/MatchView/SeasonPanel/Hud read the active mode. New `tests/m
 - **Phase 2** ✅ **Scenarios / Challenges** (done — see §2). Files: `src/lib/scenarios.ts`,
   `ScenariosPanel.tsx`, `Stars.tsx`, `startScenario` action, `finalMustWin` on ModeConfig,
   persistence v11 (adds `scenario` + `scenarioStars`).
-- **Phase 3** (next): Career / Dynasty — multi-season persistence, youth academy +
-  scouting, aging/regens, board objectives. The big one; build on the stable config base.
+- **Phase 3** ✅ **Career / Dynasty** (done — see §2). Files: `src/lib/career.ts`,
+  `CareerReview.tsx`, pool overlay in `src/data/pool.ts`, `startCareer`/`advanceCareerSeason`
+  actions, `career`/`careerReview`/`careerBest` state, persistence v12.
+  **Deferred for a future pass:** youth scouting (narrow potential), transfer negotiations,
+  multiple simultaneous board demands.
 - **Phase 3:** Career / Dynasty (multi-season persistence, youth academy + scouting,
   aging/regens, board objectives).
 - **Cross-cutting:** evolve one-shot events into branching tactical dilemmas.

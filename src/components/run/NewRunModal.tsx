@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Dice5, Trophy, Infinity as InfinityIcon } from 'lucide-react';
+import { X, Play, Dice5, Trophy, Infinity as InfinityIcon, Briefcase } from 'lucide-react';
 import { MODES, type ModeId } from '@/lib/modes';
 import { MUTATORS } from '@/lib/mutators';
 import { useGameStore } from '@/store/useGameStore';
@@ -9,6 +9,9 @@ interface NewRunModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+/** UI-only selection: a real mode id, or 'career' (a meta-mode of many seasons). */
+type ModeChoice = ModeId | 'career';
 
 const MODE_ICONS: Record<ModeId, React.ElementType> = {
   classic: Trophy,
@@ -21,10 +24,16 @@ type MutatorChoice = 'none' | 'random' | string;
 /** Run setup: pick a mode + optional run mutator, then start (resets the run). */
 export default function NewRunModal({ open, onClose }: NewRunModalProps) {
   const startRun = useGameStore((s) => s.startRun);
-  const [mode, setMode] = useState<ModeId>('classic');
+  const startCareer = useGameStore((s) => s.startCareer);
+  const [mode, setMode] = useState<ModeChoice>('classic');
   const [choice, setChoice] = useState<MutatorChoice>('none');
 
   const start = () => {
+    if (mode === 'career') {
+      startCareer();
+      onClose();
+      return;
+    }
     let mutatorId: string | null = null;
     if (choice === 'random') {
       // UI-time randomness is fine here — the run's own seeds stay deterministic.
@@ -94,43 +103,71 @@ export default function NewRunModal({ open, onClose }: NewRunModalProps) {
                     </button>
                   );
                 })}
-              </div>
-
-              {/* Modifier */}
-              <p className="mb-2 font-display text-xs uppercase tracking-wide text-chrome-muted">
-                Modifier
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                <ChoiceChip label="None" active={choice === 'none'} onClick={() => setChoice('none')} />
-                <ChoiceChip
-                  label="Random"
-                  icon={<Dice5 size={12} />}
-                  active={choice === 'random'}
-                  onClick={() => setChoice('random')}
-                />
-                {MUTATORS.map((m) => (
-                  <ChoiceChip
-                    key={m.id}
-                    label={`${m.emoji} ${m.name}`}
-                    active={choice === m.id}
-                    onClick={() => setChoice(m.id)}
-                  />
-                ))}
-              </div>
-
-              {/* Selected mutator blurb */}
-              <div className="mt-3 min-h-[2.5rem] rounded-lg border border-white/10 bg-pitch-900/60 px-3 py-2 text-xs text-chrome-muted">
-                {choice === 'none' && 'No modifier — the standard ruleset.'}
-                {choice === 'random' && 'A random modifier is rolled when you start.'}
-                {selectedMutator && (
-                  <span>
-                    <span className="font-display text-chrome">
-                      {selectedMutator.emoji} {selectedMutator.name}
-                    </span>{' '}
-                    — {selectedMutator.blurb}
+                {/* Career — a meta-mode of many seasons */}
+                <button
+                  type="button"
+                  onClick={() => setMode('career')}
+                  className={[
+                    'col-span-2 flex flex-col gap-1 rounded-lg border p-3 text-left transition',
+                    mode === 'career'
+                      ? 'border-crt-green bg-crt-green/15'
+                      : 'border-white/10 hover:bg-white/5',
+                  ].join(' ')}
+                >
+                  <span
+                    className={`flex items-center gap-1.5 font-display text-sm ${
+                      mode === 'career' ? 'text-crt-green' : 'text-chrome'
+                    }`}
+                  >
+                    <Briefcase size={15} />
+                    Career
                   </span>
-                )}
+                  <span className="text-[11px] leading-snug text-chrome-muted">
+                    Manage a club across many seasons — keep your squad, meet the board's
+                    demands, grow academy youth. Lose your job and it's over.
+                  </span>
+                </button>
               </div>
+
+              {/* Modifier — not applicable to Career */}
+              {mode !== 'career' && (
+                <>
+                  <p className="mb-2 font-display text-xs uppercase tracking-wide text-chrome-muted">
+                    Modifier
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <ChoiceChip label="None" active={choice === 'none'} onClick={() => setChoice('none')} />
+                    <ChoiceChip
+                      label="Random"
+                      icon={<Dice5 size={12} />}
+                      active={choice === 'random'}
+                      onClick={() => setChoice('random')}
+                    />
+                    {MUTATORS.map((m) => (
+                      <ChoiceChip
+                        key={m.id}
+                        label={`${m.emoji} ${m.name}`}
+                        active={choice === m.id}
+                        onClick={() => setChoice(m.id)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Selected mutator blurb */}
+                  <div className="mt-3 min-h-[2.5rem] rounded-lg border border-white/10 bg-pitch-900/60 px-3 py-2 text-xs text-chrome-muted">
+                    {choice === 'none' && 'No modifier — the standard ruleset.'}
+                    {choice === 'random' && 'A random modifier is rolled when you start.'}
+                    {selectedMutator && (
+                      <span>
+                        <span className="font-display text-chrome">
+                          {selectedMutator.emoji} {selectedMutator.name}
+                        </span>{' '}
+                        — {selectedMutator.blurb}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Heart, Flame, Trophy, Play, RotateCcw, Swords, TrendingUp, Crown, Share2, Check, Dice5,
-  ShieldCheck, HeartPulse,
+  ShieldCheck, HeartPulse, Briefcase,
 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import {
@@ -59,6 +59,8 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const { maxRounds, startingLives } = config;
   const mutator = getMutator(mutatorId);
   const scenario = getScenario(scenarioId);
+  const career = useGameStore((s) => s.career);
+  const careerBest = useGameStore((s) => s.careerBest);
   const newGame = useGameStore((s) => s.newGame);
   const [shared, setShared] = useState(false);
 
@@ -71,6 +73,9 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
     const score = runScore({ round, runStatus, peakBankroll, bestStreak, record, maxRounds });
     const stats: [string, string][] = [
       ...(scored ? ([['Score', formatScore(score)]] as [string, string][]) : []),
+      ...(career
+        ? ([['Seasons survived', `${Math.max(careerBest, career.season - 1)}`]] as [string, string][])
+        : []),
       ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
       ['Record', `${record.w}W · ${record.d}D · ${record.l}L`],
       ['Best streak', `${bestStreak} wins`],
@@ -85,15 +90,17 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         ? 'border-crt-amber/50 bg-crt-amber/10'
         : 'border-rose-400/50 bg-rose-500/10';
     const accent = won ? 'text-crt-green' : config.scored ? 'text-crt-amber' : 'text-rose-300';
-    const heading = scenario
-      ? won
-        ? 'CHALLENGE COMPLETE'
-        : 'CHALLENGE FAILED'
-      : won
-        ? 'CHAMPIONS OF EUROPE!'
-        : config.scored
-          ? 'RUN OVER'
-          : 'SACKED BY THE BOARD';
+    const heading = career
+      ? 'SACKED — CAREER OVER'
+      : scenario
+        ? won
+          ? 'CHALLENGE COMPLETE'
+          : 'CHALLENGE FAILED'
+        : won
+          ? 'CHAMPIONS OF EUROPE!'
+          : config.scored
+            ? 'RUN OVER'
+            : 'SACKED BY THE BOARD';
     return (
       <div className={`rounded-xl border p-5 ${frame}`}>
         <div className="text-center">
@@ -201,6 +208,16 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
             <span className="font-display">{scenario.name}</span> — {scenario.objective}
           </span>
           <Stars earned={scenarioStars[scenario.id] ?? 0} size={12} />
+        </div>
+      )}
+      {career && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2 text-xs text-crt-green">
+          <Briefcase size={13} className="shrink-0" />
+          <span className="flex-1">
+            <span className="font-display">Season {career.season}</span> — the board demand you
+            reach <span className="font-display">{ladderTier(career.targetRound)}</span> (round{' '}
+            {career.targetRound}). Go out before that and you're sacked.
+          </span>
         </div>
       )}
       <div className="mb-3 flex items-center justify-between">

@@ -51,7 +51,26 @@ export const POOL: Player[] = (raw as RawPlayer[]).map(toPlayer);
 
 const BY_ID = new Map(POOL.map((p) => [p.id, p]));
 
-/** Look up a player from the static pool by id. */
+/**
+ * Career overlay: a mutable registry that takes precedence over the static pool.
+ * Career mode uses it for academy youth (brand-new ids) and aged players (a base
+ * id whose stats have been modified for that career). Every `getPlayer` call site
+ * picks these up transparently. Non-career runs clear it so nothing leaks in.
+ */
+const OVERLAY = new Map<string, Player>();
+
+/** Register (or replace) overlay players — career roster snapshots. */
+export function registerPlayers(players: Iterable<Player>): void {
+  for (const p of players) OVERLAY.set(p.id, p);
+}
+
+/** Drop all overlay entries (called when a non-career run starts). */
+export function clearOverlay(): void {
+  OVERLAY.clear();
+}
+
+/** Look up a player: career overlay first, then the static pool. */
 export function getPlayer(id: string | null | undefined): Player | undefined {
-  return id ? BY_ID.get(id) : undefined;
+  if (!id) return undefined;
+  return OVERLAY.get(id) ?? BY_ID.get(id);
 }

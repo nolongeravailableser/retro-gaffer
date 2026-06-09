@@ -4,7 +4,8 @@ import {
   Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame, Star,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { bestLabel } from '@/lib/ladder';
+import { bestLabel, ladderTier } from '@/lib/ladder';
+import { Briefcase } from 'lucide-react';
 import { getMutator, dailyMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
 import { dailyKey } from '@/lib/daily';
@@ -34,6 +35,7 @@ export default function Hud({ onNewRun }: HudProps) {
   const { maxRounds, startingLives } = config;
   const mutator = getMutator(mutatorId);
   const scenario = getScenario(scenarioId);
+  const career = useGameStore((s) => s.career);
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
@@ -119,6 +121,20 @@ export default function Hud({ onNewRun }: HudProps) {
         >
           <span>{mutator.emoji}</span>
           <span className="font-display text-sm text-amber-200">{mutator.name}</span>
+        </div>
+      )}
+
+      {/* Career badge — season + board demand */}
+      {career && (
+        <div
+          className="flex items-center gap-1.5 rounded-lg border border-crt-green/40 bg-crt-green/10 px-3 py-2"
+          title={`The board want you to reach ${ladderTier(career.targetRound)} this season`}
+        >
+          <Briefcase size={14} className="text-crt-green" />
+          <span className="font-display text-sm text-crt-green">
+            Season {career.season}
+          </span>
+          <span className="text-xs text-chrome-muted">→ {ladderTier(career.targetRound)}</span>
         </div>
       )}
 

@@ -10,7 +10,7 @@ import {
   externalSaveChange,
 } from './persistence';
 import { encodeSave, decodeSave } from '@/lib/savecode';
-import { POOL, getPlayer } from '@/data/pool';
+import { POOL, getPlayer, registerPlayers, clearOverlay } from '@/data/pool';
 import type { Player } from '@/lib/types';
 import { XI_SIZE, BENCH_SIZE } from '@/lib/types';
 import {
@@ -32,6 +32,16 @@ import { drawEvent, type GameEvent } from '@/lib/events';
 import { DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
 import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
+import {
+  boardTarget,
+  generateYouth,
+  ageRoster,
+  youthMeta,
+  CAREER_BONUS,
+  TRIUMPH_BONUS,
+  type CareerState,
+  type ReviewState,
+} from '@/lib/career';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
@@ -111,6 +121,12 @@ interface GameState {
   scenario: string | null;
   /** Best stars earned per scenario id — career progress, persisted across runs. */
   scenarioStars: Record<string, number>;
+  /** Active Career/Dynasty meta-state, or null outside Career mode. */
+  career: CareerState | null;
+  /** Between-seasons review (board verdict + youth intake), or null. */
+  careerReview: ReviewState | null;
+  /** Most seasons completed in a single career — persisted across careers. */
+  careerBest: number;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -202,6 +218,10 @@ interface GameState {
   startRun: (modeId: ModeId, mutatorId?: string | null) => void;
   /** Start an authored scenario by id (prebuilt squad + fixed start state). */
   startScenario: (id: string) => void;
+  /** Begin a new Career: multiple seasons, persistent squad, board objectives. */
+  startCareer: () => void;
+  /** Resolve the between-seasons review and begin the next season. */
+  advanceCareerSeason: (youthId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
   newDailyRun: () => void;
   /** Serialize the current run to a portable save code. */
@@ -218,6 +238,8 @@ function freshRun(
   modeId: ModeId = DEFAULT_MODE_ID,
   mutatorId: string | null = null
 ) {
+  // A fresh run never inherits a previous career's aged/youth players.
+  clearOverlay();
   const config = resolveConfig(modeId, mutatorId);
   // Daily challenge: both seeds derive from the date so everyone gets the same
   // opening shop + ladder. Casual: independent random seeds.
@@ -231,6 +253,8 @@ function freshRun(
     mode: modeId,
     mutator: mutatorId,
     scenario: null as string | null,
+    career: null as CareerState | null,
+    careerReview: null as ReviewState | null,
     bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
@@ -271,6 +295,9 @@ function saveSlice(s: GameState) {
     mutator: s.mutator,
     scenario: s.scenario,
     scenarioStars: s.scenarioStars,
+    career: s.career,
+    careerReview: s.careerReview,
+    careerBest: s.careerBest,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -311,6 +338,7 @@ export const useGameStore = create<GameState>()(
       pool: POOL,
       best: { round: 0 },
       scenarioStars: {},
+      careerBest: 0,
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -481,6 +509,46 @@ export const useGameStore = create<GameState>()(
           const endReached = (reached: number) => ({
             best: { round: Math.max(s.best.round, reached) },
           });
+
+          // CAREER MODE: a season ends (sacked OR reached the final) but the game
+          // does not — the board reviews you. You're only fired if you went out
+          // BEFORE meeting their target division.
+          if (s.career) {
+            const career = s.career;
+            const sacked = lives <= 0;
+            const seasonOver = sacked || s.round >= config.maxRounds;
+            if (seasonOver) {
+              const triumph = !sacked && outcome === 'win';
+              const reached = sacked ? s.round : config.maxRounds;
+              const met = reached >= career.targetRound || triumph;
+              if (!met) {
+                // Fired before meeting expectations — the career ends here.
+                return {
+                  ...base,
+                  runStatus: 'lost' as const,
+                  careerBest: Math.max(s.careerBest, career.season - 1),
+                  ...endReached(reached),
+                };
+              }
+              // Met the demand → between-seasons review (run stays 'playing').
+              const review: ReviewState = {
+                season: career.season,
+                targetRound: career.targetRound,
+                reached,
+                triumph,
+                bonus: triumph ? TRIUMPH_BONUS : CAREER_BONUS,
+                youth: generateYouth(`${s.runSeed}-youth-${career.season}`, 2),
+              };
+              return {
+                ...base,
+                careerReview: review,
+                careerBest: Math.max(s.careerBest, career.season),
+                ...endReached(reached),
+              };
+            }
+            // Season continues — fall through to the normal round advance.
+          }
+
           if (lives <= 0)
             return { ...base, runStatus: 'lost' as const, ...endReached(s.round) };
           if (s.round >= config.maxRounds) {
@@ -673,7 +741,12 @@ export const useGameStore = create<GameState>()(
 
       // Preserve career progress (best division, scenario stars) across runs.
       newGame: () =>
-        set((s) => ({ ...freshRun(null), best: s.best, scenarioStars: s.scenarioStars })),
+        set((s) => ({
+          ...freshRun(null),
+          best: s.best,
+          scenarioStars: s.scenarioStars,
+          careerBest: s.careerBest,
+        })),
 
       // Start a chosen mode + optional mutator (the New Run flow).
       startRun: (modeId, mutatorId = null) =>
@@ -681,6 +754,7 @@ export const useGameStore = create<GameState>()(
           ...freshRun(null, modeId, mutatorId),
           best: s.best,
           scenarioStars: s.scenarioStars,
+          careerBest: s.careerBest,
         })),
 
       // Start an authored scenario: a fresh run overridden with its fixed state.
@@ -694,6 +768,7 @@ export const useGameStore = create<GameState>()(
             ...fresh,
             best: s.best,
             scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
             scenario: id,
             bankroll: sc.config.startingBankroll,
             lives: sc.config.startingLives,
@@ -716,6 +791,69 @@ export const useGameStore = create<GameState>()(
             ...freshRun(key, 'classic', dailyMutator(key)),
             best: s.best,
             scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
+          };
+        }),
+
+      // Begin a Career: a fresh classic-rules run wrapped in a season-1 board demand.
+      startCareer: () =>
+        set((s) => ({
+          ...freshRun(null, 'classic', null),
+          best: s.best,
+          scenarioStars: s.scenarioStars,
+          careerBest: s.careerBest,
+          career: { season: 1, targetRound: boardTarget(1), meta: {}, roster: {} },
+          careerReview: null,
+        })),
+
+      // Close the review and roll into the next season: age the squad, fold in the
+      // chosen academy youth, pay the board bonus, reset the climb, keep the squad.
+      advanceCareerSeason: (youthId = null) =>
+        set((s) => {
+          if (!s.career || !s.careerReview) return {};
+          const review = s.careerReview;
+          const prev = s.career;
+
+          // Age the existing squad (youth grow, veterans decline).
+          const aged = ageRoster(s.owned, prev.meta, getPlayer);
+          let owned = [...s.owned];
+          const meta = { ...aged.meta };
+          const roster = { ...prev.roster, ...aged.roster };
+
+          // Fold in the chosen academy prospect (joins at full freshness).
+          const chosen = youthId ? review.youth.find((y) => y.id === youthId) : null;
+          if (chosen) {
+            owned.push(chosen.id);
+            meta[chosen.id] = youthMeta();
+            roster[chosen.id] = chosen;
+          }
+          registerPlayers(Object.values(roster));
+
+          const nextSeason = prev.season + 1;
+          const target = boardTarget(nextSeason);
+          const startLives = resolveConfig(s.mode, s.mutator).startingLives;
+          const seed = nextSeed(s.shopSeed);
+
+          return {
+            career: { season: nextSeason, targetRound: target, meta, roster },
+            careerReview: null,
+            owned,
+            bankroll: s.bankroll + review.bonus,
+            round: 1,
+            lives: startLives,
+            streak: 0,
+            runStatus: 'playing' as const,
+            suspensions: [],
+            injuries: {},
+            wager: 0,
+            shield: false,
+            event: null,
+            roundMods: NO_MODIFIERS,
+            freeRefreshUsed: false,
+            lastIncome: null,
+            shop: rollSlots(owned, seed, s.pack),
+            shopSeed: seed,
+            notice: `Season ${nextSeason}: reach round ${target} or you're sacked.`,
           };
         }),
 
@@ -724,6 +862,10 @@ export const useGameStore = create<GameState>()(
       importSave: (code) => {
         const result = decodeSave(code);
         if (!result.ok) return result.error;
+        // Rebuild the career overlay so aged/youth players resolve after import.
+        clearOverlay();
+        const career = (result.state as Partial<GameState>).career;
+        if (career?.roster) registerPlayers(Object.values(career.roster));
         set({ ...result.state, selectedPlayerId: null, notice: null });
         return null;
       },
@@ -739,6 +881,11 @@ export const useGameStore = create<GameState>()(
       merge: (persisted, current) => {
         if (!isValidSave(persisted)) return current;
         return { ...current, ...(persisted as Partial<GameState>) };
+      },
+      // Re-register a persisted career's aged/youth players into the pool overlay.
+      onRehydrateStorage: () => (state) => {
+        const roster = state?.career?.roster;
+        if (roster) registerPlayers(Object.values(roster));
       },
     }
   )

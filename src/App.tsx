@@ -32,6 +32,7 @@ import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
+import CareerReview from '@/components/career/CareerReview';
 import PvpPanel from '@/components/pvp/PvpPanel';
 import Hud from '@/components/ui/Hud';
 import TabNav, { type Tab } from '@/components/nav/TabNav';
@@ -274,6 +275,8 @@ export default function App() {
       />
 
       <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
+
+      <CareerReview />
     </div>
   );
 }
