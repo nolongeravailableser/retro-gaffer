@@ -32,7 +32,7 @@ packs, ladder) and is fully unit-tested; the UI is a projection of a single Zust
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # vitest — 68 unit tests
+npm test         # vitest — 111 unit tests
 npm run build    # type-check + production build to dist/
 npm run preview  # serve the production build
 ```
