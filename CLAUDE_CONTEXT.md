@@ -29,8 +29,10 @@ thin and read from the store.
 **Player data:** `src/data/players.json` (503 players) is compiled/validated from CSV by
 `scripts/generate_players.py` (a Python tool, run manually — not part of the JS build).
 
-**Deploy:** static SPA → `dist/`. Configs present for Vercel (`vercel.json`) and Netlify
-(`netlify.toml`).
+**Deploy:** static SPA → `dist/`. **Live at https://retro-gaffer.vercel.app/** via Vercel
+Git integration — pushing to `origin/main` auto-builds (`npm run build`) and deploys. No
+`.vercel` link or CI workflow in-repo; the connection lives in the Vercel dashboard.
+Netlify config (`netlify.toml`) is also present but Vercel is the live host.
 
 ---
 
@@ -72,8 +74,9 @@ Verified live at **both 375px and 320px**: zero page-level horizontal overflow; 
 formation bar fits, pitch (incl. filled slots) lays out cleanly (slots flex-shrink to fit
 at 320px); shop/squad collapse to single column.
 
-**Status:** committed on branch **`mobile-responsive`** (commit `bb8df06`), branched off
-`main`. **Not yet pushed** to origin and **not merged** to `main` — awaiting user.
+**Status:** DONE and **deployed to production**. Merged to `main` (commit `389d57e`),
+pushed to `origin/main`, and Vercel auto-built it. Verified live — the deployed bundle
+(`index-CkXiRhYP.js`) contains the new layout and no longer the old `h-24 w-28` slot.
 
 **Next up:** nothing active. Awaiting the next task.
 
