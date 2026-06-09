@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { bestLabel, MAX_ROUNDS, STARTING_LIVES } from '@/lib/ladder';
+import { bestLabel } from '@/lib/ladder';
+import { getMode } from '@/lib/modes';
 
 /** Top bankroll readout, career best, run controls, and a notice toast. */
 export default function Hud() {
@@ -13,6 +14,7 @@ export default function Hud() {
   const lives = useGameStore((s) => s.lives);
   const streak = useGameStore((s) => s.streak);
   const runStatus = useGameStore((s) => s.runStatus);
+  const { maxRounds, startingLives } = getMode(useGameStore((s) => s.mode));
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newGame = useGameStore((s) => s.newGame);
@@ -57,10 +59,10 @@ export default function Hud() {
       {runStatus === 'playing' && (
         <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-pitch-900/80 px-3 py-2">
           <span className="font-display text-sm text-chrome">
-            R{round}<span className="text-chrome-muted">/{MAX_ROUNDS}</span>
+            R{round}<span className="text-chrome-muted">/{maxRounds}</span>
           </span>
           <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
-            {Array.from({ length: Math.max(STARTING_LIVES, lives) }, (_, i) => (
+            {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
               <Heart
                 key={i}
                 size={12}

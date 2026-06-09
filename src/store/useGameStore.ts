@@ -20,9 +20,6 @@ import {
 } from '@/lib/formations';
 import { getPack } from '@/lib/packs';
 import {
-  STARTING_LIVES,
-  MAX_ROUNDS,
-  ROUND_INCOME,
   interest,
   streakBonus,
   wageBill,
@@ -32,11 +29,11 @@ import {
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
+import { getMode, DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
 import {
-  STARTING_BANKROLL,
   SHOP_SIZE,
   ROSTER_CAP,
   MATCH_REWARD,
@@ -104,6 +101,8 @@ interface GameState {
   record: { w: number; d: number; l: number };
 
   // --- season ladder ---
+  /** Active game mode id (drives the ruleset via getMode). */
+  mode: ModeId;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -202,7 +201,8 @@ interface GameState {
 const emptyXi = (): (string | null)[] => Array(XI_SIZE).fill(null);
 
 /** Fresh-run economic state, with the opening shop already rolled. */
-function freshRun(daily: string | null = null) {
+function freshRun(daily: string | null = null, modeId: ModeId = DEFAULT_MODE_ID) {
+  const config = getMode(modeId);
   // Daily challenge: both seeds derive from the date so everyone gets the same
   // opening shop + ladder. Casual: independent random seeds.
   const shopSeed = daily
@@ -212,7 +212,8 @@ function freshRun(daily: string | null = null) {
     ? dailySeed(daily) ^ 0x5f3759df
     : ((Date.now() >>> 1) & 0x7fffffff) || 7;
   return {
-    bankroll: STARTING_BANKROLL,
+    mode: modeId,
+    bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
     shopSeed,
@@ -225,13 +226,13 @@ function freshRun(daily: string | null = null) {
     notice: null,
     record: { w: 0, d: 0, l: 0 },
     round: 1,
-    lives: STARTING_LIVES,
+    lives: config.startingLives,
     streak: 0,
     runStatus: 'playing' as const,
     runSeed,
     lastIncome: null,
     bestStreak: 0,
-    peakBankroll: STARTING_BANKROLL,
+    peakBankroll: config.startingBankroll,
     shopLocked: false,
     wager: 0,
     lifeBuybacks: 0,
@@ -248,6 +249,7 @@ function freshRun(daily: string | null = null) {
 /** The durable run slice — persisted AND exported as a save code. */
 function saveSlice(s: GameState) {
   return {
+    mode: s.mode,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -385,7 +387,8 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
-          const boss = getBoss(s.round);
+          const config = getMode(s.mode);
+          const boss = getBoss(s.round, config.bosses);
           // Boss sudden-death: a draw against an unbeaten side is a defeat.
           const outcome =
             boss?.suddenDeath && result.outcome === 'draw' ? 'loss' : result.outcome;
@@ -399,7 +402,7 @@ export const useGameStore = create<GameState>()(
           // Gaffer's Gamble: win the stake, lose the stake, draw pushes.
           const wagerDelta =
             outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
-          const payout = reward + ROUND_INCOME + intr + sb - wage + wagerDelta;
+          const payout = reward + config.roundIncome + intr + sb - wage + wagerDelta;
           const bankroll = Math.max(0, s.bankroll + payout);
 
           // Clean-sheet shield: a win to nil banks a shield; a defeat spends it
@@ -441,7 +444,7 @@ export const useGameStore = create<GameState>()(
             peakBankroll: Math.max(s.peakBankroll, bankroll),
             lastIncome: {
               reward,
-              income: ROUND_INCOME,
+              income: config.roundIncome,
               interest: intr,
               streak: sb,
               wage,
@@ -458,16 +461,16 @@ export const useGameStore = create<GameState>()(
           });
           if (lives <= 0)
             return { ...base, runStatus: 'lost' as const, ...endReached(s.round) };
-          if (s.round >= MAX_ROUNDS)
+          if (s.round >= config.maxRounds)
             // The final must be WON, not merely survived — beat the Invincibles.
             return outcome === 'win'
-              ? { ...base, runStatus: 'won' as const, ...endReached(MAX_ROUNDS) }
-              : { ...base, runStatus: 'lost' as const, ...endReached(MAX_ROUNDS) };
+              ? { ...base, runStatus: 'won' as const, ...endReached(config.maxRounds) }
+              : { ...base, runStatus: 'lost' as const, ...endReached(config.maxRounds) };
 
           // Advance: draw the next round's event + reset the free refresh.
           const nextRound = s.round + 1;
           const starters = s.xi.filter((x): x is string => !!x);
-          const ev = drawEvent(nextRound, s.runSeed, starters, s.relics);
+          const ev = drawEvent(nextRound, s.runSeed, starters, s.relics, config.eventRates);
           const advance = {
             round: nextRound,
             event: ev,
@@ -492,7 +495,7 @@ export const useGameStore = create<GameState>()(
 
       buyLife: () =>
         set((s) => {
-          if (s.runStatus !== 'playing' || s.lives >= STARTING_LIVES) return {};
+          if (s.runStatus !== 'playing' || s.lives >= getMode(s.mode).startingLives) return {};
           const cost = lifeBuybackCost(s.lifeBuybacks);
           if (s.bankroll < cost) return { notice: 'Not enough funds' };
           return {

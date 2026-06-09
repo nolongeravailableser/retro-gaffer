@@ -61,17 +61,24 @@ export const BOSSES: Record<number, Boss> = {
   },
 };
 
-export function getBoss(round: number): Boss | null {
-  return BOSSES[round] ?? null;
+/** A boss schedule keyed by round. Defaults to the classic BOSSES. */
+export type BossSchedule = Record<number, Boss>;
+
+export function getBoss(round: number, bosses: BossSchedule = BOSSES): Boss | null {
+  return bosses[round] ?? null;
 }
 
-export function isBoss(round: number): boolean {
-  return round in BOSSES;
+export function isBoss(round: number, bosses: BossSchedule = BOSSES): boolean {
+  return round in bosses;
 }
 
 /** Build a boss's match team (themed real XI where possible, else fictional). */
-export function bossTeam(round: number, seed: string | number): MatchTeam {
-  const boss = BOSSES[round];
+export function bossTeam(
+  round: number,
+  seed: string | number,
+  bosses: BossSchedule = BOSSES
+): MatchTeam {
+  const boss = bosses[round];
   const rng = new Rng(`${seed}-boss${round}`);
   let squad: Player[] = [];
   if (boss.squadFilter) {

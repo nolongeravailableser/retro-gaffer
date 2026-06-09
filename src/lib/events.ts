@@ -26,6 +26,22 @@ export interface GameEvent {
   relicChoices?: string[];
 }
 
+/**
+ * Cumulative draw thresholds for the event deck. `meta` is the chance of a
+ * tactical meta shift; `metaOrForm` is the chance of meta OR player form; the
+ * remainder (1 − metaOrForm) is the relic-offer chance. A mode can reshape the
+ * deck; the default preserves the classic 45% / 30% / 25% split.
+ */
+export interface EventRates {
+  meta: number;
+  metaOrForm: number;
+}
+
+export const DEFAULT_EVENT_RATES: EventRates = {
+  meta: 0.45,
+  metaOrForm: 0.75,
+};
+
 interface MetaShift {
   id: string;
   headline: string;
@@ -49,12 +65,13 @@ export function drawEvent(
   round: number,
   seed: string | number,
   starterIds: readonly string[],
-  ownedRelics: readonly string[]
+  ownedRelics: readonly string[],
+  rates: EventRates = DEFAULT_EVENT_RATES
 ): GameEvent {
   const rng = new Rng(`${seed}-event-${round}`);
   const roll = rng.next();
 
-  if (roll < 0.45) {
+  if (roll < rates.meta) {
     const m = rng.pick(META_SHIFTS);
     return {
       id: m.id,
@@ -65,7 +82,7 @@ export function drawEvent(
     };
   }
 
-  if (roll < 0.75 && starterIds.length > 0) {
+  if (roll < rates.metaOrForm && starterIds.length > 0) {
     const hot = rng.next() < 0.7;
     const id = rng.pick(starterIds);
     return {

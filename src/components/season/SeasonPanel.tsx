@@ -6,8 +6,6 @@ import {
 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import {
-  MAX_ROUNDS,
-  STARTING_LIVES,
   ladderTier,
   bestLabel,
   interest,
@@ -15,8 +13,8 @@ import {
   wageBill,
   maxWager,
   lifeBuybackCost,
-  ROUND_INCOME,
 } from '@/lib/ladder';
+import { getMode } from '@/lib/modes';
 import { MATCH_REWARD } from '@/lib/economy';
 import { formatRunResult } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
@@ -50,12 +48,14 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const shield = useGameStore((s) => s.shield);
   const lifeBuybacks = useGameStore((s) => s.lifeBuybacks);
   const buyLife = useGameStore((s) => s.buyLife);
+  const config = getMode(useGameStore((s) => s.mode));
+  const { maxRounds, startingLives } = config;
   const newGame = useGameStore((s) => s.newGame);
   const [shared, setShared] = useState(false);
 
   if (runStatus !== 'playing') {
     const won = runStatus === 'won';
-    const reached = won ? MAX_ROUNDS : round;
+    const reached = won ? maxRounds : round;
     const isNewBest = reached >= best.round;
     const squadValue = owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
     const stats: [string, string][] = [
@@ -149,7 +149,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
 
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
-  const base = ROUND_INCOME + projectedInterest - wage;
+  const base = config.roundIncome + projectedInterest - wage;
   const winPay = MATCH_REWARD.win + base + streakBonus(streak + 1) + wager;
   const drawPay = MATCH_REWARD.draw + base;
   const lossPay = MATCH_REWARD.loss + base - wager;
@@ -166,7 +166,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-chrome-muted">
-            Round {round}/{MAX_ROUNDS}
+            Round {round}/{maxRounds}
             {boss && <span className="ml-1.5 text-fuchsia-300">· BOSS</span>}
           </p>
           <h2 className="font-display text-xl">{ladderTier(round)}</h2>
@@ -179,7 +179,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
             </span>
           )}
           <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
-            {Array.from({ length: Math.max(STARTING_LIVES, lives) }, (_, i) => (
+            {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
               <Heart
                 key={i}
                 size={16}
@@ -232,7 +232,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
       </div>
 
       {/* Buy back a lost life */}
-      {lives < STARTING_LIVES && (
+      {lives < startingLives && (
         <button
           type="button"
           onClick={buyLife}

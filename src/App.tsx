@@ -14,6 +14,7 @@ import type { MatchResult, Player } from '@/lib/types';
 import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
+import { getMode } from '@/lib/modes';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { relicModifiers } from '@/lib/relics';
 import { importTeam, readChallengeCode, type OpponentTeam } from '@/lib/codec';
@@ -40,6 +41,7 @@ export default function App() {
   const round = useGameStore((s) => s.round);
   const runSeed = useGameStore((s) => s.runSeed);
   const runStatus = useGameStore((s) => s.runStatus);
+  const mode = useGameStore((s) => s.mode);
   const roundMods = useGameStore((s) => s.roundMods);
   const relics = useGameStore((s) => s.relics);
   const placeInSlot = useGameStore((s) => s.placeInSlot);
@@ -101,12 +103,17 @@ export default function App() {
     return { chemistry, multipliers, filled: starters.length, playerTeam };
   }, [xi, roundMods, relics]);
 
+  const config = useMemo(() => getMode(mode), [mode]);
+
   const roundOpponent = useMemo<MatchTeam | null>(
     () =>
       playerTeam && runStatus === 'playing'
-        ? buildRoundOpponent(playerTeam.attack, playerTeam.defense, round, runSeed)
+        ? buildRoundOpponent(playerTeam.attack, playerTeam.defense, round, runSeed, {
+            roundTarget: config.roundTarget,
+            bosses: config.bosses,
+          })
         : null,
-    [playerTeam, round, runSeed, runStatus]
+    [playerTeam, round, runSeed, runStatus, config]
   );
 
   const ready = filled === XI_SIZE;
@@ -253,6 +260,7 @@ export default function App() {
         playerTeam={playerTeam}
         opponent={opponent}
         seed={matchSeed}
+        tuning={config.engine}
         onComplete={onMatchComplete}
       />
     </div>

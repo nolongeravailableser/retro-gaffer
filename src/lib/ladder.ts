@@ -7,7 +7,7 @@
 
 import { Rng } from './rng';
 import { generateOpponent } from './opponent';
-import { getBoss, bossTeam } from './bosses';
+import { getBoss, bossTeam, type BossSchedule } from './bosses';
 import type { MatchTeam } from './engine';
 
 export const MAX_ROUNDS = 12;
@@ -47,12 +47,20 @@ export function bestLabel(round: number): string {
  * player must out-build, NOT a rubber-band scaled to the player. This is the
  * core fix for flatness: you can fall behind, and you can pull ahead.
  */
-const ROUND_TARGET = [
+export const ROUND_TARGET = [
   380, 500, 620, 720, 900, 1010, 1120, 1320, 1300, 1390, 1480, 1600,
 ];
 
-export function roundTargetStrength(round: number): number {
-  return ROUND_TARGET[round - 1] ?? 1600 + (round - ROUND_TARGET.length) * 130;
+/** Per-round strength step applied past the end of the curve. */
+export const ROUND_TARGET_STEP = 130;
+
+export function roundTargetStrength(
+  round: number,
+  target: readonly number[] = ROUND_TARGET,
+  step: number = ROUND_TARGET_STEP
+): number {
+  const last = target[target.length - 1] ?? 0;
+  return target[round - 1] ?? last + (round - target.length) * step;
 }
 
 /** Banking is strong: +£1 per £8 saved, capped at £8 — rewards greed (Pillar 2). */
@@ -111,17 +119,26 @@ export function roundPayout(
  * super-team; normal rounds use the ABSOLUTE strength curve with only a ±10%
  * anti-frustration nudge toward the player's level. Deterministic per seed.
  */
+export interface LadderShape {
+  /** Absolute strength curve (ATK+DEF) per round. */
+  roundTarget?: readonly number[];
+  /** Boss schedule keyed by round. */
+  bosses?: BossSchedule;
+}
+
 export function buildRoundOpponent(
   playerAttack: number,
   playerDefense: number,
   round: number,
-  runSeed: string | number
+  runSeed: string | number,
+  shape: LadderShape = {}
 ): MatchTeam {
-  if (getBoss(round)) return bossTeam(round, `${runSeed}-R${round}`);
+  const bosses = shape.bosses;
+  if (getBoss(round, bosses)) return bossTeam(round, `${runSeed}-R${round}`, bosses);
 
   const seed = `${runSeed}-R${round}`;
   const base = generateOpponent(playerAttack, playerDefense, seed);
-  const target = roundTargetStrength(round);
+  const target = roundTargetStrength(round, shape.roundTarget);
   const playerTotal = playerAttack + playerDefense || 1;
   // Mostly absolute: clamp the relative pull to ±10%.
   const nudge = 1 + 0.1 * Math.max(-1, Math.min(1, playerTotal / target - 1));

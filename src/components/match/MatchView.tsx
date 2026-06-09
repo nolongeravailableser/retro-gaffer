@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronsRight, Trophy, Ban, HeartCrack } from 'lucide-react';
-import { simulateMatch, type MatchTeam } from '@/lib/engine';
+import { simulateMatch, DEFAULT_TUNING, type MatchTeam, type EngineTuning } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { MATCH_REWARD } from '@/lib/economy';
 import type { MatchResult } from '@/lib/types';
@@ -12,6 +12,8 @@ interface MatchViewProps {
   playerTeam: MatchTeam | null;
   opponent?: MatchTeam | null;
   seed?: string | null;
+  /** Match-engine tuning for the active mode (defaults to classic). */
+  tuning?: EngineTuning;
   onComplete: (result: MatchResult) => void;
 }
 
@@ -43,6 +45,7 @@ export default function MatchView({
   playerTeam,
   opponent: opponentOverride = null,
   seed: seedProp = null,
+  tuning = DEFAULT_TUNING,
   onComplete,
 }: MatchViewProps) {
   const [match, setMatch] = useState<{
@@ -62,12 +65,12 @@ export default function MatchView({
     const opponent =
       opponentOverride ??
       generateOpponent(playerTeam.attack, playerTeam.defense, seed);
-    const result = simulateMatch(playerTeam, opponent, seed);
+    const result = simulateMatch(playerTeam, opponent, seed, tuning);
     completedRef.current = false;
     setMatch({ result, opponent, seed });
     setShown(1);
     setSpeed(1);
-  }, [open, playerTeam, opponentOverride, seedProp]);
+  }, [open, playerTeam, opponentOverride, seedProp, tuning]);
 
   // Drive playback — reruns whenever shown or speed changes.
   useEffect(() => {

@@ -17,18 +17,35 @@ export interface MatchTeam {
   squad: Player[];
 }
 
-const XG_SCALE = 2.5;
-const MIN_XG = 0.15;
-const MAX_XG = 2.5;
-/** A near-miss is a bit more likely than a goal, for ticker texture. */
-const CHANCE_FACTOR = 1.4;
+/**
+ * Tunable match parameters. A game mode can override any of these; the default
+ * preset below is the classic ruleset, so every existing caller (and test) that
+ * omits the argument behaves byte-for-byte as before.
+ */
+export interface EngineTuning {
+  xgScale: number;
+  minXg: number;
+  maxXg: number;
+  /** A near-miss is a bit more likely than a goal, for ticker texture. */
+  chanceFactor: number;
+  /** Per-minute probability of a yellow card for side A. */
+  pYellow: number;
+  /** Per-minute probability of a straight red for side A. */
+  pStraightRed: number;
+  /** Per-minute probability of an injury for side A. */
+  pInjury: number;
+}
 
-/** Per-minute probability of a yellow card for side A. ~2.25 yellows/game. */
-const P_YELLOW = 0.025;
-/** Per-minute probability of a straight red for side A. ~0.27 reds/game. */
-const P_STRAIGHT_RED = 0.003;
-/** Per-minute probability of an injury for side A. ~0.45 injuries/game. */
-const P_INJURY = 0.005;
+/** The classic ruleset — the single source of truth for default match feel. */
+export const DEFAULT_TUNING: EngineTuning = {
+  xgScale: 2.5,
+  minXg: 0.15,
+  maxXg: 2.5,
+  chanceFactor: 1.4,
+  pYellow: 0.025, // ~2.25 yellows/game
+  pStraightRed: 0.003, // ~0.27 reds/game
+  pInjury: 0.005, // ~0.45 injuries/game
+};
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
@@ -36,13 +53,17 @@ function clamp(v: number, lo: number, hi: number): number {
 
 /**
  * Expected Goals from a side's attack vs the opponent's defense.
- * Evenly matched (attack == oppDefense) → half of XG_SCALE. Monotonic:
+ * Evenly matched (attack == oppDefense) → half of xgScale. Monotonic:
  * more attack raises xG, more opposing defense lowers it.
  */
-export function expectedGoals(attack: number, oppDefense: number): number {
-  if (attack <= 0) return MIN_XG;
+export function expectedGoals(
+  attack: number,
+  oppDefense: number,
+  tuning: EngineTuning = DEFAULT_TUNING
+): number {
+  if (attack <= 0) return tuning.minXg;
   const ratio = attack / (attack + Math.max(0, oppDefense));
-  return clamp(ratio * XG_SCALE, MIN_XG, MAX_XG);
+  return clamp(ratio * tuning.xgScale, tuning.minXg, tuning.maxXg);
 }
 
 const GOAL_LINES = [
@@ -111,11 +132,12 @@ function pickScorer(rng: Rng, squad: Player[]): string {
 export function simulateMatch(
   a: MatchTeam,
   b: MatchTeam,
-  seed: number | string
+  seed: number | string,
+  tuning: EngineTuning = DEFAULT_TUNING
 ): MatchResult {
   const rng = new Rng(seed);
-  const xgA = expectedGoals(a.attack, b.defense);
-  const xgB = expectedGoals(b.attack, a.defense);
+  const xgA = expectedGoals(a.attack, b.defense, tuning);
+  const xgB = expectedGoals(b.attack, a.defense, tuning);
   const perMinuteA = xgA / 90;
   const perMinuteB = xgB / 90;
 
@@ -146,7 +168,7 @@ export function simulateMatch(
           kind: 'goal',
           text: `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorer)}`,
         });
-      } else if (rng.chance(perMinute * CHANCE_FACTOR)) {
+      } else if (rng.chance(perMinute * tuning.chanceFactor)) {
         const p = pickScorer(rng, team.squad);
         events.push({
           minute,
@@ -167,7 +189,7 @@ export function simulateMatch(
     const redRoll = rng.next();
     const injuryRoll = rng.next();
 
-    if (yellowRoll < P_YELLOW && a.squad.length > 0) {
+    if (yellowRoll < tuning.pYellow && a.squad.length > 0) {
       const player = rng.pick(a.squad);
       if (yellowed.has(player.id) && !redPlayer) {
         // Second yellow → red
@@ -181,7 +203,7 @@ export function simulateMatch(
       }
     }
 
-    if (redRoll < P_STRAIGHT_RED && !redPlayer && a.squad.length > 0) {
+    if (redRoll < tuning.pStraightRed && !redPlayer && a.squad.length > 0) {
       const player = rng.pick(a.squad);
       if (!yellowed.has(player.id)) {
         redPlayer = player;
@@ -190,7 +212,7 @@ export function simulateMatch(
       }
     }
 
-    if (injuryRoll < P_INJURY && !injuredPlayer && a.squad.length > 0) {
+    if (injuryRoll < tuning.pInjury && !injuredPlayer && a.squad.length > 0) {
       const player = rng.pick(a.squad);
       const r = rng.next();
       injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
