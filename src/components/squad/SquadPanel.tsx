@@ -4,6 +4,8 @@ import {
   MousePointerClick,
   Coins,
   Users,
+  Ban,
+  HeartCrack,
 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
@@ -20,6 +22,8 @@ export default function SquadPanel({ multipliers }: SquadPanelProps) {
   const owned = useGameStore((s) => s.owned);
   const xi = useGameStore((s) => s.xi);
   const bench = useGameStore((s) => s.bench);
+  const suspensions = useGameStore((s) => s.suspensions);
+  const injuries = useGameStore((s) => s.injuries);
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const sendToBench = useGameStore((s) => s.sendToBench);
@@ -27,6 +31,8 @@ export default function SquadPanel({ multipliers }: SquadPanelProps) {
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
+  const suspendedSet = new Set(suspensions);
+  const injuredMap = injuries as Record<string, number>;
   const selected = getPlayer(selectedPlayerId);
 
   const statusFor = (id: string) =>
@@ -104,6 +110,21 @@ export default function SquadPanel({ multipliers }: SquadPanelProps) {
                       onClick={() => selectPlayer(id)}
                     />
                   </Draggable>
+
+                  {/* Suspension badge */}
+                  {suspendedSet.has(id) && (
+                    <span className="absolute -left-2 -top-2 flex items-center gap-0.5 rounded-full border border-red-400/60 bg-red-500/20 px-1.5 py-0.5 text-[10px] font-display text-red-300">
+                      <Ban size={10} /> BAN
+                    </span>
+                  )}
+
+                  {/* Injury badge */}
+                  {injuredMap[id] && !suspendedSet.has(id) && (
+                    <span className="absolute -left-2 -top-2 flex items-center gap-0.5 rounded-full border border-orange-400/60 bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-display text-orange-300">
+                      <HeartCrack size={10} /> {injuredMap[id]}R
+                    </span>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => sell(id)}

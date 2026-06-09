@@ -97,7 +97,7 @@ export interface MatchEvent {
   minute: number;
   /** 'A' = home (player), 'B' = opponent. */
   side: 'A' | 'B';
-  kind: 'goal' | 'chance' | 'flavour';
+  kind: 'goal' | 'chance' | 'flavour' | 'yellow' | 'red' | 'injury';
   text: string;
 }
 
@@ -106,4 +106,8 @@ export interface MatchResult {
   score: { a: number; b: number };
   xg: { a: number; b: number };
   outcome: 'win' | 'draw' | 'loss'; // from side A's perspective
+  /** Player IDs from side A (your team) who received a red card — miss next game. */
+  suspensions: string[];
+  /** Side A players injured mid-match — unavailable for 1–3 rounds. */
+  injuries: Array<{ playerId: string; rounds: number }>;
 }

@@ -20,15 +20,18 @@ import {
 import { formatRunResult } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import type { MatchTeam } from '@/lib/engine';
+import { XI_SIZE } from '@/lib/types';
 
 interface SeasonPanelProps {
   /** This round's opponent (for the preview), or null if no XI fielded. */
   roundOpponent: MatchTeam | null;
   canPlay: boolean;
+  /** How many of the XI's 11 slots are currently filled (for the CTA hint). */
+  filled: number;
   onPlay: () => void;
 }
 
-export default function SeasonPanel({ roundOpponent, canPlay, onPlay }: SeasonPanelProps) {
+export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: SeasonPanelProps) {
   const round = useGameStore((s) => s.round);
   const lives = useGameStore((s) => s.lives);
   const streak = useGameStore((s) => s.streak);
@@ -289,7 +292,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, onPlay }: SeasonPa
         ].join(' ')}
       >
         <Play size={18} />
-        {canPlay ? `Play Round ${round}` : 'Field a team first'}
+        {canPlay ? `Play Round ${round}` : `Fill your XI (${filled}/${XI_SIZE})`}
       </motion.button>
     </div>
   );

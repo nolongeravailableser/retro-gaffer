@@ -61,6 +61,29 @@ The game is feature-complete and stable. Implemented and passing:
 
 ## 3. Active Work
 
+**Gameplay-issue fixes (in progress this session).** User is reporting issues one at a
+time; I diagnose and propose, then fix on approval.
+
+- **#1 Starting balance too low — DONE (uncommitted).** £15M couldn't afford a full
+  16-man squad. Pool analysis: avg player £3.15M, cheapest legal squad ~£26M, average
+  squad ~£50M. Raised `STARTING_BANKROLL` 15 → **50** in `src/lib/economy.ts` so a full
+  average-cost squad is buyable at kickoff. All 101 tests pass; verified live (fresh game
+  shows £50M). NOT yet committed/deployed. ⚠️ Balance impact: near-max interest from the
+  start (cap £8), full squad now incurs wages (>13 owned), early `ROUND_TARGET` rounds get
+  easier — revisit difficulty if it feels off.
+- **#2 Match could start without a full XI — DONE (uncommitted).** Play was gated on
+  `filled > 0` (any 1 player). Now gated on a complete XI (`filled === XI_SIZE`, 11) at all
+  three entry points in `src/App.tsx` (ladder Play Round, PvP, challenge banner); disabled
+  CTA shows progress "Fill your XI (n/11)" (`SeasonPanel` gained a `filled` prop). Build +
+  101 tests green; verified live (button disabled 0→10/11, enables at 11/11).
+- **#3 "Spend over budget" — NOT A BUG.** Stress-tested: drained bankroll to £0 via
+  buying/refreshing, zero overspend — `buy`/`refreshShop`/`buyLife` all hard-check funds
+  and `resolveRound` floors bankroll at 0. User confirmed they were mistaken. (Minor edge
+  noted, NOT fixed: the Gaffer's Gamble wager is clamped to ½ bankroll only at set-time, so
+  a stale stake can exceed current funds — loss still floors at 0. Revisit only if desired.)
+
+---
+
 **Mobile responsive pass — DONE & committed.**
 
 Made the whole UI fit narrow phone screens. Changes:
@@ -78,7 +101,50 @@ at 320px); shop/squad collapse to single column.
 pushed to `origin/main`, and Vercel auto-built it. Verified live — the deployed bundle
 (`index-CkXiRhYP.js`) contains the new layout and no longer the old `h-24 w-28` slot.
 
-**Next up:** nothing active. Awaiting the next task.
+---
+
+**Tab-based navigation — DONE (uncommitted).**
+
+Restructured the UI to a Football Manager-style tabbed layout. Changes:
+- New `src/components/nav/TabNav.tsx` — tab bar component. Desktop: sticky horizontal bar below the header with green underline indicator. Mobile: fixed bottom nav bar with icon + label.
+- `src/App.tsx` — added `activeTab` state (`Tab = 'formation' | 'squad' | 'transfers' | 'season' | 'more'`). Each tab conditionally renders its content; DndContext stays at the App level. `pb-20 sm:pb-8` prevents content hiding behind the mobile bottom bar.
+- Tab layout: **Formation** (Pitch + Bench + FormationSelector + ChemistryPanel), **Squad** (SquadPanel), **Transfers** (Shop), **Season** (EventBanner + SeasonPanel + Play button), **More** (PvpPanel + SavePanel).
+- Challenge banner renders above tabs (global, not tab-specific).
+
+Build green (`npm run build`). Verified live: desktop tab bar works, mobile bottom nav works at 375px, all tabs render correctly.
+
+**Status:** DONE, not yet committed/deployed.
+
+---
+
+**Match engine balance fix — DONE (uncommitted).**
+
+`XG_SCALE` was 5, producing ~5 total goals per evenly-matched game. Halved to 2.5 (plus `MAX_XG` 4.5 → 2.5, `MIN_XG` 0.25 → 0.15) so evenly-matched games produce ~2.5 total goals — realistic. Tests updated.
+
+---
+
+**Injury & disciplinary systems — DONE (uncommitted).**
+
+Two new gameplay mechanics integrated into the match simulation.
+
+**Engine (`src/lib/engine.ts`):**
+- Per-minute rolls for yellow (`P=0.025`), straight red (`P=0.003`), injury (`P=0.005`).
+- Yellow: tracked per player; second yellow = red. At most 1 red card per game.
+- Red card → player ID added to `MatchResult.suspensions` (1-game ban).
+- Injury → player ID + duration added to `MatchResult.injuries`; duration 60% 1-round, 30% 2-round, 10% 3-round.
+- New `MatchEvent.kind` values: `'yellow'`, `'red'`, `'injury'`.
+
+**Store (`src/store/useGameStore.ts`):**
+- New state: `suspensions: string[]` (player IDs banned for next match), `injuries: Record<string, number>` (rounds remaining per player ID).
+- `resolveRound` processes both fields: suspensions are replaced each round (one-game ban served), injuries are decremented and cleared when they reach 0.
+
+**Persistence (`src/store/persistence.ts`):** bumped to version 8; migration adds empty defaults so existing saves upgrade cleanly.
+
+**UI (`src/components/squad/SquadPanel.tsx`):** red BAN badge on suspended players, orange `XR` badge on injured players (X = rounds remaining).
+
+Quality gates: `npm run build` clean, `npm test` 105/105 (4 new engine tests added).
+
+**Status:** DONE, not yet committed/deployed.
 
 ---
 

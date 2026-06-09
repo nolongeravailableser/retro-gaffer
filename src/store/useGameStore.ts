@@ -140,6 +140,12 @@ interface GameState {
   /** Career-best run, persisted across runs (highest round reached). */
   best: { round: number };
 
+  // --- discipline & fitness ---
+  /** Player IDs banned for the upcoming match (red card last game). Cleared after the match. */
+  suspensions: string[];
+  /** playerId → rounds remaining injured. Decremented after each resolved round. */
+  injuries: Record<string, number>;
+
   // --- events & relics (Pillar 4) ---
   /** Owned persistent relics. */
   relics: string[];
@@ -230,6 +236,8 @@ function freshRun(daily: string | null = null) {
     wager: 0,
     lifeBuybacks: 0,
     shield: false,
+    suspensions: [] as string[],
+    injuries: {} as Record<string, number>,
     relics: [] as string[],
     roundMods: NO_MODIFIERS,
     event: null as GameEvent | null,
@@ -266,6 +274,8 @@ function saveSlice(s: GameState) {
     wager: s.wager,
     lifeBuybacks: s.lifeBuybacks,
     shield: s.shield,
+    suspensions: s.suspensions,
+    injuries: s.injuries,
   };
 }
 
@@ -387,6 +397,19 @@ export const useGameStore = create<GameState>()(
           }
           const lives = s.lives - lifeCost;
           const record = { ...s.record, [key]: s.record[key] + 1 };
+
+          // Apply discipline/fitness from this match.
+          // Suspensions: clear old ban (served this match), set new one-game bans.
+          const suspensions = result.suspensions ?? [];
+          // Injuries: decrement all counters, remove cleared ones, add new ones.
+          const newInjuries: Record<string, number> = {};
+          for (const [id, rounds] of Object.entries(s.injuries)) {
+            if (rounds > 1) newInjuries[id] = rounds - 1;
+          }
+          for (const inj of result.injuries ?? []) {
+            newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
+          }
+
           const base = {
             bankroll,
             record,
@@ -405,6 +428,8 @@ export const useGameStore = create<GameState>()(
               wager: wagerDelta,
             },
             notice: shieldNote,
+            suspensions,
+            injuries: newInjuries,
           };
 
           // Run over? Record the career best (won counts as the full climb).

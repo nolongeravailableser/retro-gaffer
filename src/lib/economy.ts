@@ -25,7 +25,12 @@ export const RARITY_RANK: Record<Rarity, number> = {
   icon: 3,
 };
 
-export const STARTING_BANKROLL = 15;
+/**
+ * Starting bankroll (£m). Sized so a manager can afford a full 16-man squad of
+ * roughly average cost at kickoff (avg player ≈ £3.15M × 16 ≈ £50M). The pool's
+ * cheapest legal squad is ~£26M; this leaves headroom for normal random draws.
+ */
+export const STARTING_BANKROLL = 50;
 export const REFRESH_COST = 1;
 export const SELL_RATE = 0.8;
 export const SHOP_SIZE = 3;

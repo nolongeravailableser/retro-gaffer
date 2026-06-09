@@ -11,6 +11,7 @@ import {
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { computeChemistry } from '@/lib/chemistry';
 import type { MatchResult, Player } from '@/lib/types';
+import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
@@ -29,6 +30,7 @@ import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import PvpPanel from '@/components/pvp/PvpPanel';
 import Hud from '@/components/ui/Hud';
+import TabNav, { type Tab } from '@/components/nav/TabNav';
 
 type MatchMode = 'ladder' | 'pvp';
 
@@ -44,6 +46,9 @@ export default function App() {
   const resolveRound = useGameStore((s) => s.resolveRound);
   const awardMatch = useGameStore((s) => s.awardMatch);
 
+  const suspensions = useGameStore((s) => s.suspensions);
+  const injuries = useGameStore((s) => s.injuries);
+  const [activeTab, setActiveTab] = useState<Tab>('formation');
   const [matchOpen, setMatchOpen] = useState(false);
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
   const [matchSeed, setMatchSeed] = useState<string | null>(null);
@@ -65,7 +70,6 @@ export default function App() {
     }
   };
 
-  // Read a shared challenge code from the URL on first load.
   useEffect(() => {
     const code = readChallengeCode(window.location.search);
     if (!code) return;
@@ -73,15 +77,12 @@ export default function App() {
     if (result.ok) setChallenge(result.team);
   }, []);
 
-  // If the saved game was corrupted, it was discarded — let the player know.
   useEffect(() => {
     if (consumeLoadError()) {
       useGameStore.setState({ notice: 'Saved game was corrupted — started fresh.' });
     }
   }, []);
 
-  // Derive starters + chemistry + the match team from the XI. Memoized on the
-  // XI contents so identity stays stable across unrelated re-renders.
   const { chemistry, multipliers, filled, playerTeam } = useMemo(() => {
     const starters = xi
       .map((id) => getPlayer(id))
@@ -90,7 +91,6 @@ export default function App() {
     const multipliers = new Map<string, number>(
       chemistry.perPlayer.map((c) => [c.player.id, c.multiplier])
     );
-    // Apply event modifiers + relic modifiers to get effective match strength.
     const mods = mergeModifiers(roundMods, relicModifiers(relics));
     const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods);
     const playerTeam: MatchTeam | null =
@@ -100,7 +100,6 @@ export default function App() {
     return { chemistry, multipliers, filled: starters.length, playerTeam };
   }, [xi, roundMods, relics]);
 
-  // This round's ladder opponent (stable across re-renders).
   const roundOpponent = useMemo<MatchTeam | null>(
     () =>
       playerTeam && runStatus === 'playing'
@@ -108,6 +107,8 @@ export default function App() {
         : null,
     [playerTeam, round, runSeed, runStatus]
   );
+
+  const ready = filled === XI_SIZE;
 
   const playRound = () => {
     if (!roundOpponent) return;
@@ -138,8 +139,9 @@ export default function App() {
   };
 
   return (
-    <div className="mx-auto min-h-full max-w-7xl px-4 py-6">
-      <header className="mb-6 flex flex-col items-center gap-3 text-center">
+    // pb-20 on mobile to clear the fixed bottom nav; sm:pb-0 on desktop
+    <div className="mx-auto min-h-full max-w-5xl px-4 pb-20 sm:pb-8">
+      <header className="pt-5 pb-4 flex flex-col items-center gap-3 text-center">
         <div className="flex items-center gap-2 text-crt-green animate-flicker">
           <Trophy size={20} />
           <h1 className="font-display text-2xl tracking-wide sm:text-3xl">
@@ -149,6 +151,8 @@ export default function App() {
         </div>
         <Hud />
       </header>
+
+      <TabNav active={activeTab} onChange={setActiveTab} />
 
       {challenge && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/10 px-4 py-3">
@@ -162,12 +166,12 @@ export default function App() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => filled > 0 && playExhibition(challenge)}
-              disabled={filled === 0}
+              onClick={() => ready && playExhibition(challenge)}
+              disabled={!ready}
               data-testid="play-challenge"
               className="flex items-center gap-1.5 rounded-md border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1.5 font-display text-sm text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Play size={14} /> {filled > 0 ? 'Play challenge' : 'Field a team first'}
+              <Play size={14} /> {ready ? 'Play challenge' : `Fill your XI (${filled}/${XI_SIZE})`}
             </button>
             <button
               type="button"
@@ -182,36 +186,52 @@ export default function App() {
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_22rem]">
-          {/* Left: formation, board, bench, and the season */}
+        {activeTab === 'formation' && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
               <FormationSelector />
             </div>
             <Pitch multipliers={multipliers} />
             <Bench />
-            <EventBanner />
-            <SeasonPanel
-              roundOpponent={roundOpponent}
-              canPlay={filled > 0}
-              onPlay={playRound}
-            />
-          </div>
-
-          {/* Right: strength panel, market, squad, PvP */}
-          <div className="flex flex-col gap-4">
             <ChemistryPanel
               chemistry={chemistry}
               filled={filled}
               attack={playerTeam?.attack}
               defense={playerTeam?.defense}
             />
-            <Shop />
+          </div>
+        )}
+
+        {activeTab === 'squad' && (
+          <div className="flex flex-col gap-4">
             <SquadPanel multipliers={multipliers} />
-            <PvpPanel canPlay={filled > 0} onPlayImported={playExhibition} />
+          </div>
+        )}
+
+        {activeTab === 'transfers' && (
+          <div className="flex flex-col gap-4">
+            <Shop />
+          </div>
+        )}
+
+        {activeTab === 'season' && (
+          <div className="flex flex-col gap-4">
+            <EventBanner />
+            <SeasonPanel
+              roundOpponent={roundOpponent}
+              canPlay={ready}
+              filled={filled}
+              onPlay={playRound}
+            />
+          </div>
+        )}
+
+        {activeTab === 'more' && (
+          <div className="flex flex-col gap-4">
+            <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
             <SavePanel />
           </div>
-        </div>
+        )}
       </DndContext>
 
       <footer className="mt-8 text-center font-ticker text-sm text-chrome-muted">
@@ -220,7 +240,12 @@ export default function App() {
 
       <MatchView
         open={matchOpen}
-        onClose={() => setMatchOpen(false)}
+        onClose={() => {
+          setMatchOpen(false);
+          const hasPending =
+            suspensions.length > 0 || Object.keys(injuries).length > 0;
+          if (hasPending) setActiveTab('squad');
+        }}
         playerTeam={playerTeam}
         opponent={opponent}
         seed={matchSeed}

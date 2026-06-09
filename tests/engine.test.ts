@@ -20,15 +20,15 @@ const teamB: MatchTeam = { name: 'B', attack: 620, defense: 680, squad: squad('b
 
 describe('expectedGoals', () => {
   it('is symmetric/half-scale for evenly matched sides', () => {
-    expect(expectedGoals(600, 600)).toBeCloseTo(2.5);
+    expect(expectedGoals(600, 600)).toBeCloseTo(1.25);
   });
   it('rises with attack and falls with opposing defense', () => {
     expect(expectedGoals(800, 600)).toBeGreaterThan(expectedGoals(600, 600));
     expect(expectedGoals(600, 800)).toBeLessThan(expectedGoals(600, 600));
   });
   it('clamps to sane bounds', () => {
-    expect(expectedGoals(100000, 1)).toBeLessThanOrEqual(4.5);
-    expect(expectedGoals(0, 999)).toBeGreaterThanOrEqual(0.25);
+    expect(expectedGoals(100000, 1)).toBeLessThanOrEqual(2.5);
+    expect(expectedGoals(0, 999)).toBeGreaterThanOrEqual(0.15);
   });
 });
 
@@ -94,5 +94,57 @@ describe('simulateMatch invariants', () => {
       else if (r.outcome === 'loss') weakWins++;
     }
     expect(strongWins).toBeGreaterThan(weakWins);
+  });
+
+  it('result always contains suspensions and injuries arrays', () => {
+    for (let s = 0; s < 20; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      expect(Array.isArray(r.suspensions)).toBe(true);
+      expect(Array.isArray(r.injuries)).toBe(true);
+    }
+  });
+
+  it('suspensions contain only player IDs from side A squad', () => {
+    const aIds = new Set(teamA.squad.map((p) => p.id));
+    for (let s = 0; s < 50; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      for (const id of r.suspensions) {
+        expect(aIds.has(id)).toBe(true);
+      }
+      expect(r.suspensions.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('injury rounds are between 1 and 3', () => {
+    for (let s = 0; s < 50; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      for (const inj of r.injuries) {
+        expect(inj.rounds).toBeGreaterThanOrEqual(1);
+        expect(inj.rounds).toBeLessThanOrEqual(3);
+      }
+      expect(r.injuries.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('discipline/injury events occur at a realistic frequency over many games', () => {
+    let reds = 0;
+    let yellows = 0;
+    let injuries = 0;
+    const N = 500;
+    for (let s = 0; s < N; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      reds += r.suspensions.length;
+      injuries += r.injuries.length;
+      yellows += r.events.filter((e) => e.kind === 'yellow').length;
+    }
+    // ~0.3–0.6 reds per game
+    expect(reds / N).toBeGreaterThan(0.1);
+    expect(reds / N).toBeLessThan(1.0);
+    // ~1.5–3 yellows per game
+    expect(yellows / N).toBeGreaterThan(0.5);
+    expect(yellows / N).toBeLessThan(5.0);
+    // ~0.2–0.7 injuries per game
+    expect(injuries / N).toBeGreaterThan(0.1);
+    expect(injuries / N).toBeLessThan(1.0);
   });
 });

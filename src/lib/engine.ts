@@ -17,11 +17,18 @@ export interface MatchTeam {
   squad: Player[];
 }
 
-const XG_SCALE = 5;
-const MIN_XG = 0.25;
-const MAX_XG = 4.5;
+const XG_SCALE = 2.5;
+const MIN_XG = 0.15;
+const MAX_XG = 2.5;
 /** A near-miss is a bit more likely than a goal, for ticker texture. */
 const CHANCE_FACTOR = 1.4;
+
+/** Per-minute probability of a yellow card for side A. ~2.25 yellows/game. */
+const P_YELLOW = 0.025;
+/** Per-minute probability of a straight red for side A. ~0.27 reds/game. */
+const P_STRAIGHT_RED = 0.003;
+/** Per-minute probability of an injury for side A. ~0.45 injuries/game. */
+const P_INJURY = 0.005;
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
@@ -54,6 +61,31 @@ const CHANCE_LINES = [
   '{p} skies it over from six yards — he should score!',
   '{p} rattles the crossbar! So close.',
   '{p} wriggles into the box but the last-ditch tackle is in.',
+];
+
+const YELLOW_LINES = [
+  '{p} catches one late — the referee has no hesitation. Yellow card.',
+  'Reckless challenge from {p}. The book comes out.',
+  '{p} argues the toss and picks up a booking.',
+  'Cynical foul from {p} — straight into the referee\'s notebook.',
+];
+
+const SECOND_YELLOW_LINES = [
+  '{p} goes in again — second yellow, and he\'s off! Ten men!',
+  'Stupid tackle from {p}. Already on a yellow. He\'s off! Ten men.',
+];
+
+const RED_LINES = [
+  'STRAIGHT RED for {p}! Horrific challenge — off he goes!',
+  '{p} sees red for a last-man foul. Ten men.',
+  'The referee shows {p} the red card — dangerous play, no arguments.',
+];
+
+const INJURY_LINES = [
+  '{p} is down and it looks serious. He\'s helped off the pitch.',
+  'Worrying scenes as {p} can\'t continue — a stretcher is called.',
+  '{p} pulls up clutching his hamstring. He\'s done for the day.',
+  '{p} limps off after a heavy challenge. Fingers crossed it\'s nothing serious.',
 ];
 
 const KICKOFF = 'And we are underway at the Theatre of Nostalgia!';
@@ -93,6 +125,12 @@ export function simulateMatch(
   let goalsA = 0;
   let goalsB = 0;
 
+  // Discipline tracking for side A (only player's team has gameplay impact).
+  const yellowed = new Set<string>(); // player IDs with one yellow this game
+  let redPlayer: Player | null = null;
+  let injuredPlayer: Player | null = null;
+  let injuryRounds = 0;
+
   const sides: ('A' | 'B')[] = ['A', 'B'];
   for (let minute = 1; minute <= 90; minute++) {
     for (const side of sides) {
@@ -118,8 +156,47 @@ export function simulateMatch(
         });
       }
     }
+
     if (minute === 45) {
       events.push({ minute: 45, side: 'A', kind: 'flavour', text: HALFTIME });
+    }
+
+    // Discipline and injury rolls — always consume 3 RNG values per minute for
+    // determinism, then conditional player-pick calls only when a roll fires.
+    const yellowRoll = rng.next();
+    const redRoll = rng.next();
+    const injuryRoll = rng.next();
+
+    if (yellowRoll < P_YELLOW && a.squad.length > 0) {
+      const player = rng.pick(a.squad);
+      if (yellowed.has(player.id) && !redPlayer) {
+        // Second yellow → red
+        redPlayer = player;
+        const line = SECOND_YELLOW_LINES[rng.int(0, SECOND_YELLOW_LINES.length - 1)];
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
+      } else if (!yellowed.has(player.id)) {
+        yellowed.add(player.id);
+        const line = YELLOW_LINES[rng.int(0, YELLOW_LINES.length - 1)];
+        events.push({ minute, side: 'A', kind: 'yellow', text: line.replace('{p}', player.name) });
+      }
+    }
+
+    if (redRoll < P_STRAIGHT_RED && !redPlayer && a.squad.length > 0) {
+      const player = rng.pick(a.squad);
+      if (!yellowed.has(player.id)) {
+        redPlayer = player;
+        const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
+      }
+    }
+
+    if (injuryRoll < P_INJURY && !injuredPlayer && a.squad.length > 0) {
+      const player = rng.pick(a.squad);
+      const r = rng.next();
+      injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
+      injuredPlayer = player;
+      const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
+      events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name) });
     }
   }
 
@@ -128,10 +205,17 @@ export function simulateMatch(
   const outcome =
     goalsA > goalsB ? 'win' : goalsA < goalsB ? 'loss' : 'draw';
 
+  const suspensions = redPlayer ? [redPlayer.id] : [];
+  const injuries = injuredPlayer
+    ? [{ playerId: injuredPlayer.id, rounds: injuryRounds }]
+    : [];
+
   return {
     events,
     score: { a: goalsA, b: goalsB },
     xg: { a: Math.round(xgA * 100) / 100, b: Math.round(xgB * 100) / 100 },
     outcome,
+    suspensions,
+    injuries,
   };
 }
