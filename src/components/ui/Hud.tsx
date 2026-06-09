@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
@@ -14,6 +14,8 @@ export default function Hud() {
   const newGame = useGameStore((s) => s.newGame);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
   const [confirmNew, setConfirmNew] = useState(false);
+  const [confirmDaily, setConfirmDaily] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
 
   // Auto-dismiss the notice after a moment.
   useEffect(() => {
@@ -21,6 +23,19 @@ export default function Hud() {
     const t = setTimeout(clearNotice, 2200);
     return () => clearTimeout(t);
   }, [notice, clearNotice]);
+
+  // Close confirm popover on outside click.
+  useEffect(() => {
+    if (!confirmNew && !confirmDaily) return;
+    const handler = (e: MouseEvent) => {
+      if (confirmRef.current && !confirmRef.current.contains(e.target as Node)) {
+        setConfirmNew(false);
+        setConfirmDaily(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [confirmNew, confirmDaily]);
 
   return (
     <div className="relative flex flex-wrap items-center justify-center gap-2 sm:gap-3">
@@ -54,48 +69,94 @@ export default function Hud() {
         </div>
       )}
 
-      {confirmNew ? (
-        <div className="flex items-center gap-1 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-xs">
-          <span className="text-rose-200 mr-1">Reset?</span>
-          <button
-            type="button"
-            onClick={() => { newGame(); setConfirmNew(false); }}
-            className="flex items-center gap-0.5 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-0.5 text-crt-green hover:bg-crt-green/25"
-          >
-            <Check size={11} /> Yes
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmNew(false)}
-            className="flex items-center gap-0.5 rounded border border-white/20 px-2 py-0.5 text-chrome-muted hover:text-chrome"
-          >
-            <X size={11} /> No
-          </button>
-        </div>
-      ) : (
+      {/* New Game button with popover confirm */}
+      <div className="relative" ref={confirmNew ? confirmRef : undefined}>
         <button
           type="button"
-          onClick={() => setConfirmNew(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-chrome-muted hover:text-chrome"
+          onClick={() => { setConfirmNew((v) => !v); setConfirmDaily(false); }}
+          className={[
+            'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition',
+            confirmNew
+              ? 'border-rose-400/50 bg-rose-500/15 text-rose-200'
+              : 'border-white/10 text-chrome-muted hover:text-chrome',
+          ].join(' ')}
         >
           <RotateCcw size={13} />
           New Game
         </button>
-      )}
+        <AnimatePresence>
+          {confirmNew && (
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.95 }}
+              transition={{ duration: 0.12 }}
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-rose-400/40 bg-pitch-950 px-3 py-2 shadow-lg"
+            >
+              <span className="font-display text-xs text-rose-200 mr-1">Reset save?</span>
+              <button
+                type="button"
+                onClick={() => { newGame(); setConfirmNew(false); }}
+                className="flex items-center gap-1 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/25"
+              >
+                <Check size={11} /> Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmNew(false)}
+                className="flex items-center gap-1 rounded border border-white/20 px-2 py-1 font-display text-xs text-chrome-muted hover:text-chrome"
+              >
+                <X size={11} /> No
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (confirm("Start today's Daily Challenge? Same draws & opponents for everyone today.")) {
-            newDailyRun();
-          }
-        }}
-        data-testid="daily-run"
-        className="flex items-center gap-1.5 rounded-lg border border-fuchsia-400/30 px-3 py-2 text-xs text-fuchsia-200 hover:bg-fuchsia-500/10"
-      >
-        <CalendarDays size={13} />
-        Daily
-      </button>
+      {/* Daily button with popover confirm */}
+      <div className="relative" ref={confirmDaily ? confirmRef : undefined}>
+        <button
+          type="button"
+          onClick={() => { setConfirmDaily((v) => !v); setConfirmNew(false); }}
+          data-testid="daily-run"
+          className={[
+            'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition',
+            confirmDaily
+              ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-200'
+              : 'border-fuchsia-400/30 text-fuchsia-200 hover:bg-fuchsia-500/10',
+          ].join(' ')}
+        >
+          <CalendarDays size={13} />
+          Daily
+        </button>
+        <AnimatePresence>
+          {confirmDaily && (
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.95 }}
+              transition={{ duration: 0.12 }}
+              className="absolute top-full right-0 mt-2 z-30 flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-fuchsia-400/40 bg-pitch-950 px-3 py-2 shadow-lg"
+            >
+              <span className="font-display text-xs text-fuchsia-200 mr-1">Start daily?</span>
+              <button
+                type="button"
+                onClick={() => { newDailyRun(); setConfirmDaily(false); }}
+                className="flex items-center gap-1 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/25"
+              >
+                <Check size={11} /> Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDaily(false)}
+                className="flex items-center gap-1 rounded border border-white/20 px-2 py-1 font-display text-xs text-chrome-muted hover:text-chrome"
+              >
+                <X size={11} /> No
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {notice && (
