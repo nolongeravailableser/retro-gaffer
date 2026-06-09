@@ -188,8 +188,12 @@ export default function App() {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         {activeTab === 'formation' && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_288px]">
-            {/* Left — pitch */}
-            <div className="flex flex-col gap-4 min-w-0">
+            {/* Squad list — first on mobile (immediately visible), right column on desktop */}
+            <div className="order-first lg:order-last lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem]">
+              <SquadList multipliers={multipliers} />
+            </div>
+            {/* Pitch — below squad list on mobile, left column on desktop */}
+            <div className="order-last lg:order-first flex flex-col gap-4 min-w-0">
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
                 <FormationSelector />
               </div>
@@ -201,10 +205,6 @@ export default function App() {
                 attack={playerTeam?.attack}
                 defense={playerTeam?.defense}
               />
-            </div>
-            {/* Right — squad list */}
-            <div className="lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem]">
-              <SquadList multipliers={multipliers} />
             </div>
           </div>
         )}
