@@ -23,7 +23,7 @@ import Bench from '@/components/pitch/Bench';
 import FormationSelector from '@/components/pitch/FormationSelector';
 import ChemistryPanel from '@/components/pitch/ChemistryPanel';
 import Shop from '@/components/shop/Shop';
-import SquadPanel from '@/components/squad/SquadPanel';
+import SquadList from '@/components/squad/SquadList';
 import SeasonPanel from '@/components/season/SeasonPanel';
 import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
@@ -187,24 +187,25 @@ export default function App() {
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         {activeTab === 'formation' && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
-              <FormationSelector />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_288px]">
+            {/* Left — pitch */}
+            <div className="flex flex-col gap-4 min-w-0">
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
+                <FormationSelector />
+              </div>
+              <Pitch multipliers={multipliers} />
+              <Bench />
+              <ChemistryPanel
+                chemistry={chemistry}
+                filled={filled}
+                attack={playerTeam?.attack}
+                defense={playerTeam?.defense}
+              />
             </div>
-            <Pitch multipliers={multipliers} />
-            <Bench />
-            <ChemistryPanel
-              chemistry={chemistry}
-              filled={filled}
-              attack={playerTeam?.attack}
-              defense={playerTeam?.defense}
-            />
-          </div>
-        )}
-
-        {activeTab === 'squad' && (
-          <div className="flex flex-col gap-4">
-            <SquadPanel multipliers={multipliers} />
+            {/* Right — squad list */}
+            <div className="lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem]">
+              <SquadList multipliers={multipliers} />
+            </div>
           </div>
         )}
 
@@ -244,7 +245,7 @@ export default function App() {
           setMatchOpen(false);
           const hasPending =
             suspensions.length > 0 || Object.keys(injuries).length > 0;
-          if (hasPending) setActiveTab('squad');
+          if (hasPending) setActiveTab('formation');
         }}
         playerTeam={playerTeam}
         opponent={opponent}

@@ -1,13 +1,12 @@
-import { Layout, Users, ArrowLeftRight, Trophy, MoreHorizontal } from 'lucide-react';
+import { Layout, ArrowLeftRight, Trophy, MoreHorizontal } from 'lucide-react';
 
-export type Tab = 'formation' | 'squad' | 'transfers' | 'season' | 'more';
+export type Tab = 'formation' | 'transfers' | 'season' | 'more';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'formation', label: 'Formation', icon: Layout },
-  { id: 'squad', label: 'Squad', icon: Users },
+  { id: 'formation', label: 'Tactics',   icon: Layout },
   { id: 'transfers', label: 'Transfers', icon: ArrowLeftRight },
-  { id: 'season', label: 'Season', icon: Trophy },
-  { id: 'more', label: 'More', icon: MoreHorizontal },
+  { id: 'season',    label: 'Season',    icon: Trophy },
+  { id: 'more',      label: 'More',      icon: MoreHorizontal },
 ];
 
 interface TabNavProps {
