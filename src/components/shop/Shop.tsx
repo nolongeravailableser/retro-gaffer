@@ -1,14 +1,27 @@
-import { RefreshCw, Sparkles, Lock, LockOpen } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { RefreshCw, Sparkles, Lock, LockOpen, ArrowDownUp } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { checkBuy, ROSTER_CAP } from '@/lib/economy';
+import { computeChemistry } from '@/lib/chemistry';
 import { PACKS, getPack } from '@/lib/packs';
-import ShopCard from './ShopCard';
+import type { Player } from '@/lib/types';
+import ShopCard, { type ChemPreview } from './ShopCard';
+
+type SortKey = 'default' | 'cost' | 'attack' | 'defense';
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'default', label: 'Offered' },
+  { key: 'cost', label: 'Cost' },
+  { key: 'attack', label: 'ATK' },
+  { key: 'defense', label: 'DEF' },
+];
 
 /** The transfer market: themed packs + 3 offers + a paid refresh. */
 export default function Shop() {
   const shop = useGameStore((s) => s.shop);
   const bankroll = useGameStore((s) => s.bankroll);
   const owned = useGameStore((s) => s.owned);
+  const xi = useGameStore((s) => s.xi);
   const packId = useGameStore((s) => s.pack);
   const shopLocked = useGameStore((s) => s.shopLocked);
   const buy = useGameStore((s) => s.buy);
@@ -16,12 +29,42 @@ export default function Shop() {
   const setPack = useGameStore((s) => s.setPack);
   const toggleLock = useGameStore((s) => s.toggleLock);
 
+  const [sort, setSort] = useState<SortKey>('default');
+
   const pack = getPack(packId);
   const canRefresh = bankroll >= pack.cost;
 
+  // Current starters drive the speculative "what if I sign him" chemistry.
+  const starters = useMemo(
+    () => xi.map((id) => getPlayer(id)).filter((p): p is Player => !!p),
+    [xi]
+  );
+
+  // Each offer paired with its index (so buy() still targets the right slot)
+  // and a chemistry preview, optionally re-sorted for comparison.
+  const offers = useMemo(() => {
+    const list = shop.map((id, index) => {
+      const player = id ? getPlayer(id) ?? null : null;
+      let chem: ChemPreview | undefined;
+      if (player) {
+        const withC = computeChemistry([...starters, player]);
+        const pc = withC.perPlayer.find((x) => x.player.id === player.id);
+        const bonusPct = pc ? Math.round((pc.multiplier - 1) * 100) : 0;
+        chem = { bonusPct, tags: pc?.sharedTags ?? [] };
+      }
+      return { player, index, chem };
+    });
+
+    if (sort === 'default') return list;
+    const val = (p: Player | null) =>
+      !p ? -1 : sort === 'cost' ? p.cost : p.stats[sort];
+    // Keep sold (null) slots at the end; sort the rest descending.
+    return [...list].sort((a, b) => val(b.player) - val(a.player));
+  }, [shop, starters, sort]);
+
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="font-display text-xl">Transfer Market</h2>
         <div className="flex items-center gap-2">
           <button
@@ -38,6 +81,7 @@ export default function Shop() {
             ].join(' ')}
           >
             {shopLocked ? <Lock size={13} /> : <LockOpen size={13} />}
+            <span className="hidden sm:inline">{shopLocked ? 'Locked' : 'Lock'}</span>
           </button>
           <button
             type="button"
@@ -84,19 +128,42 @@ export default function Shop() {
         })}
       </div>
 
-      <p className="mb-3 text-[11px] text-chrome-muted">{pack.blurb}</p>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-[11px] text-chrome-muted">{pack.blurb}</p>
+        {/* Sort offers for quick comparison */}
+        <div className="flex shrink-0 items-center gap-1">
+          <ArrowDownUp size={11} className="text-chrome-muted" />
+          {SORTS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setSort(s.key)}
+              className={[
+                'rounded px-1.5 py-0.5 text-[10px] font-display transition',
+                sort === s.key
+                  ? 'bg-crt-green/20 text-crt-green'
+                  : 'text-chrome-muted hover:text-chrome hover:bg-white/5',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {shop.map((id, i) => {
-          const player = getPlayer(id) ?? null;
-          const affordable =
-            !!player && checkBuy(bankroll, owned.length, player).ok;
+        {offers.map(({ player, index, chem }) => {
+          const check = player
+            ? checkBuy(bankroll, owned.length, player)
+            : { ok: false as const };
           return (
             <ShopCard
-              key={id ?? `empty-${i}`}
+              key={player?.id ?? `empty-${index}`}
               player={player}
-              affordable={affordable}
-              onBuy={() => buy(i)}
+              affordable={!!player && check.ok}
+              blockedReason={'reason' in check ? check.reason : undefined}
+              chem={chem}
+              onBuy={() => buy(index)}
             />
           );
         })}

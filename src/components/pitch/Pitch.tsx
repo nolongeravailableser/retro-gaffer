@@ -13,10 +13,16 @@ export default function Pitch({ multipliers }: PitchProps) {
   const xi = useGameStore((s) => s.xi);
   const formationId = useGameStore((s) => s.formation);
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
+  const suspensions = useGameStore((s) => s.suspensions);
+  const injuries = useGameStore((s) => s.injuries);
   const slotClicked = useGameStore((s) => s.slotClicked);
   const removeFromSlot = useGameStore((s) => s.removeFromSlot);
 
   const formation = getFormation(formationId);
+  // A suspended/injured selection can't be fielded — don't tease eligible slots.
+  const selectedUnavailable =
+    !!selectedPlayerId &&
+    (suspensions.includes(selectedPlayerId) || !!injuries[selectedPlayerId]);
 
   return (
     <div className="rounded-xl border border-crt-dim bg-gradient-to-b from-pitch-700/40 to-pitch-900/60 p-4">
@@ -30,6 +36,7 @@ export default function Pitch({ multipliers }: PitchProps) {
               const hasSelection = selectedPlayerId !== null;
               const eligible =
                 hasSelection &&
+                !selectedUnavailable &&
                 isSlotEligible(selectedPlayerId, slotIndex, formationId);
               const slot = (
                 <Slot

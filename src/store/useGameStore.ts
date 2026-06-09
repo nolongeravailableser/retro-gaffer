@@ -558,8 +558,18 @@ export const useGameStore = create<GameState>()(
 
       placeInSlot: (id, slotIndex) => {
         const player = getPlayer(id);
-        if (!player || !get().owned.includes(id)) return;
-        if (slotRole(get().formation, slotIndex) !== player.role) return; // eligibility
+        const state = get();
+        if (!player || !state.owned.includes(id)) return;
+        if (slotRole(state.formation, slotIndex) !== player.role) return; // eligibility
+        // Suspended or injured players can't take the field.
+        if (state.suspensions.includes(id)) {
+          set({ notice: `${player.name} is suspended` });
+          return;
+        }
+        if (state.injuries[id]) {
+          set({ notice: `${player.name} is injured (${state.injuries[id]}R)` });
+          return;
+        }
 
         set((s) => {
           const xi = [...s.xi];

@@ -4,6 +4,8 @@ import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
 import { Draggable } from '@/components/dnd/dnd';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
+import { positionLabel } from '@/lib/playerMeta';
+import StatBar from '@/components/ui/StatBar';
 import type { Role } from '@/lib/types';
 
 interface SquadListProps {
@@ -93,12 +95,11 @@ export default function SquadList({ multipliers }: SquadListProps) {
       </AnimatePresence>
 
       {/* Column labels */}
-      <div className="grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-x-1.5 px-2 py-1 border-b border-white/10 text-[10px] uppercase tracking-wide text-chrome-muted">
+      <div className="grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-x-2 px-2 py-1 border-b border-white/10 text-[10px] uppercase tracking-wide text-chrome-muted">
         <span className="w-3" />
         <span className="w-8" />
         <span>Name</span>
-        <span className="w-8 text-right">ATK</span>
-        <span className="w-8 text-right">DEF</span>
+        <span className="w-[5.5rem] text-center">Ratings</span>
         <span className="w-12 text-right">Value</span>
       </div>
 
@@ -116,9 +117,11 @@ export default function SquadList({ multipliers }: SquadListProps) {
                 if (!p) return null;
                 const role = p.role;
                 const rs = ROLE_STYLES[role];
+                const pos = positionLabel(p.position);
                 const isSelected = id === selectedPlayerId;
                 const isSuspended = suspendedSet.has(id);
                 const injuredRounds = injuredMap[id];
+                const unavailable = isSuspended || !!injuredRounds;
                 const mult = onPitch.has(id) ? (multipliers.get(id) ?? 1) : 1;
                 const chemBonus = mult > 1 ? Math.round((mult - 1) * 100) : 0;
 
@@ -127,10 +130,11 @@ export default function SquadList({ multipliers }: SquadListProps) {
                     key={id}
                     onClick={() => selectPlayer(id)}
                     className={[
-                      'grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-x-1.5 px-2 py-1.5 cursor-pointer transition-colors select-none',
+                      'grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-x-2 px-2 py-1.5 cursor-pointer transition-colors select-none',
                       isSelected
                         ? 'bg-crt-green/10 border-l-2 border-crt-green'
                         : 'border-l-2 border-transparent hover:bg-white/5',
+                      unavailable ? 'opacity-55' : '',
                     ].join(' ')}
                   >
                       {/* Drag handle */}
@@ -145,37 +149,40 @@ export default function SquadList({ multipliers }: SquadListProps) {
                         {role}
                       </span>
 
-                      {/* Name + badges */}
+                      {/* Name + position + badges */}
                       <div className="min-w-0">
                         <span className="font-display text-xs text-chrome truncate block">
                           {p.name}
                         </span>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {pos && (
+                            <span className="text-[9px] text-chrome-muted/70 truncate">
+                              {pos}
+                            </span>
+                          )}
                           {chemBonus > 0 && (
-                            <span className="text-[9px] text-crt-green font-display">
+                            <span className="text-[9px] text-crt-green font-display shrink-0">
                               ✦+{chemBonus}%
                             </span>
                           )}
                           {isSuspended && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-rose-300 font-display">
+                            <span className="flex items-center gap-0.5 text-[9px] text-rose-300 font-display shrink-0">
                               <Ban size={8} /> BAN
                             </span>
                           )}
                           {injuredRounds && !isSuspended && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-orange-300 font-display">
+                            <span className="flex items-center gap-0.5 text-[9px] text-orange-300 font-display shrink-0">
                               <HeartCrack size={8} /> {injuredRounds}R
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Stats */}
-                      <span className="w-8 text-right font-ticker text-xs text-rose-300">
-                        {p.stats.attack}
-                      </span>
-                      <span className="w-8 text-right font-ticker text-xs text-sky-300">
-                        {p.stats.defense}
-                      </span>
+                      {/* Rated stats */}
+                      <div className="w-[5.5rem] flex flex-col gap-0.5">
+                        <StatBar label="ATK" value={p.stats.attack} labelClass="text-rose-300/70" compact />
+                        <StatBar label="DEF" value={p.stats.defense} labelClass="text-sky-300/70" compact />
+                      </div>
 
                       {/* Sell */}
                       <button

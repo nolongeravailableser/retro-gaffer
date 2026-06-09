@@ -24,6 +24,7 @@ import FormationSelector from '@/components/pitch/FormationSelector';
 import ChemistryPanel from '@/components/pitch/ChemistryPanel';
 import Shop from '@/components/shop/Shop';
 import SquadList from '@/components/squad/SquadList';
+import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
 import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
@@ -189,7 +190,8 @@ export default function App() {
         {activeTab === 'formation' && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_288px]">
             {/* Squad list — first on mobile (immediately visible), right column on desktop */}
-            <div className="order-first lg:order-last lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem]">
+            <div className="order-first lg:order-last lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem] flex flex-col gap-3">
+              <AvailabilityStrip hideWhenClear />
               <SquadList multipliers={multipliers} />
             </div>
             {/* Pitch — below squad list on mobile, left column on desktop */}
@@ -218,6 +220,7 @@ export default function App() {
         {activeTab === 'season' && (
           <div className="flex flex-col gap-4">
             <EventBanner />
+            <AvailabilityStrip />
             <SeasonPanel
               roundOpponent={roundOpponent}
               canPlay={ready}

@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X } from 'lucide-react';
+import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { bestLabel } from '@/lib/ladder';
+import { bestLabel, MAX_ROUNDS, STARTING_LIVES } from '@/lib/ladder';
 
 /** Top bankroll readout, career best, run controls, and a notice toast. */
 export default function Hud() {
   const bankroll = useGameStore((s) => s.bankroll);
   const best = useGameStore((s) => s.best);
   const daily = useGameStore((s) => s.daily);
+  const round = useGameStore((s) => s.round);
+  const lives = useGameStore((s) => s.lives);
+  const streak = useGameStore((s) => s.streak);
+  const runStatus = useGameStore((s) => s.runStatus);
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newGame = useGameStore((s) => s.newGame);
@@ -48,6 +52,30 @@ export default function Hud() {
         <Coins size={18} className="text-crt-amber" />
         <span className="font-display text-2xl text-crt-amber">£{bankroll}M</span>
       </motion.div>
+
+      {/* Run status — round / lives / streak, persistent across tabs */}
+      {runStatus === 'playing' && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-pitch-900/80 px-3 py-2">
+          <span className="font-display text-sm text-chrome">
+            R{round}<span className="text-chrome-muted">/{MAX_ROUNDS}</span>
+          </span>
+          <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
+            {Array.from({ length: Math.max(STARTING_LIVES, lives) }, (_, i) => (
+              <Heart
+                key={i}
+                size={12}
+                className={i < lives ? 'fill-rose-400 text-rose-400' : 'text-white/15'}
+              />
+            ))}
+          </span>
+          {streak > 0 && (
+            <span className="flex items-center gap-0.5 font-display text-sm text-crt-amber">
+              <Flame size={13} />
+              {streak}
+            </span>
+          )}
+        </div>
+      )}
 
       {best.round > 0 && (
         <div

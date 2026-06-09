@@ -17,6 +17,7 @@ import {
   lifeBuybackCost,
   ROUND_INCOME,
 } from '@/lib/ladder';
+import { MATCH_REWARD } from '@/lib/economy';
 import { formatRunResult } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import type { MatchTeam } from '@/lib/engine';
@@ -146,6 +147,16 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
     : 0;
   const boss = getBoss(round);
 
+  // Explicit win/draw/loss payouts so the stake's consequences are visible
+  // BEFORE pressing Play (matches the resolveRound formula in the store).
+  const base = ROUND_INCOME + projectedInterest - wage;
+  const winPay = MATCH_REWARD.win + base + streakBonus(streak + 1) + wager;
+  const drawPay = MATCH_REWARD.draw + base;
+  const lossPay = MATCH_REWARD.loss + base - wager;
+  const money = (n: number) => `${n >= 0 ? '+' : '−'}£${Math.abs(n)}M`;
+  // The real cost of a loss is a life (more on some bosses), unless shielded.
+  const lifeCost = shield ? 0 : boss?.lifeCost ?? 1;
+
   return (
     <div
       className={`rounded-xl border p-4 ${
@@ -233,22 +244,40 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         </button>
       )}
 
-      {/* Economy preview / last payout */}
-      <div className="mb-2 flex items-center justify-between text-xs text-chrome-muted">
-        <span className="flex items-center gap-1">
+      {/* Match Stakes — explicit outcome payouts */}
+      <div className="mb-3 rounded-lg border border-white/10 bg-pitch-800/50 px-3 py-2.5">
+        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-display uppercase tracking-wide text-chrome-muted">
           <TrendingUp size={13} className="text-crt-green" />
-          Win pays £{5 + ROUND_INCOME + projectedInterest + streakBonus(streak + 1) - wage + wager}M
-        </span>
-        <span>
-          interest +£{projectedInterest}M{wage > 0 && ` · wages −£${wage}M`}
-        </span>
+          Match Stakes
+        </p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-md border border-crt-green/30 bg-crt-green/10 py-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-chrome-muted">Win</p>
+            <p className="font-display text-sm text-crt-green">{money(winPay)}</p>
+          </div>
+          <div className="rounded-md border border-crt-amber/30 bg-crt-amber/10 py-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-chrome-muted">Draw</p>
+            <p className="font-display text-sm text-crt-amber">{money(drawPay)}</p>
+          </div>
+          <div className="rounded-md border border-rose-400/30 bg-rose-500/10 py-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-chrome-muted">Loss</p>
+            <p className="font-display text-sm text-rose-300">{money(lossPay)}</p>
+            <p className="text-[9px] text-rose-300/70">
+              {lifeCost === 0 ? 'shield holds' : `−${lifeCost} life${lifeCost > 1 ? 's' : ''}`}
+            </p>
+          </div>
+        </div>
+        <p className="mt-1.5 text-right text-[10px] text-chrome-muted">
+          incl. +£{projectedInterest}M interest{wage > 0 && ` · −£${wage}M wages`}
+          {streak > 0 && ` · +£${streakBonus(streak + 1)}M streak on win`}
+        </p>
       </div>
 
       {/* Gaffer's Gamble */}
       <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-crt-amber/30 bg-crt-amber/5 px-2.5 py-1.5">
         <span className="flex items-center gap-1.5 text-xs text-crt-amber">
           <Dice5 size={14} />
-          {wager > 0 ? `Stake £${wager}M (win +£${wager} / lose −£${wager})` : "Gaffer's Gamble"}
+          {wager > 0 ? `Staking £${wager}M` : "Gaffer's Gamble"}
         </span>
         <div className="flex gap-1">
           {[
@@ -261,7 +290,12 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
               type="button"
               onClick={() => setWager(b.amt)}
               data-testid={`wager-${b.label === '¼' ? 'quarter' : b.label.toLowerCase()}`}
-              className="rounded border border-white/15 px-1.5 py-0.5 text-[11px] hover:bg-white/5"
+              className={[
+                'rounded border px-1.5 py-0.5 text-[11px] transition',
+                (b.label === 'None' ? wager === 0 : wager === b.amt && b.amt > 0)
+                  ? 'border-crt-amber/60 bg-crt-amber/20 text-crt-amber'
+                  : 'border-white/15 hover:bg-white/5',
+              ].join(' ')}
             >
               {b.label}
             </button>
