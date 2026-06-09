@@ -24,12 +24,14 @@ import { BOSSES, type BossSchedule } from './bosses';
 import { DEFAULT_TUNING, type EngineTuning } from './engine';
 import { DEFAULT_EVENT_RATES, type EventRates } from './events';
 
-export type ModeId = 'classic';
+export type ModeId = 'classic' | 'endless';
 
 export interface ModeConfig {
   id: ModeId;
   name: string;
   blurb: string;
+  /** Scored runs (Endless, Daily) show a numeric score instead of a win/lose. */
+  scored: boolean;
 
   // --- run shape ---
   /** Rounds to climb to win the run. */
@@ -61,7 +63,30 @@ export const CLASSIC: ModeConfig = {
   id: 'classic',
   name: 'Classic',
   blurb: 'Climb 12 divisions, 3 lives, beat the Invincibles.',
+  scored: false,
   maxRounds: MAX_ROUNDS,
+  startingLives: STARTING_LIVES,
+  startingBankroll: STARTING_BANKROLL,
+  roundIncome: ROUND_INCOME,
+  roundTarget: ROUND_TARGET,
+  roundTargetStep: ROUND_TARGET_STEP,
+  bosses: BOSSES,
+  engine: DEFAULT_TUNING,
+  eventRates: DEFAULT_EVENT_RATES,
+};
+
+/**
+ * Endless / Survival: no finish line. Same difficulty curve and bosses, but the
+ * climb never ends — opponents keep escalating past the curve (see
+ * roundTargetStrength's overflow step) until you run out of lives. Scored by how
+ * far you get.
+ */
+export const ENDLESS: ModeConfig = {
+  id: 'endless',
+  name: 'Endless',
+  blurb: 'No final whistle — survive as long as you can. Scored by rounds reached.',
+  scored: true,
+  maxRounds: Infinity,
   startingLives: STARTING_LIVES,
   startingBankroll: STARTING_BANKROLL,
   roundIncome: ROUND_INCOME,
@@ -77,6 +102,7 @@ export const DEFAULT_MODE_ID: ModeId = 'classic';
 /** Registry of all playable modes. */
 export const MODES: Record<ModeId, ModeConfig> = {
   classic: CLASSIC,
+  endless: ENDLESS,
 };
 
 /** Resolve a mode config by id, falling back to Classic for unknown ids. */

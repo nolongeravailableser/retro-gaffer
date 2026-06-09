@@ -14,7 +14,8 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { getMode } from '@/lib/modes';
+import { resolveConfig, getMutator } from '@/lib/mutators';
+import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
 import { formatRunResult } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
@@ -48,38 +49,46 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const shield = useGameStore((s) => s.shield);
   const lifeBuybacks = useGameStore((s) => s.lifeBuybacks);
   const buyLife = useGameStore((s) => s.buyLife);
-  const config = getMode(useGameStore((s) => s.mode));
+  const mutatorId = useGameStore((s) => s.mutator);
+  const config = resolveConfig(useGameStore((s) => s.mode), mutatorId);
   const { maxRounds, startingLives } = config;
+  const mutator = getMutator(mutatorId);
   const newGame = useGameStore((s) => s.newGame);
   const [shared, setShared] = useState(false);
 
   if (runStatus !== 'playing') {
     const won = runStatus === 'won';
+    const scored = config.scored || daily !== null;
     const reached = won ? maxRounds : round;
     const isNewBest = reached >= best.round;
     const squadValue = owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
+    const score = runScore({ round, runStatus, peakBankroll, bestStreak, record, maxRounds });
     const stats: [string, string][] = [
+      ...(scored ? ([['Score', formatScore(score)]] as [string, string][]) : []),
       ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
       ['Record', `${record.w}W · ${record.d}D · ${record.l}L`],
       ['Best streak', `${bestStreak} wins`],
       ['Peak bankroll', `£${peakBankroll}M`],
-      ['Squad value', `£${squadValue}M`],
+      ...(mutator ? ([['Modifier', `${mutator.emoji} ${mutator.name}`]] as [string, string][]) : [['Squad value', `£${squadValue}M`] as [string, string]]),
       ['Career best', bestLabel(best.round)],
     ];
+    // Endless never "wins" — it ends in a final score, not a sacking.
+    const frame = won
+      ? 'border-crt-green/50 bg-crt-green/10'
+      : config.scored
+        ? 'border-crt-amber/50 bg-crt-amber/10'
+        : 'border-rose-400/50 bg-rose-500/10';
+    const accent = won ? 'text-crt-green' : config.scored ? 'text-crt-amber' : 'text-rose-300';
+    const heading = won
+      ? 'CHAMPIONS OF EUROPE!'
+      : config.scored
+        ? 'RUN OVER'
+        : 'SACKED BY THE BOARD';
     return (
-      <div
-        className={`rounded-xl border p-5 ${
-          won ? 'border-crt-green/50 bg-crt-green/10' : 'border-rose-400/50 bg-rose-500/10'
-        }`}
-      >
+      <div className={`rounded-xl border p-5 ${frame}`}>
         <div className="text-center">
-          <Trophy
-            size={32}
-            className={`mx-auto mb-2 ${won ? 'text-crt-green' : 'text-rose-300'}`}
-          />
-          <h2 className="font-display text-2xl">
-            {won ? 'CHAMPIONS OF EUROPE!' : 'SACKED BY THE BOARD'}
-          </h2>
+          <Trophy size={32} className={`mx-auto mb-2 ${accent}`} />
+          <h2 className="font-display text-2xl">{heading}</h2>
           {isNewBest && best.round > 0 && (
             <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-crt-amber/50 bg-crt-amber/15 px-2 py-0.5 text-xs font-display text-crt-amber">
               <Crown size={12} /> NEW CAREER BEST
@@ -166,7 +175,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-chrome-muted">
-            Round {round}/{maxRounds}
+            Round {round}/{Number.isFinite(maxRounds) ? maxRounds : '∞'}
             {boss && <span className="ml-1.5 text-fuchsia-300">· BOSS</span>}
           </p>
           <h2 className="font-display text-xl">{ladderTier(round)}</h2>

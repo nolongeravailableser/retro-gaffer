@@ -73,7 +73,17 @@ live** unless noted.
 
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build).
-- `npm test` — **111/111 passing** across 11 files. (README still says "68 tests" — stale.)
+- `npm test` — **120/120 passing** across 12 files.
+
+**Game modes (Phase 0 + Phase 1 shipped):**
+- **Classic** — the standard 12-round climb.
+- **Endless** — no finish line (`maxRounds: Infinity`), escalating opponents, scored by
+  rounds reached. New Run modal lets you pick the mode.
+- **Run mutators** — 8 optional run-long modifiers (Glass Cannon, Low Block, Carnage,
+  Underdog, High Roller, Last Stand, Steep Climb, Relic Hunter), chosen in the New Run
+  modal (or Random); each is a pure `ModeConfig` transform in `src/lib/mutators.ts`.
+- **Daily Gauntlet** — deterministic seed + a deterministic "Rule of the Day" mutator +
+  a comparable run score (`src/lib/score.ts`). HUD shows live score + active mutator badge.
 
 ---
 
@@ -92,12 +102,13 @@ defaulting to classic, so all existing callers/tests are byte-identical. Store c
 round-trip it). App/MatchView/SeasonPanel/Hud read the active mode. New `tests/modes.test.ts`
 (6 tests) locks "Classic == defaults". **No gameplay change — pure refactor keystone.**
 
-**Roadmap (proposed, agreed direction):** the game-modes plan is phased —
-- **Phase 0** ✅ ModeConfig foundation (done).
-- **Phase 1** (next): cheap, high-impact modes that reuse the engine — run **mutators**,
-  a scored **Daily Gauntlet** (Rule of the Day + score formula), **Endless/Survival**
-  (`maxRounds: Infinity`, escalating targets). All are config presets + a scoring fn.
-- **Phase 2:** Scenarios / Challenges (authored start states + objective + star grading).
+**Roadmap (agreed direction):** the game-modes plan is phased —
+- **Phase 0** ✅ ModeConfig foundation (done, commit `4f8a14d`).
+- **Phase 1** ✅ run **mutators** + **Endless** + scored **Daily Gauntlet** (done — see §2).
+  Files: `src/lib/mutators.ts`, `src/lib/score.ts`, `ENDLESS` in `modes.ts`,
+  `NewRunModal.tsx`, `startRun` store action, persistence v10 (adds `mutator`).
+- **Phase 2** (next): Scenarios / Challenges (authored start states + objective + star
+  grading) — reuses ModeConfig + an objective check at resolveRound.
 - **Phase 3:** Career / Dynasty (multi-season persistence, youth academy + scouting,
   aging/regens, board objectives).
 - **Cross-cutting:** evolve one-shot events into branching tactical dilemmas.

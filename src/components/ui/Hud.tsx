@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame } from 'lucide-react';
+import {
+  Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame, Star,
+} from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { bestLabel } from '@/lib/ladder';
-import { getMode } from '@/lib/modes';
+import { resolveConfig, getMutator, dailyMutator } from '@/lib/mutators';
+import { dailyKey } from '@/lib/daily';
+import { runScore, formatScore } from '@/lib/score';
 
-/** Top bankroll readout, career best, run controls, and a notice toast. */
-export default function Hud() {
+interface HudProps {
+  /** Open the New Run setup modal. */
+  onNewRun?: () => void;
+}
+
+/** Top bankroll readout, run status, mode/score, run controls, and a notice toast. */
+export default function Hud({ onNewRun }: HudProps) {
   const bankroll = useGameStore((s) => s.bankroll);
   const best = useGameStore((s) => s.best);
   const daily = useGameStore((s) => s.daily);
@@ -14,14 +23,21 @@ export default function Hud() {
   const lives = useGameStore((s) => s.lives);
   const streak = useGameStore((s) => s.streak);
   const runStatus = useGameStore((s) => s.runStatus);
-  const { maxRounds, startingLives } = getMode(useGameStore((s) => s.mode));
+  const peakBankroll = useGameStore((s) => s.peakBankroll);
+  const bestStreak = useGameStore((s) => s.bestStreak);
+  const record = useGameStore((s) => s.record);
+  const config = resolveConfig(useGameStore((s) => s.mode), useGameStore((s) => s.mutator));
+  const { maxRounds, startingLives } = config;
+  const mutator = getMutator(useGameStore((s) => s.mutator));
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
-  const newGame = useGameStore((s) => s.newGame);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
-  const [confirmNew, setConfirmNew] = useState(false);
   const [confirmDaily, setConfirmDaily] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
+
+  const scored = config.scored || daily !== null;
+  const score = runScore({ round, runStatus, peakBankroll, bestStreak, record, maxRounds });
+  const todaysRule = getMutator(dailyMutator(dailyKey()));
 
   // Auto-dismiss the notice after a moment.
   useEffect(() => {
@@ -30,18 +46,17 @@ export default function Hud() {
     return () => clearTimeout(t);
   }, [notice, clearNotice]);
 
-  // Close confirm popover on outside click.
+  // Close the daily confirm popover on outside click.
   useEffect(() => {
-    if (!confirmNew && !confirmDaily) return;
+    if (!confirmDaily) return;
     const handler = (e: MouseEvent) => {
       if (confirmRef.current && !confirmRef.current.contains(e.target as Node)) {
-        setConfirmNew(false);
         setConfirmDaily(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [confirmNew, confirmDaily]);
+  }, [confirmDaily]);
 
   return (
     <div className="relative flex flex-wrap items-center justify-center gap-2 sm:gap-3">
@@ -59,7 +74,8 @@ export default function Hud() {
       {runStatus === 'playing' && (
         <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-pitch-900/80 px-3 py-2">
           <span className="font-display text-sm text-chrome">
-            R{round}<span className="text-chrome-muted">/{maxRounds}</span>
+            R{round}
+            <span className="text-chrome-muted">/{Number.isFinite(maxRounds) ? maxRounds : '∞'}</span>
           </span>
           <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
             {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
@@ -76,6 +92,28 @@ export default function Hud() {
               {streak}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Score — only for scored runs (Endless / Daily) */}
+      {scored && runStatus === 'playing' && (
+        <div
+          className="flex items-center gap-1.5 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2"
+          title="Run score"
+        >
+          <Star size={14} className="text-crt-green" />
+          <span className="font-display text-sm text-crt-green">{formatScore(score)}</span>
+        </div>
+      )}
+
+      {/* Active mutator badge */}
+      {mutator && (
+        <div
+          className="flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2"
+          title={mutator.blurb}
+        >
+          <span>{mutator.emoji}</span>
+          <span className="font-display text-sm text-amber-200">{mutator.name}</span>
         </div>
       )}
 
@@ -99,55 +137,21 @@ export default function Hud() {
         </div>
       )}
 
-      {/* New Game button with popover confirm */}
-      <div className="relative" ref={confirmNew ? confirmRef : undefined}>
-        <button
-          type="button"
-          onClick={() => { setConfirmNew((v) => !v); setConfirmDaily(false); }}
-          className={[
-            'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition',
-            confirmNew
-              ? 'border-rose-400/50 bg-rose-500/15 text-rose-200'
-              : 'border-white/10 text-chrome-muted hover:text-chrome',
-          ].join(' ')}
-        >
-          <RotateCcw size={13} />
-          New Game
-        </button>
-        <AnimatePresence>
-          {confirmNew && (
-            <motion.div
-              initial={{ opacity: 0, y: -4, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.95 }}
-              transition={{ duration: 0.12 }}
-              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-rose-400/40 bg-pitch-950 px-3 py-2 shadow-lg"
-            >
-              <span className="font-display text-xs text-rose-200 mr-1">Reset save?</span>
-              <button
-                type="button"
-                onClick={() => { newGame(); setConfirmNew(false); }}
-                className="flex items-center gap-1 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/25"
-              >
-                <Check size={11} /> Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmNew(false)}
-                className="flex items-center gap-1 rounded border border-white/20 px-2 py-1 font-display text-xs text-chrome-muted hover:text-chrome"
-              >
-                <X size={11} /> No
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* New Game — opens the run setup modal */}
+      <button
+        type="button"
+        onClick={() => onNewRun?.()}
+        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-chrome-muted transition hover:text-chrome"
+      >
+        <RotateCcw size={13} />
+        New Game
+      </button>
 
-      {/* Daily button with popover confirm */}
+      {/* Daily button with popover confirm + Rule of the Day */}
       <div className="relative" ref={confirmDaily ? confirmRef : undefined}>
         <button
           type="button"
-          onClick={() => { setConfirmDaily((v) => !v); setConfirmNew(false); }}
+          onClick={() => setConfirmDaily((v) => !v)}
           data-testid="daily-run"
           className={[
             'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition',
@@ -166,23 +170,31 @@ export default function Hud() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.95 }}
               transition={{ duration: 0.12 }}
-              className="absolute top-full right-0 mt-2 z-30 flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-fuchsia-400/40 bg-pitch-950 px-3 py-2 shadow-lg"
+              className="absolute top-full right-0 mt-2 z-30 flex flex-col gap-2 whitespace-nowrap rounded-lg border border-fuchsia-400/40 bg-pitch-950 px-3 py-2.5 shadow-lg"
             >
-              <span className="font-display text-xs text-fuchsia-200 mr-1">Start daily?</span>
-              <button
-                type="button"
-                onClick={() => { newDailyRun(); setConfirmDaily(false); }}
-                className="flex items-center gap-1 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/25"
-              >
-                <Check size={11} /> Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDaily(false)}
-                className="flex items-center gap-1 rounded border border-white/20 px-2 py-1 font-display text-xs text-chrome-muted hover:text-chrome"
-              >
-                <X size={11} /> No
-              </button>
+              {todaysRule && (
+                <span className="flex items-center gap-1.5 text-xs text-amber-200">
+                  <span>{todaysRule.emoji}</span>
+                  <span className="font-display">Rule of the Day: {todaysRule.name}</span>
+                </span>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="mr-1 font-display text-xs text-fuchsia-200">Start daily?</span>
+                <button
+                  type="button"
+                  onClick={() => { newDailyRun(); setConfirmDaily(false); }}
+                  className="flex items-center gap-1 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/25"
+                >
+                  <Check size={11} /> Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDaily(false)}
+                  className="flex items-center gap-1 rounded border border-white/20 px-2 py-1 font-display text-xs text-chrome-muted hover:text-chrome"
+                >
+                  <X size={11} /> No
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

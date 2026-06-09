@@ -14,7 +14,7 @@ import type { MatchResult, Player } from '@/lib/types';
 import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
-import { getMode } from '@/lib/modes';
+import { resolveConfig } from '@/lib/mutators';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { relicModifiers } from '@/lib/relics';
 import { importTeam, readChallengeCode, type OpponentTeam } from '@/lib/codec';
@@ -30,6 +30,7 @@ import SeasonPanel from '@/components/season/SeasonPanel';
 import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
+import NewRunModal from '@/components/run/NewRunModal';
 import PvpPanel from '@/components/pvp/PvpPanel';
 import Hud from '@/components/ui/Hud';
 import TabNav, { type Tab } from '@/components/nav/TabNav';
@@ -42,6 +43,7 @@ export default function App() {
   const runSeed = useGameStore((s) => s.runSeed);
   const runStatus = useGameStore((s) => s.runStatus);
   const mode = useGameStore((s) => s.mode);
+  const mutator = useGameStore((s) => s.mutator);
   const roundMods = useGameStore((s) => s.roundMods);
   const relics = useGameStore((s) => s.relics);
   const placeInSlot = useGameStore((s) => s.placeInSlot);
@@ -57,6 +59,7 @@ export default function App() {
   const [matchSeed, setMatchSeed] = useState<string | null>(null);
   const [matchMode, setMatchMode] = useState<MatchMode>('ladder');
   const [challenge, setChallenge] = useState<OpponentTeam | null>(null);
+  const [newRunOpen, setNewRunOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -103,7 +106,7 @@ export default function App() {
     return { chemistry, multipliers, filled: starters.length, playerTeam };
   }, [xi, roundMods, relics]);
 
-  const config = useMemo(() => getMode(mode), [mode]);
+  const config = useMemo(() => resolveConfig(mode, mutator), [mode, mutator]);
 
   const roundOpponent = useMemo<MatchTeam | null>(
     () =>
@@ -157,7 +160,7 @@ export default function App() {
           </h1>
           <Sparkles size={20} />
         </div>
-        <Hud />
+        <Hud onNewRun={() => setNewRunOpen(true)} />
       </header>
 
       <TabNav active={activeTab} onChange={setActiveTab} />
@@ -263,6 +266,8 @@ export default function App() {
         tuning={config.engine}
         onComplete={onMatchComplete}
       />
+
+      <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
     </div>
   );
 }

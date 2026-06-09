@@ -29,7 +29,8 @@ import {
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
-import { getMode, DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
+import { DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
+import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
@@ -101,8 +102,10 @@ interface GameState {
   record: { w: number; d: number; l: number };
 
   // --- season ladder ---
-  /** Active game mode id (drives the ruleset via getMode). */
+  /** Active game mode id (drives the ruleset via resolveConfig). */
   mode: ModeId;
+  /** Active run mutator id (Rule of the Day / chosen modifier), or null. */
+  mutator: string | null;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -190,6 +193,8 @@ interface GameState {
 
   clearNotice: () => void;
   newGame: () => void;
+  /** Start a run in a chosen mode with an optional mutator. */
+  startRun: (modeId: ModeId, mutatorId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
   newDailyRun: () => void;
   /** Serialize the current run to a portable save code. */
@@ -201,8 +206,12 @@ interface GameState {
 const emptyXi = (): (string | null)[] => Array(XI_SIZE).fill(null);
 
 /** Fresh-run economic state, with the opening shop already rolled. */
-function freshRun(daily: string | null = null, modeId: ModeId = DEFAULT_MODE_ID) {
-  const config = getMode(modeId);
+function freshRun(
+  daily: string | null = null,
+  modeId: ModeId = DEFAULT_MODE_ID,
+  mutatorId: string | null = null
+) {
+  const config = resolveConfig(modeId, mutatorId);
   // Daily challenge: both seeds derive from the date so everyone gets the same
   // opening shop + ladder. Casual: independent random seeds.
   const shopSeed = daily
@@ -213,6 +222,7 @@ function freshRun(daily: string | null = null, modeId: ModeId = DEFAULT_MODE_ID)
     : ((Date.now() >>> 1) & 0x7fffffff) || 7;
   return {
     mode: modeId,
+    mutator: mutatorId,
     bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
@@ -250,6 +260,7 @@ function freshRun(daily: string | null = null, modeId: ModeId = DEFAULT_MODE_ID)
 function saveSlice(s: GameState) {
   return {
     mode: s.mode,
+    mutator: s.mutator,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -387,7 +398,7 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
-          const config = getMode(s.mode);
+          const config = resolveConfig(s.mode, s.mutator);
           const boss = getBoss(s.round, config.bosses);
           // Boss sudden-death: a draw against an unbeaten side is a defeat.
           const outcome =
@@ -495,7 +506,7 @@ export const useGameStore = create<GameState>()(
 
       buyLife: () =>
         set((s) => {
-          if (s.runStatus !== 'playing' || s.lives >= getMode(s.mode).startingLives) return {};
+          if (s.runStatus !== 'playing' || s.lives >= resolveConfig(s.mode, s.mutator).startingLives) return {};
           const cost = lifeBuybackCost(s.lifeBuybacks);
           if (s.bankroll < cost) return { notice: 'Not enough funds' };
           return {
@@ -632,7 +643,16 @@ export const useGameStore = create<GameState>()(
       // Preserve the career best across runs.
       newGame: () => set((s) => ({ ...freshRun(null), best: s.best })),
 
-      newDailyRun: () => set((s) => ({ ...freshRun(dailyKey()), best: s.best })),
+      // Start a chosen mode + optional mutator (the New Run flow).
+      startRun: (modeId, mutatorId = null) =>
+        set((s) => ({ ...freshRun(null, modeId, mutatorId), best: s.best })),
+
+      // Daily Gauntlet: deterministic seed AND a deterministic Rule of the Day.
+      newDailyRun: () =>
+        set((s) => {
+          const key = dailyKey();
+          return { ...freshRun(key, 'classic', dailyMutator(key)), best: s.best };
+        }),
 
       exportSave: () => encodeSave(saveSlice(get())),
 
