@@ -290,7 +290,7 @@ export const useGameStore = create<GameState>()(
       ...freshRun(),
 
       buy: (shopIndex) => {
-        const { shop, bankroll, owned, relics } = get();
+        const { shop, bankroll, owned, relics, xi, bench, formation } = get();
         const id = shop[shopIndex];
         const player = getPlayer(id);
         if (!id || !player) return;
@@ -303,10 +303,30 @@ export const useGameStore = create<GameState>()(
         }
         const nextShop = [...shop];
         nextShop[shopIndex] = null;
+
+        // Auto-assign: try first empty XI slot matching the player's role, then bench.
+        const newXi = [...xi];
+        let placedInXi = false;
+        for (let i = 0; i < XI_SIZE; i++) {
+          if (newXi[i] === null && slotRole(formation, i) === player.role) {
+            newXi[i] = id;
+            placedInXi = true;
+            break;
+          }
+        }
+        const newBench = [...bench];
+        let placedOnBench = false;
+        if (!placedInXi && newBench.length < BENCH_SIZE) {
+          newBench.push(id);
+          placedOnBench = true;
+        }
+
         set({
           bankroll: bankroll - cost,
           owned: [...owned, id],
           shop: nextShop,
+          xi: placedInXi ? newXi : xi,
+          bench: placedOnBench ? newBench : bench,
           notice: null,
         });
       },
