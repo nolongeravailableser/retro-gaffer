@@ -8,7 +8,7 @@ export default function FormationSelector() {
   const setFormation = useGameStore((s) => s.setFormation);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-chrome-muted">
         <LayoutGrid size={14} /> Formation
       </span>

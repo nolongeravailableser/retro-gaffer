@@ -22,7 +22,7 @@ export default function Hud() {
   }, [notice, clearNotice]);
 
   return (
-    <div className="relative flex items-center justify-center gap-3">
+    <div className="relative flex flex-wrap items-center justify-center gap-2 sm:gap-3">
       <motion.div
         key={bankroll}
         initial={{ scale: 1.12 }}

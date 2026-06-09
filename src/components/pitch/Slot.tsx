@@ -42,7 +42,7 @@ export default function Slot({
         data-testid={`slot-${slotIndex}`}
         aria-label={player ? `${player.name} (${role})` : `Empty ${style.label} slot`}
         className={[
-          'flex h-24 w-28 flex-col items-center justify-center rounded-lg border-2 px-2 text-center transition sm:h-28 sm:w-32',
+          'flex h-[4.75rem] w-[4.25rem] flex-col items-center justify-center rounded-lg border-2 px-1 text-center transition sm:h-28 sm:w-32 sm:px-2',
           player
             ? `${style.border} bg-pitch-800/90 shadow-card`
             : 'border-dashed border-white/20 bg-pitch-900/40',
@@ -58,10 +58,10 @@ export default function Slot({
             >
               {role}
             </span>
-            <span className="mt-1 line-clamp-2 font-display text-sm leading-tight">
+            <span className="mt-1 line-clamp-2 font-display text-[11px] leading-tight sm:text-sm">
               {player.name}
             </span>
-            <span className="mt-1 flex items-center gap-1.5 font-display text-[11px]">
+            <span className="mt-0.5 flex items-center gap-1 font-display text-[10px] sm:mt-1 sm:gap-1.5 sm:text-[11px]">
               <span className="text-rose-300">{player.stats.attack}</span>
               <span className="text-chrome-muted">/</span>
               <span className="text-sky-300">{player.stats.defense}</span>
