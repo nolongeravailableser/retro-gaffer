@@ -14,9 +14,11 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { resolveConfig, getMutator } from '@/lib/mutators';
+import { getMutator } from '@/lib/mutators';
+import { runConfig, getScenario } from '@/lib/scenarios';
 import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
+import Stars from '@/components/ui/Stars';
 import { formatRunResult } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import type { MatchTeam } from '@/lib/engine';
@@ -50,9 +52,13 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const lifeBuybacks = useGameStore((s) => s.lifeBuybacks);
   const buyLife = useGameStore((s) => s.buyLife);
   const mutatorId = useGameStore((s) => s.mutator);
-  const config = resolveConfig(useGameStore((s) => s.mode), mutatorId);
+  const mode = useGameStore((s) => s.mode);
+  const scenarioId = useGameStore((s) => s.scenario);
+  const scenarioStars = useGameStore((s) => s.scenarioStars);
+  const config = runConfig({ scenario: scenarioId, mode, mutator: mutatorId });
   const { maxRounds, startingLives } = config;
   const mutator = getMutator(mutatorId);
+  const scenario = getScenario(scenarioId);
   const newGame = useGameStore((s) => s.newGame);
   const [shared, setShared] = useState(false);
 
@@ -72,24 +78,40 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
       ...(mutator ? ([['Modifier', `${mutator.emoji} ${mutator.name}`]] as [string, string][]) : [['Squad value', `£${squadValue}M`] as [string, string]]),
       ['Career best', bestLabel(best.round)],
     ];
-    // Endless never "wins" — it ends in a final score, not a sacking.
+    // Framing/heading depends on the run type: scenario, endless (scored), classic.
     const frame = won
       ? 'border-crt-green/50 bg-crt-green/10'
       : config.scored
         ? 'border-crt-amber/50 bg-crt-amber/10'
         : 'border-rose-400/50 bg-rose-500/10';
     const accent = won ? 'text-crt-green' : config.scored ? 'text-crt-amber' : 'text-rose-300';
-    const heading = won
-      ? 'CHAMPIONS OF EUROPE!'
-      : config.scored
-        ? 'RUN OVER'
-        : 'SACKED BY THE BOARD';
+    const heading = scenario
+      ? won
+        ? 'CHALLENGE COMPLETE'
+        : 'CHALLENGE FAILED'
+      : won
+        ? 'CHAMPIONS OF EUROPE!'
+        : config.scored
+          ? 'RUN OVER'
+          : 'SACKED BY THE BOARD';
     return (
       <div className={`rounded-xl border p-5 ${frame}`}>
         <div className="text-center">
           <Trophy size={32} className={`mx-auto mb-2 ${accent}`} />
           <h2 className="font-display text-2xl">{heading}</h2>
-          {isNewBest && best.round > 0 && (
+          {scenario && (
+            <div className="mt-2 flex flex-col items-center gap-1">
+              <span className="font-display text-sm text-chrome">
+                {scenario.emoji} {scenario.name}
+              </span>
+              {won ? (
+                <Stars earned={scenarioStars[scenario.id] ?? 0} size={20} />
+              ) : (
+                <span className="text-xs text-chrome-muted">{scenario.objective}</span>
+              )}
+            </div>
+          )}
+          {!scenario && isNewBest && best.round > 0 && (
             <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-crt-amber/50 bg-crt-amber/15 px-2 py-0.5 text-xs font-display text-crt-amber">
               <Crown size={12} /> NEW CAREER BEST
             </span>
@@ -154,7 +176,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
       lastIncome.wage +
       lastIncome.wager
     : 0;
-  const boss = getBoss(round);
+  const boss = getBoss(round, config.bosses);
 
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
@@ -172,6 +194,15 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         boss ? 'border-fuchsia-400/50 bg-fuchsia-500/5' : 'border-white/10 bg-pitch-900/70'
       }`}
     >
+      {scenario && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2">
+          <span>{scenario.emoji}</span>
+          <span className="flex-1 text-xs text-crt-green">
+            <span className="font-display">{scenario.name}</span> — {scenario.objective}
+          </span>
+          <Stars earned={scenarioStars[scenario.id] ?? 0} size={12} />
+        </div>
+      )}
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-chrome-muted">
@@ -272,7 +303,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
             <p className="text-[10px] uppercase tracking-wide text-chrome-muted">Loss</p>
             <p className="font-display text-sm text-rose-300">{money(lossPay)}</p>
             <p className="text-[9px] text-rose-300/70">
-              {lifeCost === 0 ? 'shield holds' : `−${lifeCost} life${lifeCost > 1 ? 's' : ''}`}
+              {lifeCost === 0 ? 'shield holds' : `−${lifeCost} ${lifeCost > 1 ? 'lives' : 'life'}`}
             </p>
           </div>
         </div>

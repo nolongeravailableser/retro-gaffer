@@ -56,6 +56,13 @@ export interface ModeConfig {
 
   // --- between-round events ---
   eventRates: EventRates;
+
+  /**
+   * Whether the final round must be WON to complete the run (Classic: beat the
+   * Invincibles). When false, simply surviving to maxRounds with lives left
+   * counts as a win — used by survival scenarios. Defaults to true when omitted.
+   */
+  finalMustWin?: boolean;
 }
 
 /** The original, shipped ruleset. Default for every run. */

@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 10;
+export const CURRENT_VERSION = 11;
 
 type Save = Record<string, unknown>;
 
@@ -68,6 +68,11 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   }),
   10: (s) => ({
     mutator: null,
+    ...s,
+  }),
+  11: (s) => ({
+    scenario: null,
+    scenarioStars: {},
     ...s,
   }),
 };

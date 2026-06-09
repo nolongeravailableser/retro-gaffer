@@ -31,6 +31,7 @@ import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
 import { DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
 import { resolveConfig, dailyMutator } from '@/lib/mutators';
+import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
@@ -106,6 +107,10 @@ interface GameState {
   mode: ModeId;
   /** Active run mutator id (Rule of the Day / chosen modifier), or null. */
   mutator: string | null;
+  /** Active scenario id (authored challenge), or null for a normal run. */
+  scenario: string | null;
+  /** Best stars earned per scenario id — career progress, persisted across runs. */
+  scenarioStars: Record<string, number>;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -195,6 +200,8 @@ interface GameState {
   newGame: () => void;
   /** Start a run in a chosen mode with an optional mutator. */
   startRun: (modeId: ModeId, mutatorId?: string | null) => void;
+  /** Start an authored scenario by id (prebuilt squad + fixed start state). */
+  startScenario: (id: string) => void;
   /** Start today's deterministic Daily Challenge. */
   newDailyRun: () => void;
   /** Serialize the current run to a portable save code. */
@@ -223,6 +230,7 @@ function freshRun(
   return {
     mode: modeId,
     mutator: mutatorId,
+    scenario: null as string | null,
     bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
@@ -261,6 +269,8 @@ function saveSlice(s: GameState) {
   return {
     mode: s.mode,
     mutator: s.mutator,
+    scenario: s.scenario,
+    scenarioStars: s.scenarioStars,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -300,6 +310,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       pool: POOL,
       best: { round: 0 },
+      scenarioStars: {},
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -398,7 +409,7 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
-          const config = resolveConfig(s.mode, s.mutator);
+          const config = runConfig(s);
           const boss = getBoss(s.round, config.bosses);
           // Boss sudden-death: a draw against an unbeaten side is a defeat.
           const outcome =
@@ -472,11 +483,31 @@ export const useGameStore = create<GameState>()(
           });
           if (lives <= 0)
             return { ...base, runStatus: 'lost' as const, ...endReached(s.round) };
-          if (s.round >= config.maxRounds)
-            // The final must be WON, not merely survived — beat the Invincibles.
-            return outcome === 'win'
-              ? { ...base, runStatus: 'won' as const, ...endReached(config.maxRounds) }
-              : { ...base, runStatus: 'lost' as const, ...endReached(config.maxRounds) };
+          if (s.round >= config.maxRounds) {
+            // Classic: the final must be WON. Survival scenarios: reaching the
+            // final round alive is enough (finalMustWin === false).
+            const survived = outcome === 'win' || config.finalMustWin === false;
+            const reached = Number.isFinite(config.maxRounds) ? config.maxRounds : s.round;
+            if (!survived)
+              return { ...base, runStatus: 'lost' as const, ...endReached(reached) };
+            // Grade the scenario, banking the best stars earned across attempts.
+            let scenarioStars = s.scenarioStars;
+            const sc = getScenario(s.scenario);
+            if (sc) {
+              const earned = sc.stars({
+                livesRemaining: lives,
+                startingLives: config.startingLives,
+                peakBankroll: Math.max(s.peakBankroll, bankroll),
+                lastScoreA: result.score.a,
+                lastScoreB: result.score.b,
+              });
+              scenarioStars = {
+                ...s.scenarioStars,
+                [sc.id]: Math.max(s.scenarioStars[sc.id] ?? 0, earned),
+              };
+            }
+            return { ...base, runStatus: 'won' as const, scenarioStars, ...endReached(reached) };
+          }
 
           // Advance: draw the next round's event + reset the free refresh.
           const nextRound = s.round + 1;
@@ -506,7 +537,7 @@ export const useGameStore = create<GameState>()(
 
       buyLife: () =>
         set((s) => {
-          if (s.runStatus !== 'playing' || s.lives >= resolveConfig(s.mode, s.mutator).startingLives) return {};
+          if (s.runStatus !== 'playing' || s.lives >= runConfig(s).startingLives) return {};
           const cost = lifeBuybackCost(s.lifeBuybacks);
           if (s.bankroll < cost) return { notice: 'Not enough funds' };
           return {
@@ -640,18 +671,52 @@ export const useGameStore = create<GameState>()(
 
       clearNotice: () => set({ notice: null }),
 
-      // Preserve the career best across runs.
-      newGame: () => set((s) => ({ ...freshRun(null), best: s.best })),
+      // Preserve career progress (best division, scenario stars) across runs.
+      newGame: () =>
+        set((s) => ({ ...freshRun(null), best: s.best, scenarioStars: s.scenarioStars })),
 
       // Start a chosen mode + optional mutator (the New Run flow).
       startRun: (modeId, mutatorId = null) =>
-        set((s) => ({ ...freshRun(null, modeId, mutatorId), best: s.best })),
+        set((s) => ({
+          ...freshRun(null, modeId, mutatorId),
+          best: s.best,
+          scenarioStars: s.scenarioStars,
+        })),
+
+      // Start an authored scenario: a fresh run overridden with its fixed state.
+      startScenario: (id) =>
+        set((s) => {
+          const sc = getScenario(id);
+          if (!sc) return {};
+          const fresh = freshRun(null, 'classic', null);
+          const { owned, xi } = buildScenarioSquad(sc.formation, sc.squad);
+          return {
+            ...fresh,
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+            scenario: id,
+            bankroll: sc.config.startingBankroll,
+            lives: sc.config.startingLives,
+            round: sc.startRound,
+            formation: sc.formation,
+            relics: [...sc.relics],
+            owned,
+            xi,
+            bench: [],
+            // Re-roll the shop excluding the prebuilt squad.
+            shop: rollSlots(owned, fresh.shopSeed, 'all'),
+          };
+        }),
 
       // Daily Gauntlet: deterministic seed AND a deterministic Rule of the Day.
       newDailyRun: () =>
         set((s) => {
           const key = dailyKey();
-          return { ...freshRun(key, 'classic', dailyMutator(key)), best: s.best };
+          return {
+            ...freshRun(key, 'classic', dailyMutator(key)),
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+          };
         }),
 
       exportSave: () => encodeSave(saveSlice(get())),

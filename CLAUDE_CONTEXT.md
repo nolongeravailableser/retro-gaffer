@@ -73,9 +73,9 @@ live** unless noted.
 
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build).
-- `npm test` — **120/120 passing** across 12 files.
+- `npm test` — **129/129 passing** across 13 files.
 
-**Game modes (Phase 0 + Phase 1 shipped):**
+**Game modes (Phase 0 + Phase 1 + Phase 2 shipped):**
 - **Classic** — the standard 12-round climb.
 - **Endless** — no finish line (`maxRounds: Infinity`), escalating opponents, scored by
   rounds reached. New Run modal lets you pick the mode.
@@ -84,6 +84,11 @@ live** unless noted.
   modal (or Random); each is a pure `ModeConfig` transform in `src/lib/mutators.ts`.
 - **Daily Gauntlet** — deterministic seed + a deterministic "Rule of the Day" mutator +
   a comparable run score (`src/lib/score.ts`). HUD shows live score + active mutator badge.
+- **Scenarios** (`src/lib/scenarios.ts`) — authored challenges with prebuilt squads + fixed
+  start state + objective + 1–3 star grading (persisted per scenario in `scenarioStars`).
+  Three shipped: Smash & Grab (1-life CL final), Hold the Line (survive 6, `finalMustWin:
+  false`), Threadbare (broke + a man light). Listed in the **More** tab (ScenariosPanel).
+  `runConfig(state)` resolves scenario > mode+mutator everywhere.
 
 ---
 
@@ -107,8 +112,11 @@ round-trip it). App/MatchView/SeasonPanel/Hud read the active mode. New `tests/m
 - **Phase 1** ✅ run **mutators** + **Endless** + scored **Daily Gauntlet** (done — see §2).
   Files: `src/lib/mutators.ts`, `src/lib/score.ts`, `ENDLESS` in `modes.ts`,
   `NewRunModal.tsx`, `startRun` store action, persistence v10 (adds `mutator`).
-- **Phase 2** (next): Scenarios / Challenges (authored start states + objective + star
-  grading) — reuses ModeConfig + an objective check at resolveRound.
+- **Phase 2** ✅ **Scenarios / Challenges** (done — see §2). Files: `src/lib/scenarios.ts`,
+  `ScenariosPanel.tsx`, `Stars.tsx`, `startScenario` action, `finalMustWin` on ModeConfig,
+  persistence v11 (adds `scenario` + `scenarioStars`).
+- **Phase 3** (next): Career / Dynasty — multi-season persistence, youth academy +
+  scouting, aging/regens, board objectives. The big one; build on the stable config base.
 - **Phase 3:** Career / Dynasty (multi-season persistence, youth academy + scouting,
   aging/regens, board objectives).
 - **Cross-cutting:** evolve one-shot events into branching tactical dilemmas.

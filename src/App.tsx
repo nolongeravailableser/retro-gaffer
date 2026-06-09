@@ -14,7 +14,7 @@ import type { MatchResult, Player } from '@/lib/types';
 import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
-import { resolveConfig } from '@/lib/mutators';
+import { runConfig } from '@/lib/scenarios';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { relicModifiers } from '@/lib/relics';
 import { importTeam, readChallengeCode, type OpponentTeam } from '@/lib/codec';
@@ -31,6 +31,7 @@ import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
+import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import PvpPanel from '@/components/pvp/PvpPanel';
 import Hud from '@/components/ui/Hud';
 import TabNav, { type Tab } from '@/components/nav/TabNav';
@@ -44,6 +45,7 @@ export default function App() {
   const runStatus = useGameStore((s) => s.runStatus);
   const mode = useGameStore((s) => s.mode);
   const mutator = useGameStore((s) => s.mutator);
+  const scenario = useGameStore((s) => s.scenario);
   const roundMods = useGameStore((s) => s.roundMods);
   const relics = useGameStore((s) => s.relics);
   const placeInSlot = useGameStore((s) => s.placeInSlot);
@@ -106,7 +108,10 @@ export default function App() {
     return { chemistry, multipliers, filled: starters.length, playerTeam };
   }, [xi, roundMods, relics]);
 
-  const config = useMemo(() => resolveConfig(mode, mutator), [mode, mutator]);
+  const config = useMemo(
+    () => runConfig({ scenario, mode, mutator }),
+    [scenario, mode, mutator]
+  );
 
   const roundOpponent = useMemo<MatchTeam | null>(
     () =>
@@ -242,6 +247,7 @@ export default function App() {
 
         {activeTab === 'more' && (
           <div className="flex flex-col gap-4">
+            <ScenariosPanel onStart={() => setActiveTab('formation')} />
             <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
             <SavePanel />
           </div>

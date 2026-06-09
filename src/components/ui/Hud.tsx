@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { bestLabel } from '@/lib/ladder';
-import { resolveConfig, getMutator, dailyMutator } from '@/lib/mutators';
+import { getMutator, dailyMutator } from '@/lib/mutators';
+import { runConfig, getScenario } from '@/lib/scenarios';
 import { dailyKey } from '@/lib/daily';
 import { runScore, formatScore } from '@/lib/score';
 
@@ -26,9 +27,13 @@ export default function Hud({ onNewRun }: HudProps) {
   const peakBankroll = useGameStore((s) => s.peakBankroll);
   const bestStreak = useGameStore((s) => s.bestStreak);
   const record = useGameStore((s) => s.record);
-  const config = resolveConfig(useGameStore((s) => s.mode), useGameStore((s) => s.mutator));
+  const mode = useGameStore((s) => s.mode);
+  const mutatorId = useGameStore((s) => s.mutator);
+  const scenarioId = useGameStore((s) => s.scenario);
+  const config = runConfig({ scenario: scenarioId, mode, mutator: mutatorId });
   const { maxRounds, startingLives } = config;
-  const mutator = getMutator(useGameStore((s) => s.mutator));
+  const mutator = getMutator(mutatorId);
+  const scenario = getScenario(scenarioId);
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
@@ -114,6 +119,17 @@ export default function Hud({ onNewRun }: HudProps) {
         >
           <span>{mutator.emoji}</span>
           <span className="font-display text-sm text-amber-200">{mutator.name}</span>
+        </div>
+      )}
+
+      {/* Active scenario badge */}
+      {scenario && (
+        <div
+          className="flex items-center gap-1.5 rounded-lg border border-crt-green/40 bg-crt-green/10 px-3 py-2"
+          title={scenario.objective}
+        >
+          <span>{scenario.emoji}</span>
+          <span className="font-display text-sm text-crt-green">{scenario.name}</span>
         </div>
       )}
 
