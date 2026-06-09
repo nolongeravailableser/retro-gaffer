@@ -1,4 +1,4 @@
-import { Coins, Ban, HeartCrack, MousePointerClick } from 'lucide-react';
+import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
@@ -93,7 +93,8 @@ export default function SquadList({ multipliers }: SquadListProps) {
       </AnimatePresence>
 
       {/* Column labels */}
-      <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-2 px-3 py-1 border-b border-white/10 text-[10px] uppercase tracking-wide text-chrome-muted">
+      <div className="grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-x-1.5 px-2 py-1 border-b border-white/10 text-[10px] uppercase tracking-wide text-chrome-muted">
+        <span className="w-3" />
         <span className="w-8" />
         <span>Name</span>
         <span className="w-8 text-right">ATK</span>
@@ -122,16 +123,21 @@ export default function SquadList({ multipliers }: SquadListProps) {
                 const chemBonus = mult > 1 ? Math.round((mult - 1) * 100) : 0;
 
                 return (
-                  <Draggable key={id} id={`squad:${id}`} playerId={id}>
-                    <div
-                      onClick={() => selectPlayer(id)}
-                      className={[
-                        'grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-2 px-3 py-1.5 cursor-pointer transition-colors select-none',
-                        isSelected
-                          ? 'bg-crt-green/10 border-l-2 border-crt-green'
-                          : 'border-l-2 border-transparent hover:bg-white/5',
-                      ].join(' ')}
-                    >
+                  <div
+                    key={id}
+                    onClick={() => selectPlayer(id)}
+                    className={[
+                      'grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-x-1.5 px-2 py-1.5 cursor-pointer transition-colors select-none',
+                      isSelected
+                        ? 'bg-crt-green/10 border-l-2 border-crt-green'
+                        : 'border-l-2 border-transparent hover:bg-white/5',
+                    ].join(' ')}
+                  >
+                      {/* Drag handle */}
+                      <Draggable id={`squad:${id}`} playerId={id} className="shrink-0">
+                        <GripVertical size={12} className="text-chrome-muted/40 hover:text-chrome-muted cursor-grab active:cursor-grabbing" />
+                      </Draggable>
+
                       {/* Role pill */}
                       <span
                         className={`w-8 shrink-0 text-center text-[10px] font-display px-1 py-0.5 rounded ${rs.text} ${rs.bg} ${rs.border} border`}
@@ -181,8 +187,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
                         <Coins size={9} />
                         {sellValue(p)}M
                       </button>
-                    </div>
-                  </Draggable>
+                  </div>
                 );
               })}
             </div>

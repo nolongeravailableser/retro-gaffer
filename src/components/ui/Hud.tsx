@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays } from 'lucide-react';
+import { Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { bestLabel } from '@/lib/ladder';
 
@@ -13,6 +13,7 @@ export default function Hud() {
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newGame = useGameStore((s) => s.newGame);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
+  const [confirmNew, setConfirmNew] = useState(false);
 
   // Auto-dismiss the notice after a moment.
   useEffect(() => {
@@ -53,18 +54,34 @@ export default function Hud() {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => {
-          if (confirm('Start a new game? Your squad and bankroll reset.')) {
-            newGame();
-          }
-        }}
-        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-chrome-muted hover:text-chrome"
-      >
-        <RotateCcw size={13} />
-        New Game
-      </button>
+      {confirmNew ? (
+        <div className="flex items-center gap-1 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-xs">
+          <span className="text-rose-200 mr-1">Reset?</span>
+          <button
+            type="button"
+            onClick={() => { newGame(); setConfirmNew(false); }}
+            className="flex items-center gap-0.5 rounded border border-crt-green/40 bg-crt-green/15 px-2 py-0.5 text-crt-green hover:bg-crt-green/25"
+          >
+            <Check size={11} /> Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmNew(false)}
+            className="flex items-center gap-0.5 rounded border border-white/20 px-2 py-0.5 text-chrome-muted hover:text-chrome"
+          >
+            <X size={11} /> No
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmNew(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-chrome-muted hover:text-chrome"
+        >
+          <RotateCcw size={13} />
+          New Game
+        </button>
+      )}
 
       <button
         type="button"
