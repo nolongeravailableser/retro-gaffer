@@ -14,7 +14,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'transfers',  label: 'Transfers',  icon: ArrowLeftRight },
   { id: 'season',     label: 'Season',     icon: Trophy },
   { id: 'challenges', label: 'Challenges', icon: Target },
-  { id: 'pvp',        label: 'PvP',        icon: Swords },
+  { id: 'pvp',        label: 'Compete',    icon: Swords },
   { id: 'records',    label: 'Records',    icon: BarChart3 },
   { id: 'club',       label: 'Club',       icon: Shield },
 ];

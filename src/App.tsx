@@ -43,6 +43,8 @@ import ClubSettings from '@/components/run/ClubSettings';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
+import DailyLeaderboard from '@/components/records/DailyLeaderboard';
+import { dailyKey } from '@/lib/daily';
 import PvpPanel from '@/components/pvp/PvpPanel';
 import Hud from '@/components/ui/Hud';
 import TabNav, { type Tab } from '@/components/nav/TabNav';
@@ -338,7 +340,10 @@ export default function App() {
         )}
 
         {activeTab === 'pvp' && (
-          <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
+          <div className="flex flex-col gap-4">
+            <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
+            <DailyLeaderboard day={dailyKey()} />
+          </div>
         )}
 
         {activeTab === 'records' && <RecordsPanel />}

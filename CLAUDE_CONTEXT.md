@@ -401,7 +401,9 @@ All proposals from the improvement review, built in one pass on the
   (sorted set per day, ZADD GT keeps each device's best, 7-day TTL, bounds-
   checked but not cheat-proof by design). Client (`lib/leaderboard.ts`):
   anonymous device id, per-day deduped fire-and-forget submit on Daily finish
-  (RunOverModal), `DailyLeaderboard` panel in RunOverModal + Records.
+  (RunOverModal), `DailyLeaderboard` panel in RunOverModal + Records + the
+  **Compete** tab (the PvP tab, renamed 2026-06-10 to host async PvP *and* the
+  world standings under one roof; it sits below the PvP panel in `App.tsx`).
   **Degrades gracefully**: until Upstash Redis is provisioned in the Vercel
   dashboard (Storage → Upstash Redis → connect to project → redeploy), the
   API returns 503 and the UI hides the board — zero code changes to activate.
@@ -436,31 +438,36 @@ being suspendable is correct football):
 
 ## 3. Active Work & Next Directions
 
-**Nothing in flight.** All planned phases (0–3) and the 2026-06-10 mega-session
+**Nothing in flight.** All planned phases (0–3), the 2026-06-10 mega-session
 (sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
-extended stats, 2D pitch view, team kits) are shipped and deployed. No active
-bugs outstanding. Persistence is at **v17**; tests at **203/203**.
+extended stats, 2D pitch view, team kits), the improvement program (§2j:
+interactive match, sound, crests, achievements, ErrorBoundary, e2e, PWA, Daily
+leaderboard) and QA audit #2 (§2k) are shipped and deployed. No active bugs
+outstanding. Persistence is at **v18**; tests at **224/224** across 24 files.
 
-**Candidate next steps (proposed 2026-06-10, awaiting a pick):**
-1. **Interactive match pass** (top recommendation) — half-time team-talk
-   decisions (seeded choice between two pre-rolled second halves; Daily-safe via
-   the existing `MatchModifiers` layer) + **substitutions** on injury/red (makes
-   the bench and wage-bill depth real decisions; pairs with the Carnage mutator).
-2. **Feel**: retro sound (mute toggle), post-match shots/xG stats + scorer-name
-   flash on the 2D pitch, seeded club crest generator (sequel to kits).
-3. **Retention**: Daily leaderboard (NOTE: first backend component — deliberate
-   architecture decision), local achievements/trophy cabinet, more scenarios
-   (pure data, ~30 lines each).
-4. **Health**: top-level React error boundary with save-code recovery UI,
-   a Playwright smoke test for the core loop (onboard → auto-sign → kick off →
-   FT), PWA/offline install (perfect fit: 100% client-side localStorage game).
-5. **Open design call from the QA audit**: G5 — the round-4 "gift" boss stays
-   deliberately easy (comic relief); revisit only if a twist is wanted.
+**Former candidate next steps — now all shipped** (the 2026-06-10 PM
+improvement program + leaderboard delivered the list below; kept here as a
+pointer to where each landed):
+1. **Interactive match pass** — half-time team-talks + substitutions → §2j;
+   AI half-time response → §2k (G1).
+2. **Feel** — retro sound + post-match shots/goals/cards panel + scorer-name
+   flash + seeded club crests → §2j.
+3. **Retention** — Daily leaderboard (first backend) → §2j; achievements +
+   trophy cabinet → §2j (G2 refinement in §2k); 3 new scenarios → §2j.
+4. **Health** — top-level ErrorBoundary (save-code rescue, hardened in §2k B4),
+   Playwright smoke test, PWA/offline install → §2j.
+
+**Still open (deliberately deferred, not bugs):**
+- **G5** — the round-4 "gift" boss stays deliberately easy (comic relief);
+  revisit only if a twist is wanted.
+- **Daily leaderboard activation** — code ships dark; provision Upstash Redis
+  in the Vercel dashboard (Storage → Upstash Redis → connect → redeploy) to
+  light it up. No code change needed (see §2j).
 
 Historical note: the original game-modes roadmap (Phases 0–3, commit `4f8a14d`
-onward) is fully delivered — details in §2. The one surviving roadmap item,
-"evolve one-shot events into branching tactical dilemmas", is folded into
-candidate #1 above.
+onward) is fully delivered — details in §2. The surviving roadmap item,
+"evolve one-shot events into branching tactical dilemmas", was folded into the
+interactive-match work (§2j).
 
 ---
 
