@@ -24,6 +24,7 @@ import Bench from '@/components/pitch/Bench';
 import FormationSelector from '@/components/pitch/FormationSelector';
 import ChemistryPanel from '@/components/pitch/ChemistryPanel';
 import Shop from '@/components/shop/Shop';
+import ScoutPanel from '@/components/shop/ScoutPanel';
 import SquadList from '@/components/squad/SquadList';
 import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
@@ -230,6 +231,7 @@ export default function App() {
         {activeTab === 'transfers' && (
           <div className="flex flex-col gap-4">
             <Shop />
+            <ScoutPanel />
           </div>
         )}
 

@@ -73,7 +73,17 @@ live** unless noted.
 
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build).
-- `npm test` — **138/138 passing** across 14 files.
+- `npm test` — **146/146 passing** across 15 files.
+
+**Player acquisition (transfer market fairness):**
+- **Pity / bad-luck protection** — `dryStreak` (run state) counts refreshes with no
+  gold+ on offer; after `PITY_THRESHOLD` (5) the next roll forces a gold+ (`rollWithPity`
+  in the store, applied to refresh + round-advance). Resets on any gold+ shown.
+- **Scout Discovery Network** (`src/lib/scouting.ts`) — paid, targeted refreshes that
+  guarantee a brief-matching player (drawShop's new `mustMatch` predicate). Briefs: each
+  role, A Star (gold+), Cult Hero, and **Hidden Gem (easter_egg)** — the formerly
+  unfindable eggs (Ali Dia, Jon Mow) are now scoutable on demand. UI: ScoutPanel in the
+  Transfers tab. Casts a wide net (rolls All-Stars). Deterministic (seeded) → Daily-safe.
 
 **Game modes (Phase 0 + Phase 1 + Phase 2 + Phase 3 shipped):**
 - **Classic** — the standard 12-round climb.

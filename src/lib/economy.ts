@@ -40,6 +40,13 @@ export const ROSTER_CAP = XI_SIZE + BENCH_SIZE; // 16
 /** Match payouts from side A's perspective. */
 export const MATCH_REWARD = { win: 5, draw: 2, loss: 0 } as const;
 
+/**
+ * Bad-luck protection: after this many consecutive refreshes with no gold-or-
+ * better on offer, the next roll is forced to include one. Caps the grind for
+ * rares without inflating the average rate.
+ */
+export const PITY_THRESHOLD = 5;
+
 /** Resale value: 80% of cost, rounded (4 → 3, 7 → 6, 10 → 8). */
 export function sellValue(player: Player): number {
   return Math.round(player.cost * SELL_RATE);
@@ -95,7 +102,9 @@ export function drawShop(
   excludeIds: ReadonlySet<string>,
   rng: Rng,
   size: number = SHOP_SIZE,
-  guarantee?: Rarity
+  guarantee?: Rarity,
+  /** Scouting: force one slot to satisfy this predicate (weighted within matches). */
+  mustMatch?: (p: Player) => boolean
 ): string[] {
   const remaining = pool.filter((p) => !excludeIds.has(p.id));
   const picks: Player[] = [];
@@ -105,20 +114,30 @@ export function drawShop(
     remaining.splice(idx, 1);
   }
 
+  /** Swap the lowest-rarity pick for one drawn from `eligible`. */
+  const forceInclude = (eligible: Player[]) => {
+    if (eligible.length === 0 || picks.length === 0) return;
+    const repl = eligible[weightedIndex(eligible, rng)];
+    let low = 0;
+    for (let i = 1; i < picks.length; i++) {
+      if (RARITY_RANK[picks[i].rarity] < RARITY_RANK[picks[low].rarity]) low = i;
+    }
+    picks[low] = repl;
+  };
+
   if (guarantee && picks.length > 0) {
     const need = RARITY_RANK[guarantee];
-    const alreadyMet = picks.some((p) => RARITY_RANK[p.rarity] >= need);
-    if (!alreadyMet) {
-      const eligible = remaining.filter((p) => RARITY_RANK[p.rarity] >= need);
-      if (eligible.length > 0) {
-        const repl = eligible[weightedIndex(eligible, rng)];
-        let low = 0;
-        for (let i = 1; i < picks.length; i++) {
-          if (RARITY_RANK[picks[i].rarity] < RARITY_RANK[picks[low].rarity]) low = i;
-        }
-        picks[low] = repl;
-      }
+    if (!picks.some((p) => RARITY_RANK[p.rarity] >= need)) {
+      forceInclude(remaining.filter((p) => RARITY_RANK[p.rarity] >= need));
     }
+  }
+
+  // Scout brief: guarantee a matching player if one isn't already on offer.
+  if (mustMatch && picks.length > 0 && !picks.some(mustMatch)) {
+    const pickedIds = new Set(picks.map((p) => p.id));
+    forceInclude(
+      pool.filter((p) => mustMatch(p) && !excludeIds.has(p.id) && !pickedIds.has(p.id))
+    );
   }
 
   return picks.map((p) => p.id);

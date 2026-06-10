@@ -49,11 +49,15 @@ import {
   SHOP_SIZE,
   ROSTER_CAP,
   MATCH_REWARD,
+  PITY_THRESHOLD,
+  RARITY_RANK,
   checkBuy,
   checkRefresh,
   sellValue,
   drawShop,
 } from '@/lib/economy';
+import { getBrief } from '@/lib/scouting';
+import type { Rarity } from '@/lib/types';
 import type { MatchResult } from '@/lib/types';
 
 export { getPlayer };
@@ -74,18 +78,54 @@ function padShop(ids: string[]): ShopSlots {
   return Array.from({ length: SHOP_SIZE }, (_, i) => ids[i] ?? null);
 }
 
+/** Pick the higher-tier of two optional rarity guarantees. */
+function higherRarity(a?: Rarity, b?: Rarity): Rarity | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return RARITY_RANK[a] >= RARITY_RANK[b] ? a : b;
+}
+
 /** Roll the shop slots for a pack at a given seed (deterministic, no advance). */
-function rollSlots(owned: Iterable<string>, seed: number, packId: string): ShopSlots {
+function rollSlots(
+  owned: Iterable<string>,
+  seed: number,
+  packId: string,
+  extraGuarantee?: Rarity,
+  mustMatch?: (p: Player) => boolean
+): ShopSlots {
   const pack = getPack(packId);
   const rng = new Rng(seed);
   const pool = POOL.filter(pack.filter);
-  const ids = drawShop(pool, new Set(owned), rng, SHOP_SIZE, pack.guarantee);
+  const guarantee = higherRarity(pack.guarantee, extraGuarantee);
+  const ids = drawShop(pool, new Set(owned), rng, SHOP_SIZE, guarantee, mustMatch);
   return padShop(ids);
 }
 
 /** Derive the next shop seed (advances the deterministic chain on refresh). */
 function nextSeed(seed: number): number {
   return new Rng(seed).int(1, 0x7fffffff);
+}
+
+const isGoldPlus = (id: string | null): boolean => {
+  const r = id ? getPlayer(id)?.rarity : undefined;
+  return r === 'gold' || r === 'icon';
+};
+
+/**
+ * Roll a shop with bad-luck protection. When `dryStreak` has reached the pity
+ * threshold the roll is forced to include a gold-or-better; the returned
+ * `dryStreak` resets on any gold+ on offer, else increments.
+ */
+function rollWithPity(
+  owned: Iterable<string>,
+  seed: number,
+  packId: string,
+  dryStreak: number,
+  mustMatch?: (p: Player) => boolean
+): { shop: ShopSlots; dryStreak: number } {
+  const forceGold = dryStreak >= PITY_THRESHOLD ? ('gold' as Rarity) : undefined;
+  const shop = rollSlots(owned, seed, packId, forceGold, mustMatch);
+  return { shop, dryStreak: shop.some(isGoldPlus) ? 0 : dryStreak + 1 };
 }
 
 interface GameState {
@@ -99,6 +139,8 @@ interface GameState {
   shopSeed: number;
   /** Active shop pack id (themed draw pool). */
   pack: string;
+  /** Consecutive refreshes with no gold+ on offer (drives pity protection). */
+  dryStreak: number;
   /** Active formation id (e.g. '442'); maps each XI slot to a required role. */
   formation: string;
   /** Starting XI: index → playerId | null, indexed by the formation's slots. */
@@ -183,6 +225,8 @@ interface GameState {
   buy: (shopIndex: number) => void;
   sell: (id: string) => void;
   refreshShop: () => void;
+  /** Dispatch a scout (paid): guarantee a brief-matching player in the shop. */
+  scoutShop: (briefId: string) => void;
   /** Switch the shop pack; re-rolls from the current seed for free. */
   setPack: (id: string) => void;
   /** Toggle the shop lock (freezes it across the next round). */
@@ -267,6 +311,7 @@ function freshRun(
     selectedPlayerId: null,
     notice: null,
     record: { w: 0, d: 0, l: 0 },
+    dryStreak: 0,
     round: 1,
     lives: config.startingLives,
     streak: 0,
@@ -303,6 +348,7 @@ function saveSlice(s: GameState) {
     shop: s.shop,
     shopSeed: s.shopSeed,
     pack: s.pack,
+    dryStreak: s.dryStreak,
     formation: s.formation,
     xi: s.xi,
     bench: s.bench,
@@ -398,7 +444,7 @@ export const useGameStore = create<GameState>()(
       },
 
       refreshShop: () => {
-        const { bankroll, owned, shopSeed, pack, relics, freeRefreshUsed } = get();
+        const { bankroll, owned, shopSeed, pack, relics, freeRefreshUsed, dryStreak } = get();
         // Lucky Boots: first refresh each round is free.
         const free = relicHasFreeRefresh(relics) && !freeRefreshUsed;
         const cost = free ? 0 : getPack(pack).cost;
@@ -408,12 +454,43 @@ export const useGameStore = create<GameState>()(
           return;
         }
         const seed = nextSeed(shopSeed);
+        const rolled = rollWithPity(owned, seed, pack, dryStreak);
         set({
           bankroll: bankroll - cost,
-          shop: rollSlots(owned, seed, pack),
+          shop: rolled.shop,
+          dryStreak: rolled.dryStreak,
           shopSeed: seed,
           freeRefreshUsed: freeRefreshUsed || free,
           notice: null,
+        });
+      },
+
+      // Scout Discovery Network: a paid, targeted refresh that guarantees a
+      // player matching the brief — turns "1-in-500 fluke" into intentional
+      // discovery. Casts a wide net (full pool), so it switches to All-Stars.
+      scoutShop: (briefId) => {
+        const { bankroll, owned, shopSeed, dryStreak } = get();
+        const brief = getBrief(briefId);
+        if (!brief) return;
+        if (bankroll < brief.cost) {
+          set({ notice: 'Not enough funds' });
+          return;
+        }
+        const seed = nextSeed(shopSeed);
+        const rolled = rollWithPity(owned, seed, 'all', dryStreak, brief.match);
+        const found = rolled.shop.some((id) => {
+          const p = getPlayer(id);
+          return p ? brief.match(p) : false;
+        });
+        set({
+          bankroll: bankroll - brief.cost,
+          pack: 'all',
+          shop: rolled.shop,
+          dryStreak: rolled.dryStreak,
+          shopSeed: seed,
+          notice: found
+            ? `${brief.emoji} Scout found a ${brief.label.toLowerCase()}.`
+            : `No ${brief.label.toLowerCase()} available to scout.`,
         });
       },
 
@@ -590,10 +667,12 @@ export const useGameStore = create<GameState>()(
           // Unless the shop is locked, the next round also gets a fresh roll.
           if (s.shopLocked) return { ...base, ...advance };
           const seed = nextSeed(s.shopSeed);
+          const rolled = rollWithPity(s.owned, seed, s.pack, s.dryStreak);
           return {
             ...base,
             ...advance,
-            shop: rollSlots(s.owned, seed, s.pack),
+            shop: rolled.shop,
+            dryStreak: rolled.dryStreak,
             shopSeed: seed,
           };
         }),
