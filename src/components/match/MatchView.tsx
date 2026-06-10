@@ -9,6 +9,7 @@ import { playCue, isMuted, setMuted, type SoundCue } from '@/lib/sound';
 import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
+import CrestBadge from '@/components/ui/CrestBadge';
 import type { MatchResult } from '@/lib/types';
 
 interface MatchViewProps {
@@ -219,7 +220,10 @@ export default function MatchView({
 
           {/* Team names + animated score */}
           <div className="grid grid-cols-3 items-center text-center">
-            <span className="truncate font-display text-lg">{playerTeam.name}</span>
+            <span className="flex min-w-0 items-center justify-center gap-1.5">
+              <CrestBadge name={playerTeam.name} kit={kits.a} size={20} />
+              <span className="truncate font-display text-lg">{playerTeam.name}</span>
+            </span>
 
             <div className="flex items-center justify-center gap-2 font-ticker text-4xl">
               <motion.span
@@ -243,7 +247,10 @@ export default function MatchView({
               </motion.span>
             </div>
 
-            <span className="truncate font-display text-lg">{opponent.name}</span>
+            <span className="flex min-w-0 items-center justify-center gap-1.5">
+              <span className="truncate font-display text-lg">{opponent.name}</span>
+              <CrestBadge name={opponent.name} kit={kits.b} size={20} />
+            </span>
           </div>
 
           {/* xG row + status */}

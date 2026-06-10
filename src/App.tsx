@@ -36,7 +36,7 @@ import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
 import JourneyBar from '@/components/run/JourneyBar';
-import { KitShirt } from '@/components/run/KitPicker';
+import CrestBadge from '@/components/ui/CrestBadge';
 import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
@@ -212,7 +212,7 @@ export default function App() {
         </div>
         {clubName && (
           <p className="-mt-1 flex items-center gap-1.5 font-display text-sm text-chrome">
-            <KitShirt kit={kit ?? DEFAULT_KIT} size={18} />
+            <CrestBadge name={clubName} kit={kit ?? DEFAULT_KIT} size={20} />
             {clubName}
             {managerName && <span className="text-chrome-muted"> · {managerName}</span>}
           </p>
