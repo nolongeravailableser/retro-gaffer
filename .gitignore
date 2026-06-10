@@ -15,3 +15,7 @@ dist-ssr
 
 # Claude Code local tooling
 .claude/
+
+# Playwright
+test-results/
+playwright-report/
