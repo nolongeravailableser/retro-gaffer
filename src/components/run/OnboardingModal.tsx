@@ -197,8 +197,9 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
                   onClick={finish}
                   data-testid="skip-onboarding"
                   className="text-xs font-display text-chrome-muted hover:text-chrome"
+                  title="Start playing now — you can set all of this later in the Club tab"
                 >
-                  Skip
+                  Skip setup
                 </button>
               )}
               <button

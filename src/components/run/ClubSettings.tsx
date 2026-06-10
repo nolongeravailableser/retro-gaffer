@@ -14,23 +14,23 @@ export default function ClubSettings({ onReplayTutorial }: ClubSettingsProps) {
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
   const storeKit = useGameStore((s) => s.kit);
+  const setStoreKit = useGameStore((s) => s.setKit);
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
 
   const [club, setClub] = useState(clubName ?? '');
   const [manager, setManager] = useState(managerName ?? '');
-  const [kit, setKit] = useState<Kit>(storeKit ?? DEFAULT_KIT);
   const [saved, setSaved] = useState(false);
 
-  const baseKit = storeKit ?? DEFAULT_KIT;
+  // Kit edits apply IMMEDIATELY (they're non-destructive and freely
+  // reversible) — tab-switching can never silently discard a design.
+  const kit = storeKit ?? DEFAULT_KIT;
+  const onKitChange = (k: Kit) => setStoreKit(k);
+
   const dirty =
-    club.trim() !== (clubName ?? '') ||
-    manager.trim() !== (managerName ?? '') ||
-    kit.primary !== baseKit.primary ||
-    kit.secondary !== baseKit.secondary ||
-    kit.pattern !== baseKit.pattern;
+    club.trim() !== (clubName ?? '') || manager.trim() !== (managerName ?? '');
 
   const save = () => {
-    completeOnboarding(club, manager, kit);
+    completeOnboarding(club, manager);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -76,9 +76,9 @@ export default function ClubSettings({ onReplayTutorial }: ClubSettingsProps) {
       {/* Kit designer */}
       <div className="mt-4 rounded-lg border border-white/10 bg-pitch-950/40 p-3">
         <p className="mb-2 font-display text-[11px] uppercase tracking-wide text-chrome-muted">
-          Club kit
+          Club kit <span className="normal-case text-chrome-muted/70">— changes apply instantly</span>
         </p>
-        <KitPicker value={kit} onChange={setKit} compact />
+        <KitPicker value={kit} onChange={onKitChange} compact />
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">

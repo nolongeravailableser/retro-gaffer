@@ -327,6 +327,7 @@ export default function App() {
               roundOpponent={roundOpponent}
               canPlay={ready}
               filled={filled}
+              hidePlay={showJourney && journey.stage === 'play'}
               onPlay={playRound}
             />
           </div>

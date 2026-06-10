@@ -29,7 +29,7 @@ export function KitShirt({ kit, size = 96 }: { kit: Kit; size?: number }) {
       width={size}
       height={size * 0.9}
       role="img"
-      aria-label={`${pattern} kit`}
+      aria-label={`${pattern} kit, ${primary} shirt with ${secondary} accent`}
     >
       <defs>
         <clipPath id={`shirt-${primary}-${secondary}-${pattern}`}>

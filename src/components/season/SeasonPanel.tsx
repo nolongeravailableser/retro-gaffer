@@ -31,10 +31,12 @@ interface SeasonPanelProps {
   canPlay: boolean;
   /** How many of the XI's 11 slots are currently filled (for the CTA hint). */
   filled: number;
+  /** Hide the panel's own play button when the journey bar owns kick-off. */
+  hidePlay?: boolean;
   onPlay: () => void;
 }
 
-export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: SeasonPanelProps) {
+export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay = false, onPlay }: SeasonPanelProps) {
   const round = useGameStore((s) => s.round);
   const lives = useGameStore((s) => s.lives);
   const streak = useGameStore((s) => s.streak);
@@ -417,6 +419,9 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         </p>
       )}
 
+      {/* The journey bar shows an identical kick-off CTA right above this
+          panel when the XI is ready — one primary action, not two stacked. */}
+      {!hidePlay && (
       <motion.button
         type="button"
         onClick={onPlay}
@@ -434,6 +439,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         <Play size={18} />
         {canPlay ? `Play Round ${round}` : `Fill your XI (${filled}/${XI_SIZE})`}
       </motion.button>
+      )}
     </div>
   );
 }
