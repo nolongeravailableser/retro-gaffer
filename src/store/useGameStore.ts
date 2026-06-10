@@ -62,6 +62,7 @@ import {
 import { getBrief } from '@/lib/scouting';
 import { pickBestXI, planAutoBuy, AUTO_BUY_RESERVE, type ShopOffer } from '@/lib/autopick';
 import { sanitizeKit, type Kit } from '@/lib/kits';
+import { newlyUnlocked, getAchievement } from '@/lib/achievements';
 import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
@@ -201,6 +202,8 @@ interface GameState {
   onboarded: boolean;
   /** The club's designed kit (colours + pattern). null → classic default strip. */
   kit: Kit | null;
+  /** Unlocked achievement ids — all-time, persisted across runs. */
+  achievements: string[];
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -396,6 +399,7 @@ function saveSlice(s: GameState) {
     managerName: s.managerName,
     onboarded: s.onboarded,
     kit: s.kit,
+    achievements: s.achievements,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -446,6 +450,7 @@ export const useGameStore = create<GameState>()(
       managerName: null,
       onboarded: false,
       kit: null,
+      achievements: [],
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -644,6 +649,51 @@ export const useGameStore = create<GameState>()(
             newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
           }
 
+          // Resolve what the run status WILL be (mirrors the branching below)
+          // so achievement checks can see a terminal won/lost on this round.
+          const finalRound = s.round >= config.maxRounds;
+          let statusAfter: 'playing' | 'won' | 'lost' = 'playing';
+          if (s.career) {
+            const sacked = lives <= 0;
+            const seasonOver = sacked || finalRound;
+            const met =
+              seasonOver &&
+              boardMet(s.career.season, sacked ? s.round : config.maxRounds, !sacked && outcome === 'win');
+            if (seasonOver && !met) statusAfter = 'lost';
+          } else if (lives <= 0) {
+            statusAfter = 'lost';
+          } else if (finalRound) {
+            statusAfter = outcome === 'win' || config.finalMustWin === false ? 'won' : 'lost';
+          }
+          // A career season completed (review path) counts toward Dynasty.
+          const careerSeasons =
+            s.career && statusAfter !== 'lost' && (lives <= 0 || finalRound)
+              ? Math.max(s.careerBest, s.career.season)
+              : s.careerBest;
+
+          const squadValue = s.owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
+          const unlocked = newlyUnlocked(s.achievements, {
+            result,
+            outcome,
+            round: s.round,
+            runStatus: statusAfter,
+            boss: !!boss,
+            lives,
+            bankroll,
+            streak: newStreak,
+            squadValue,
+            scenario: s.scenario,
+            daily: s.daily !== null,
+            endless: !Number.isFinite(config.maxRounds),
+            careerSeasons,
+          });
+          const achievements = unlocked.length
+            ? [...s.achievements, ...unlocked]
+            : s.achievements;
+          const achievementNote = unlocked.length
+            ? `🏆 Unlocked: ${unlocked.map((id) => getAchievement(id)?.name ?? id).join(' · ')}`
+            : null;
+
           const base = {
             bankroll,
             record,
@@ -651,6 +701,7 @@ export const useGameStore = create<GameState>()(
             lives,
             shield,
             wager: 0,
+            achievements,
             bestStreak: Math.max(s.bestStreak, newStreak),
             peakBankroll: Math.max(s.peakBankroll, bankroll),
             lastIncome: {
@@ -661,7 +712,7 @@ export const useGameStore = create<GameState>()(
               wage,
               wager: wagerDelta,
             },
-            notice: shieldNote,
+            notice: achievementNote ?? shieldNote,
             noticeKind: 'success' as NoticeKind,
             suspensions,
             injuries: newInjuries,

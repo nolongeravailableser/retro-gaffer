@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 17;
+export const CURRENT_VERSION = 18;
 
 type Save = Record<string, unknown>;
 
@@ -105,6 +105,10 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   // Kits: existing saves keep the classic strip until they design one.
   17: (s) => ({
     kit: null,
+    ...s,
+  }),
+  18: (s) => ({
+    achievements: [],
     ...s,
   }),
 };

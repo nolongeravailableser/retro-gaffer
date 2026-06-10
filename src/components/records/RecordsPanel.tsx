@@ -4,6 +4,7 @@ import { POOL } from '@/data/pool';
 import { bestLabel } from '@/lib/ladder';
 import { formatScore } from '@/lib/score';
 import { SCENARIOS } from '@/lib/scenarios';
+import { ACHIEVEMENTS } from '@/lib/achievements';
 import { RARITIES, type Rarity } from '@/lib/types';
 
 const RARITY_COLORS: Record<Rarity, { text: string; bar: string }> = {
@@ -16,6 +17,7 @@ const RARITY_COLORS: Record<Rarity, { text: string; bar: string }> = {
 /** All-time achievements: collection, personal bests, scenario stars. */
 export default function RecordsPanel() {
   const collection = useGameStore((s) => s.collection);
+  const achievements = useGameStore((s) => s.achievements);
   const bestScore = useGameStore((s) => s.bestScore);
   const careerBest = useGameStore((s) => s.careerBest);
   const best = useGameStore((s) => s.best);
@@ -60,6 +62,36 @@ export default function RecordsPanel() {
             <p className="mt-0.5 font-display text-chrome">{t.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Trophy cabinet */}
+      <p className="mt-4 mb-2 font-display text-xs uppercase tracking-wide text-chrome-muted">
+        Trophy cabinet · {achievements.length}/{ACHIEVEMENTS.length}
+      </p>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {ACHIEVEMENTS.map((a) => {
+          const got = achievements.includes(a.id);
+          return (
+            <div
+              key={a.id}
+              title={a.blurb}
+              className={[
+                'flex items-center gap-1.5 rounded-lg border px-2 py-1.5',
+                got
+                  ? 'border-crt-amber/40 bg-crt-amber/10'
+                  : 'border-white/10 bg-pitch-800/40 opacity-50 saturate-0',
+              ].join(' ')}
+            >
+              <span className="text-base">{a.emoji}</span>
+              <span className="min-w-0">
+                <span className={`block truncate font-display text-[11px] ${got ? 'text-crt-amber' : 'text-chrome-muted'}`}>
+                  {a.name}
+                </span>
+                <span className="block truncate text-[9px] text-chrome-muted">{a.blurb}</span>
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Collection by rarity */}
