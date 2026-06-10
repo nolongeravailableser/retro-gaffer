@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10 (… + 2D match pitch view + team kits — all deployed)
+> **Last updated:** 2026-06-10 (… + improvement program + Daily leaderboard + QA audit #2 fixes — all deployed)
 
 ---
 
@@ -369,7 +369,7 @@ generator; a **choreographer** turns its event timeline into 2D scenes.
 
 ---
 
-## 2j. Improvement program (2026-06-10 PM — uncommitted to main, 9 local commits)
+## 2j. Improvement program (2026-06-10 PM — shipped, commits `0ab8455`…`1b2d88b`)
 
 All proposals from the improvement review, built in one pass on the
 `improvements` branch (commits 0ab8455..f9d4d7c):
@@ -408,7 +408,7 @@ All proposals from the improvement review, built in one pass on the
 
 ---
 
-## 2k. QA Audit #2 fix pass (uncommitted to main; 3 commits on audit2-fixes)
+## 2k. QA Audit #2 fix pass (shipped, commits `24cdcf1`…`a48181b`)
 
 Second full audit after the improvement program; 12 verified findings, all
 fixed (several agent-reported "bugs" were verified FALSE and rejected: Instant
