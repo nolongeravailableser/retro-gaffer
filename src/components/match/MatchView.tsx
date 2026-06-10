@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft } from 'lucide-react';
+import { X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft, Volume2, VolumeX } from 'lucide-react';
 import { simulateMatch, DEFAULT_TUNING, type MatchTeam, type EngineTuning } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { buildVizTimeline } from '@/lib/matchviz';
 import { resolveKits, DEFAULT_KIT } from '@/lib/kits';
+import { playCue, isMuted, setMuted, type SoundCue } from '@/lib/sound';
 import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
@@ -67,6 +68,7 @@ export default function MatchView({
   const [speed, setSpeed] = useState<Speed>(1);
   /** 2D pitch view (default) vs. the full text ticker. */
   const [pitchMode, setPitchMode] = useState(true);
+  const [muted, setMutedState] = useState(isMuted);
   const completedRef = useRef(false);
   const tickerRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +122,24 @@ export default function MatchView({
     const el = tickerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [shown]);
+
+  // Retro sound cue for the event that just appeared (Instant skips to the
+  // final whistle; cues are pure output and never touch game logic).
+  useEffect(() => {
+    if (!match || shown === 0) return;
+    const e = match.result.events[shown - 1];
+    if (!e) return;
+    const cue: SoundCue | null =
+      e.kind === 'goal' || e.kind === 'chance' || e.kind === 'yellow' ||
+      e.kind === 'red' || e.kind === 'injury'
+        ? e.kind
+        : e.minute === 0
+          ? 'kickoff'
+          : e.minute === 45 || e.minute === 90
+            ? 'whistle'
+            : null;
+    if (cue) playCue(cue);
+  }, [match, shown]);
 
   // Choreograph the 2D pitch once per match. Deterministic per seed and fully
   // decoupled from the engine (its own `-viz` RNG stream).
@@ -381,6 +401,19 @@ export default function MatchView({
             >
               {pitchMode ? <AlignLeft size={13} /> : <Tv size={13} />}
               <span className="hidden sm:inline">{pitchMode ? 'Ticker' : 'Pitch'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !muted;
+                setMuted(next);
+                setMutedState(next);
+              }}
+              data-testid="toggle-sound"
+              title={muted ? 'Unmute match sounds' : 'Mute match sounds'}
+              className="flex items-center rounded-md border border-white/15 px-2 py-1 text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+            >
+              {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
             </button>
             <span className="hidden font-ticker text-[11px] text-chrome-muted sm:inline">
               seed {match.seed}
