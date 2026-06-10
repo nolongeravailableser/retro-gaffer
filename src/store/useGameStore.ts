@@ -78,6 +78,9 @@ export function isSlotEligible(
 
 type ShopSlots = (string | null)[];
 
+/** Tone of a transient notice toast. */
+export type NoticeKind = 'error' | 'success' | 'info';
+
 function padShop(ids: string[]): ShopSlots {
   return Array.from({ length: SHOP_SIZE }, (_, i) => ids[i] ?? null);
 }
@@ -163,6 +166,8 @@ interface GameState {
   selectedPlayerId: string | null;
   /** Transient toast for blocked actions (e.g. "Not enough funds"). */
   notice: string | null;
+  /** Tone of the current notice — drives the toast's colour/icon/lifetime. */
+  noticeKind: NoticeKind;
   /** Career record across the run. */
   record: { w: number; d: number; l: number };
 
@@ -197,6 +202,8 @@ interface GameState {
   runSeed: number;
   /** Daily-challenge date key (e.g. '2026-06-09'), or null for a casual run. */
   daily: string | null;
+  /** Date key of the last Daily that ran to a result — guards score-grinding. */
+  dailyCompleted: string | null;
   /** Breakdown of the last round's payout (for the UI). */
   lastIncome: {
     reward: number;
@@ -330,6 +337,7 @@ function freshRun(
     bench: [] as string[],
     selectedPlayerId: null,
     notice: null,
+    noticeKind: 'info' as NoticeKind,
     record: { w: 0, d: 0, l: 0 },
     dryStreak: 0,
     round: 1,
@@ -381,6 +389,7 @@ function saveSlice(s: GameState) {
     runStatus: s.runStatus,
     runSeed: s.runSeed,
     daily: s.daily,
+    dailyCompleted: s.dailyCompleted,
     bestStreak: s.bestStreak,
     peakBankroll: s.peakBankroll,
     shopLocked: s.shopLocked,
@@ -409,6 +418,7 @@ export const useGameStore = create<GameState>()(
       careerBest: 0,
       collection: [],
       bestScore: {},
+      dailyCompleted: null,
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -420,7 +430,7 @@ export const useGameStore = create<GameState>()(
         // Validate against the discounted cost.
         const check = checkBuy(bankroll, owned.length, { ...player, cost });
         if (!check.ok) {
-          set({ notice: check.reason ?? 'Cannot buy' });
+          set({ notice: check.reason ?? 'Cannot buy', noticeKind: 'error' });
           return;
         }
         const nextShop = [...shop];
@@ -475,7 +485,7 @@ export const useGameStore = create<GameState>()(
         const cost = free ? 0 : getPack(pack).cost;
         const check = checkRefresh(bankroll, cost);
         if (!check.ok) {
-          set({ notice: check.reason ?? 'Cannot refresh' });
+          set({ notice: check.reason ?? 'Cannot refresh', noticeKind: 'error' });
           return;
         }
         const seed = nextSeed(shopSeed);
@@ -499,7 +509,7 @@ export const useGameStore = create<GameState>()(
         const cost = featuredCost(player.cost);
         const check = checkBuy(bankroll, owned.length, { ...player, cost });
         if (!check.ok) {
-          set({ notice: check.reason ?? 'Cannot sign' });
+          set({ notice: check.reason ?? 'Cannot sign', noticeKind: 'error' });
           return;
         }
         set({
@@ -507,6 +517,7 @@ export const useGameStore = create<GameState>()(
           owned: [...owned, id],
           collection: addToCollection(collection, id),
           notice: `Signed ${player.name}!`,
+          noticeKind: 'success',
         });
       },
 
@@ -518,7 +529,7 @@ export const useGameStore = create<GameState>()(
         const brief = getBrief(briefId);
         if (!brief) return;
         if (bankroll < brief.cost) {
-          set({ notice: 'Not enough funds' });
+          set({ notice: 'Not enough funds', noticeKind: 'error' });
           return;
         }
         const seed = nextSeed(shopSeed);
@@ -536,6 +547,7 @@ export const useGameStore = create<GameState>()(
           notice: found
             ? `${brief.emoji} Scout found a ${brief.label.toLowerCase()}.`
             : `No ${brief.label.toLowerCase()} available to scout.`,
+          noticeKind: found ? 'success' : 'info',
         });
       },
 
@@ -623,19 +635,26 @@ export const useGameStore = create<GameState>()(
               wager: wagerDelta,
             },
             notice: shieldNote,
+            noticeKind: 'success' as NoticeKind,
             suspensions,
             injuries: newInjuries,
           };
 
-          // Run over? Record the career best (won counts as the full climb).
-          const endReached = (reached: number) => ({
-            best: { round: Math.max(s.best.round, reached) },
-          });
+          // Run over? Record the career-best DIVISION — but only for the finite
+          // climb modes (Classic / Daily / Career). Endless (round 40 = "Champion")
+          // and scenarios (a 1-match final) would otherwise pollute the crown and
+          // permanently suppress the "NEW CAREER BEST" banner in Classic.
+          const tracksBest = !config.scored && !s.scenario;
+          const endReached = (reached: number) =>
+            tracksBest ? { best: { round: Math.max(s.best.round, reached) } } : {};
 
           // Scored modes (Endless / Daily) bank a personal best on a terminal run.
           const scoredKey = s.career ? null : config.scored ? 'endless' : s.daily ? 'daily' : null;
           const bestScoreUpdate = (status: 'won' | 'lost') => {
             if (!scoredKey) return {};
+            // A Daily counts ONCE per day — replays are practice and don't
+            // re-bank a score (keeps the day's result comparable).
+            if (scoredKey === 'daily' && s.dailyCompleted === s.daily) return {};
             const sc = runScore({
               round: s.round,
               runStatus: status,
@@ -644,7 +663,11 @@ export const useGameStore = create<GameState>()(
               record,
               maxRounds: config.maxRounds,
             });
-            return { bestScore: { ...s.bestScore, [scoredKey]: Math.max(s.bestScore[scoredKey] ?? 0, sc) } };
+            const update: Partial<GameState> = {
+              bestScore: { ...s.bestScore, [scoredKey]: Math.max(s.bestScore[scoredKey] ?? 0, sc) },
+            };
+            if (scoredKey === 'daily') update.dailyCompleted = s.daily;
+            return update;
           };
 
           // CAREER MODE: a season ends (sacked OR reached the final) but the game
@@ -719,10 +742,17 @@ export const useGameStore = create<GameState>()(
           const nextRound = s.round + 1;
           const starters = s.xi.filter((x): x is string => !!x);
           const ev = drawEvent(nextRound, s.runSeed, starters, s.relics, config.eventRates);
+          // An unclaimed relic offer is never silently lost: it carries over until
+          // the player claims or dismisses it (the relic is a permanent reward).
+          const unclaimedRelic =
+            s.event?.kind === 'relic' && (s.event.relicChoices?.length ?? 0) > 0
+              ? s.event
+              : null;
+          const nextEvent = unclaimedRelic ?? ev;
           const advance = {
             round: nextRound,
-            event: ev,
-            roundMods: ev.mods,
+            event: nextEvent,
+            roundMods: nextEvent.mods,
             freeRefreshUsed: false,
           };
           // Unless the shop is locked, the next round also gets a fresh roll.
@@ -747,7 +777,7 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           if (s.runStatus !== 'playing' || s.lives >= runConfig(s).startingLives) return {};
           const cost = lifeBuybackCost(s.lifeBuybacks);
-          if (s.bankroll < cost) return { notice: 'Not enough funds' };
+          if (s.bankroll < cost) return { notice: 'Not enough funds', noticeKind: 'error' };
           return {
             bankroll: s.bankroll - cost,
             lives: s.lives + 1,
@@ -816,11 +846,11 @@ export const useGameStore = create<GameState>()(
         if (slotRole(state.formation, slotIndex) !== player.role) return; // eligibility
         // Suspended or injured players can't take the field.
         if (state.suspensions.includes(id)) {
-          set({ notice: `${player.name} is suspended` });
+          set({ notice: `${player.name} is suspended`, noticeKind: 'error' });
           return;
         }
         if (state.injuries[id]) {
-          set({ notice: `${player.name} is injured (${state.injuries[id]}R)` });
+          set({ notice: `${player.name} is injured (${state.injuries[id]}R)`, noticeKind: 'error' });
           return;
         }
 
@@ -851,7 +881,7 @@ export const useGameStore = create<GameState>()(
           return;
         }
         if (bench.length >= BENCH_SIZE) {
-          set({ notice: 'Bench full' });
+          set({ notice: 'Bench full — remove a sub or assign one to the pitch', noticeKind: 'error' });
           return;
         }
         set((s) => ({
@@ -953,7 +983,7 @@ export const useGameStore = create<GameState>()(
           const review = s.careerReview;
           if (!review || review.scouted.includes(youthId)) return {};
           if (!review.youth.some((y) => y.id === youthId)) return {};
-          if (s.bankroll < SCOUT_YOUTH_COST) return { notice: 'Not enough funds' };
+          if (s.bankroll < SCOUT_YOUTH_COST) return { notice: 'Not enough funds', noticeKind: 'error' };
           return {
             bankroll: s.bankroll - SCOUT_YOUTH_COST,
             careerReview: { ...review, scouted: [...review.scouted, youthId] },
@@ -1011,7 +1041,10 @@ export const useGameStore = create<GameState>()(
             lastIncome: null,
             shop: rollSlots(owned, seed, s.pack),
             shopSeed: seed,
-            notice: `Season ${nextSeason}: reach round ${target} or you're sacked.`,
+            notice: chosen
+              ? `${chosen.name} joins the academy. Season ${nextSeason}: reach round ${target} or you're sacked.`
+              : `Season ${nextSeason}: reach round ${target} or you're sacked.`,
+            noticeKind: 'info',
           };
         }),
 
@@ -1055,7 +1088,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (externalSaveChange(e.key, e.newValue)) {
       void useGameStore.persist.rehydrate();
-      useGameStore.setState({ notice: 'Run synced from another tab.' });
+      useGameStore.setState({ notice: 'Run synced from another tab.', noticeKind: 'info' });
     }
   });
 }
