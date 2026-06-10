@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Dice5, Trophy, Infinity as InfinityIcon, Briefcase } from 'lucide-react';
+import { X, Play, Dice5, Trophy, Infinity as InfinityIcon, Briefcase, AlertTriangle } from 'lucide-react';
 import { MODES, type ModeId } from '@/lib/modes';
 import { MUTATORS } from '@/lib/mutators';
 import { useGameStore } from '@/store/useGameStore';
@@ -25,8 +25,22 @@ type MutatorChoice = 'none' | 'random' | string;
 export default function NewRunModal({ open, onClose }: NewRunModalProps) {
   const startRun = useGameStore((s) => s.startRun);
   const startCareer = useGameStore((s) => s.startCareer);
+  const runStatus = useGameStore((s) => s.runStatus);
+  const round = useGameStore((s) => s.round);
+  const ownedCount = useGameStore((s) => s.owned.length);
+  const career = useGameStore((s) => s.career);
   const [mode, setMode] = useState<ModeChoice>('classic');
   const [choice, setChoice] = useState<MutatorChoice>('none');
+  const [confirming, setConfirming] = useState(false);
+
+  // A run worth warning about losing: in progress with picks made.
+  const inProgress =
+    runStatus === 'playing' && (round > 1 || ownedCount > 0 || !!career);
+
+  // Reset the confirm step whenever the modal opens/closes.
+  useEffect(() => {
+    if (!open) setConfirming(false);
+  }, [open]);
 
   const start = () => {
     if (mode === 'career') {
@@ -43,6 +57,15 @@ export default function NewRunModal({ open, onClose }: NewRunModalProps) {
     }
     startRun(mode, mutatorId);
     onClose();
+  };
+
+  // Gate the start behind a confirm step if it would wipe an active run.
+  const handleStart = () => {
+    if (inProgress && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    start();
   };
 
   const selectedMutator = MUTATORS.find((m) => m.id === choice);
@@ -172,14 +195,43 @@ export default function NewRunModal({ open, onClose }: NewRunModalProps) {
 
             {/* Footer */}
             <div className="flex items-center justify-between gap-3 border-t border-crt-dim bg-pitch-900/80 px-5 py-3">
-              <span className="text-[11px] text-chrome-muted">Resets your squad &amp; bankroll.</span>
-              <button
-                type="button"
-                onClick={start}
-                className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
-              >
-                <Play size={15} /> Start Run
-              </button>
+              {confirming ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-[11px] text-rose-200">
+                    <AlertTriangle size={13} className="shrink-0" />
+                    This ends your current run. Sure?
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(false)}
+                      className="rounded-md border border-white/15 px-3 py-2 font-display text-sm text-chrome-muted hover:bg-white/5 hover:text-chrome"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={start}
+                      className="flex items-center gap-1.5 rounded-md border border-rose-400/50 bg-rose-500/20 px-4 py-2 font-display text-sm text-rose-200 hover:bg-rose-500/30"
+                    >
+                      <Play size={15} /> End &amp; Start
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-[11px] text-chrome-muted">
+                    {inProgress ? 'Ends your current run.' : 'Resets your squad & bankroll.'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleStart}
+                    className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
+                  >
+                    <Play size={15} /> Start Run
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

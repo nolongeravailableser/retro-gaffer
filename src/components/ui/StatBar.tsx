@@ -17,7 +17,8 @@ interface StatBarProps {
  */
 export default function StatBar({ label, value, labelClass, compact }: StatBarProps) {
   const tier = statTier(value);
-  const pct = Math.max(4, Math.min(100, value));
+  // True 0–100 width so low stats read honestly (a 1 looks different from a 40).
+  const pct = Math.max(0, Math.min(100, value));
 
   return (
     <div className="flex items-center gap-1.5" title={`${label} ${value} · ${tier.word}`}>

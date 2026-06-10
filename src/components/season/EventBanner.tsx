@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Newspaper, X } from 'lucide-react';
+import { Newspaper, X, Check } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { RELICS } from '@/lib/relics';
 
@@ -9,6 +10,8 @@ export default function EventBanner() {
   const relics = useGameStore((s) => s.relics);
   const claimRelic = useGameStore((s) => s.claimRelic);
   const dismissEvent = useGameStore((s) => s.dismissEvent);
+  // Relics are permanent for the run — confirm before committing the pick.
+  const [pendingClaim, setPendingClaim] = useState<string | null>(null);
 
   if (!event && relics.length === 0) return null;
 
@@ -72,26 +75,60 @@ export default function EventBanner() {
             </div>
 
             {event.kind === 'relic' && event.relicChoices && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {event.relicChoices.map((id) => {
-                  const r = RELICS[id];
-                  if (!r) return null;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => claimRelic(id)}
-                      data-testid={`claim-${id}`}
-                      className="rounded-lg border border-crt-green/30 bg-pitch-800/70 p-2 text-left hover:border-crt-green/60 hover:bg-crt-green/10"
-                    >
-                      <p className="font-display text-sm text-crt-green">
-                        {r.emoji} {r.name}
-                      </p>
-                      <p className="text-[11px] text-chrome-muted">{r.blurb}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {event.relicChoices.map((id) => {
+                    const r = RELICS[id];
+                    if (!r) return null;
+                    const selected = pendingClaim === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setPendingClaim(selected ? null : id)}
+                        data-testid={`claim-${id}`}
+                        aria-pressed={selected}
+                        className={[
+                          'rounded-lg border p-2 text-left transition',
+                          selected
+                            ? 'border-crt-green bg-crt-green/15'
+                            : 'border-crt-green/30 bg-pitch-800/70 hover:border-crt-green/60 hover:bg-crt-green/10',
+                        ].join(' ')}
+                      >
+                        <p className="font-display text-sm text-crt-green">
+                          {r.emoji} {r.name}
+                        </p>
+                        <p className="text-[11px] text-chrome-muted">{r.blurb}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {pendingClaim && (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-crt-green/40 bg-crt-green/5 px-3 py-2">
+                    <span className="text-xs text-chrome">
+                      Claim <span className="font-display text-crt-green">{RELICS[pendingClaim]?.name}</span>? It's
+                      permanent for this run.
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPendingClaim(null)}
+                        className="rounded border border-white/15 px-2 py-1 text-xs text-chrome-muted hover:text-chrome"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { claimRelic(pendingClaim); setPendingClaim(null); }}
+                        data-testid={`confirm-claim-${pendingClaim}`}
+                        className="flex items-center gap-1 rounded border border-crt-green/50 bg-crt-green/20 px-2 py-1 font-display text-xs text-crt-green hover:bg-crt-green/30"
+                      >
+                        <Check size={11} /> Claim
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         )}

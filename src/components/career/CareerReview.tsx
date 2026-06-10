@@ -93,8 +93,12 @@ export default function CareerReview() {
                         <Stars earned={trueStars} total={5} size={11} />
                       ) : (
                         <>
-                          <span className="font-display text-chrome">
-                            {'★'.repeat(lo)}–{'★'.repeat(hi)}
+                          <span
+                            className="flex items-center gap-1"
+                            title={`Potential ${lo}–${hi}★ — scout to reveal the exact rating`}
+                          >
+                            <Stars earned={lo} total={hi} size={11} />
+                            <span className="font-display text-chrome-muted">?</span>
                           </span>
                           <button
                             type="button"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, RotateCcw, AlertTriangle, Crown, CalendarDays, Check, X, Heart, Flame, Star,
+  CheckCircle2, Info,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { bestLabel, ladderTier } from '@/lib/ladder';
@@ -38,21 +39,33 @@ export default function Hud({ onNewRun }: HudProps) {
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
   const notice = useGameStore((s) => s.notice);
+  const noticeKind = useGameStore((s) => s.noticeKind);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
+  const dailyCompleted = useGameStore((s) => s.dailyCompleted);
   const [confirmDaily, setConfirmDaily] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
 
   const scored = config.scored || daily !== null;
   const score = runScore({ round, runStatus, peakBankroll, bestStreak, record, maxRounds });
-  const todaysRule = getMutator(dailyMutator(dailyKey()));
+  const todayKey = dailyKey();
+  const todaysRule = getMutator(dailyMutator(todayKey));
+  const dailyAlreadyPlayed = dailyCompleted === todayKey;
 
-  // Auto-dismiss the notice after a moment.
+  // Auto-dismiss the notice — errors linger so they can be read; success is brief.
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(clearNotice, 2200);
+    const ms = noticeKind === 'error' ? 4500 : noticeKind === 'success' ? 1800 : 2600;
+    const t = setTimeout(clearNotice, ms);
     return () => clearTimeout(t);
-  }, [notice, clearNotice]);
+  }, [notice, noticeKind, clearNotice]);
+
+  // Tone-based toast styling (colour + icon).
+  const TOAST = {
+    error: { cls: 'border-rose-400/40 bg-rose-500/15 text-rose-200', Icon: AlertTriangle },
+    success: { cls: 'border-crt-green/40 bg-crt-green/15 text-crt-green', Icon: CheckCircle2 },
+    info: { cls: 'border-sky-400/40 bg-sky-500/15 text-sky-200', Icon: Info },
+  }[noticeKind];
 
   // Close the daily confirm popover on outside click.
   useEffect(() => {
@@ -213,8 +226,16 @@ export default function Hud({ onNewRun }: HudProps) {
                   <span className="font-display">Rule of the Day: {todaysRule.name}</span>
                 </span>
               )}
+              {dailyAlreadyPlayed && (
+                <span className="max-w-[16rem] text-[11px] text-chrome-muted">
+                  You've already played today's Daily — your recorded score is locked.
+                  Replaying is just for practice.
+                </span>
+              )}
               <div className="flex items-center gap-1.5">
-                <span className="mr-1 font-display text-xs text-fuchsia-200">Start daily?</span>
+                <span className="mr-1 font-display text-xs text-fuchsia-200">
+                  {dailyAlreadyPlayed ? 'Replay anyway?' : 'Start daily?'}
+                </span>
                 <button
                   type="button"
                   onClick={() => { newDailyRun(); setConfirmDaily(false); }}
@@ -237,16 +258,19 @@ export default function Hud({ onNewRun }: HudProps) {
 
       <AnimatePresence>
         {notice && (
-          <motion.div
+          <motion.button
+            type="button"
+            onClick={clearNotice}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             role="status"
-            className="absolute -bottom-11 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-sm text-rose-200"
+            title="Dismiss"
+            className={`absolute -bottom-11 left-1/2 z-10 flex max-w-[90vw] -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm ${TOAST.cls}`}
           >
-            <AlertTriangle size={14} />
-            {notice}
-          </motion.div>
+            <TOAST.Icon size={14} className="shrink-0" />
+            <span className="truncate">{notice}</span>
+          </motion.button>
         )}
       </AnimatePresence>
     </div>
