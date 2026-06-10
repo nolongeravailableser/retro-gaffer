@@ -86,7 +86,7 @@ describe('buildVizTimeline', () => {
     const { result, tl } = timelineFor('viz-4');
     result.events.forEach((e, i) => {
       const scene = tl.scenes[i];
-      if (e.kind === 'goal') expect(scene.flash?.text).toBe('GOAL!');
+      if (e.kind === 'goal') expect(scene.flash?.text).toMatch(/^GOAL!/); // + scorer credit
       if (e.kind === 'red') expect(scene.flash?.text).toBe('RED CARD');
       if (e.kind === 'yellow') expect(scene.flash?.text).toBe('YELLOW CARD');
       if (e.kind === 'injury') expect(scene.flash?.text).toBe('INJURY');

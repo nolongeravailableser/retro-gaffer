@@ -101,6 +101,8 @@ export interface MatchEvent {
   side: 'A' | 'B';
   kind: 'goal' | 'chance' | 'flavour' | 'yellow' | 'red' | 'injury';
   text: string;
+  /** Name of the player at the centre of the event (scorer, carded, injured). */
+  playerName?: string;
 }
 
 export interface MatchResult {

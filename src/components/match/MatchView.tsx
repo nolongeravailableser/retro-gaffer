@@ -185,6 +185,15 @@ export default function MatchView({
   const hasInjuries = result.injuries.length > 0;
   const hasTeamNews = hasSuspensions || hasInjuries;
 
+  // Post-match numbers, straight from the event log.
+  const count = (side: 'A' | 'B', kinds: string[]) =>
+    events.filter((e) => e.side === side && kinds.includes(e.kind)).length;
+  const matchStats: { label: string; a: number; b: number }[] = [
+    { label: 'Shots', a: count('A', ['goal', 'chance']), b: count('B', ['goal', 'chance']) },
+    { label: 'Goals', a: result.score.a, b: result.score.b },
+    { label: 'Cards', a: count('A', ['yellow', 'red']), b: count('B', ['yellow', 'red']) },
+  ];
+
   const playerName = (id: string) =>
     playerTeam.squad.find((p) => p.id === id)?.name ?? id;
 
@@ -321,6 +330,23 @@ export default function MatchView({
                   <span className="font-display text-lg text-crt-amber">
                     +£{MATCH_REWARD[result.outcome]}M
                   </span>
+                </div>
+
+                {/* Match stats — shots / goals / cards from the event log */}
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {matchStats.map((s) => (
+                    <div
+                      key={s.label}
+                      className="rounded-lg border border-white/10 bg-pitch-900/60 px-2 py-1.5 text-center"
+                    >
+                      <p className="text-[10px] uppercase tracking-wide text-chrome-muted">{s.label}</p>
+                      <p className="font-display text-sm text-chrome">
+                        <span className="text-crt-green">{s.a}</span>
+                        <span className="text-chrome-muted"> · </span>
+                        <span>{s.b}</span>
+                      </p>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Round payout — the full economic outcome, not just the reward */}

@@ -266,6 +266,7 @@ export function simulateMatch(
           side,
           kind: 'goal',
           text: `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorer)}`,
+          playerName: scorer,
         });
       } else if (rng.chance(perMinute * tuning.chanceFactor)) {
         const p = pickScorer(rng, team.squad, inf);
@@ -274,6 +275,7 @@ export function simulateMatch(
           side,
           kind: 'chance',
           text: `${team.name}: ${CHANCE_LINES[rng.int(0, CHANCE_LINES.length - 1)].replace('{p}', p)}`,
+          playerName: p,
         });
       }
     }
@@ -296,11 +298,11 @@ export function simulateMatch(
         aMult *= RED_SELF;
         bMult *= RED_OPP;
         const line = SECOND_YELLOW_LINES[rng.int(0, SECOND_YELLOW_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
       } else if (!yellowed.has(player.id)) {
         yellowed.add(player.id);
         const line = YELLOW_LINES[rng.int(0, YELLOW_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'yellow', text: line.replace('{p}', player.name) });
+        events.push({ minute, side: 'A', kind: 'yellow', text: line.replace('{p}', player.name), playerName: player.name });
       }
     }
 
@@ -311,7 +313,7 @@ export function simulateMatch(
         aMult *= RED_SELF;
         bMult *= RED_OPP;
         const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
       }
     }
 
@@ -323,7 +325,7 @@ export function simulateMatch(
       aMult *= INJ_SELF;
       bMult *= INJ_OPP;
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
-      events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name) });
+      events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name), playerName: player.name });
     }
 
     // Opponent (side B) discipline — they can go down to ten men too. These
@@ -338,7 +340,7 @@ export function simulateMatch(
       aMult *= RED_OPP;
       const player = weightedPick(rng, b.squad, cardWeight(inf));
       const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
-      events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}` });
+      events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
     }
 
     if (oppInjuryRoll < tuning.pInjury && !oppInjured && b.squad.length > 0) {
@@ -347,7 +349,7 @@ export function simulateMatch(
       aMult *= INJ_OPP;
       const player = weightedPick(rng, b.squad, injuryWeight(inf));
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
-      events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}` });
+      events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
     }
   }
 

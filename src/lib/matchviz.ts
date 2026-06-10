@@ -151,7 +151,8 @@ export function buildVizTimeline(
     switch (e.kind) {
       case 'goal': {
         const scene = buildUp(rng, side, goalMouth(rng, side), {
-          text: 'GOAL!',
+          // Credit the scorer right on the pitch.
+          text: e.playerName ? `GOAL! ${e.playerName}` : 'GOAL!',
           color: FLASH_COLORS.goal,
         });
         scenes.push({ ...scene, kind: 'goal' });
