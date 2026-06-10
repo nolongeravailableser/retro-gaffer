@@ -78,7 +78,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **222/222 passing** across 24 files. `npm run test:e2e` — Playwright
+- `npm test` — **224/224 passing** across 24 files. `npm run test:e2e` — Playwright
   smoke test (full core loop in a real browser). `npm run sim` — balance harness.
 
 **Records & collection:**
@@ -405,6 +405,32 @@ All proposals from the improvement review, built in one pass on the
   **Degrades gracefully**: until Upstash Redis is provisioned in the Vercel
   dashboard (Storage → Upstash Redis → connect to project → redeploy), the
   API returns 503 and the UI hides the board — zero code changes to activate.
+
+---
+
+## 2k. QA Audit #2 fix pass (uncommitted to main; 3 commits on audit2-fixes)
+
+Second full audit after the improvement program; 12 verified findings, all
+fixed (several agent-reported "bugs" were verified FALSE and rejected: Instant
+cannot skip pauses, tutorial replay never enters setup, subbed-on players
+being suspendable is correct football):
+
+- **Match suspend/resume (B1)**: closing the modal mid-match keeps the
+  LiveMatch (keyed by fixture seed); reopening resumes at the same minute.
+- **AI half-time response (G1)**: `aiTalkFor(scoreFor, scoreAgainst)` —
+  trailing 2+ → attack, leading 2+ → park, else nothing; announced in the
+  ticker. Deterministic, readable, kills the park-the-bus dominance.
+- **Whistle semantics by TEXT (B2)**: engine exports KICKOFF/HALFTIME/FULLTIME;
+  sound + viz match those instead of minutes 0/45/90 (sub at 45' ≠ half-time).
+- **Dynasty timing (B3)**: snapshot careerSeasons mirrors the sacked path's
+  careerBest write (season − 1) — no more one-career-late unlocks.
+- **Crash rescue (B4)**: ErrorBoundary copies an importable GAFFER-SAVE code.
+- **Achievements (G2)**: champions excludes Dailies; new Gauntlet Conqueror.
+- **Speed-gated sound (G3)**, **single Season-tab CTA (U1)**, **60s
+  leaderboard cache (U2)**, **instant kit edits in Club settings (U3)**,
+  **"Skip setup" label (U4)**, caption keys + shirt aria-label (U5).
+- Verified live: suspend at 34' (2:0) → resume at 35' (2:1); single CTA
+  confirmed; full match through HT decision clean. 224 tests, e2e, build green.
 
 ---
 
