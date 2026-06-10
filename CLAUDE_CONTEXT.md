@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10 (QA fixes + FTUE + career-flow CTA + auto-pick — all deployed)
+> **Last updated:** 2026-06-10 (… + flat nav + journey bar + extended-stats engine — all deployed)
 
 ---
 
@@ -252,7 +252,7 @@ ties break on id → Daily-safe):
 
 ---
 
-## 2f. Core-loop journey redesign — SIGN → PICK → KICK OFF (uncommitted)
+## 2f. Core-loop journey redesign — SIGN → PICK → KICK OFF (shipped, `ec4a4c3`)
 
 Tester feedback: the launch→buy→field→play pipeline had no visual hierarchy. Fixed
 with one derived "journey stage" driving the whole UI:
@@ -285,7 +285,7 @@ with one derived "journey stage" driving the whole UI:
 
 ---
 
-## 2g. Extended player stats → match-engine integration (uncommitted)
+## 2g. Extended player stats → match-engine integration (shipped, `95794c6`)
 
 Eight stats (`src/lib/stats.ts`), each owning ONE engine lever — nothing
 decorative: **PAC/PAS** → chance creation · **SHO** → conversion + scorer
