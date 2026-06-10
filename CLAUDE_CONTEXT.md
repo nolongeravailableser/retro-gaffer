@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10 (QA audit-fix pass)
+> **Last updated:** 2026-06-10 (QA fixes + FTUE + career-flow CTA + auto-pick — all deployed)
 
 ---
 
@@ -130,7 +130,7 @@ live** unless noted.
 
 ---
 
-## 2b. QA Audit-Fix Pass (2026-06-10, uncommitted as of writing)
+## 2b. QA Audit-Fix Pass (2026-06-10 — shipped, commits `9c6dea9`…`d38ce74`)
 
 A full QA/UX audit produced a 22-item report (bugs / gameplay / UX); all actioned
 except the round-4 boss (left as intentional comic relief). Shipped in the working
@@ -174,7 +174,7 @@ Files touched: `store/useGameStore.ts`, `store/persistence.ts` (v15), `lib/engin
 
 ---
 
-## 2c. First-Time User Experience (FTUE) — onboarding + club identity (uncommitted)
+## 2c. First-Time User Experience (FTUE) — onboarding + club identity (shipped, `7dbf2c8`)
 
 A brand-new visitor now gets onboarding; players can name their club.
 
@@ -200,7 +200,7 @@ A brand-new visitor now gets onboarding; players can name their club.
 
 ---
 
-## 2d. Career progression flow — the "how do I start?" fix (uncommitted)
+## 2d. Career progression flow — the "how do I start?" fix (shipped, `655d4ed`)
 
 The kick-off action used to live only at the bottom of the Season tab, so after
 building a squad (on Tactics/Transfers) players — especially in Career, and
@@ -224,7 +224,7 @@ especially on mobile where it sat below the fold — had no clear path to start.
 
 ---
 
-## 2e. Auto-Pick & Auto-Sign (uncommitted)
+## 2e. Auto-Pick & Auto-Sign (shipped, `f08c1af`)
 
 One-click squad helpers, both pure/deterministic in `src/lib/autopick.ts` (no RNG,
 ties break on id → Daily-safe):
