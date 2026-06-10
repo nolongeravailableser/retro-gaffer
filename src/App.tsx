@@ -36,6 +36,8 @@ import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
 import JourneyBar from '@/components/run/JourneyBar';
+import { KitShirt } from '@/components/run/KitPicker';
+import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
@@ -69,6 +71,7 @@ export default function App() {
   const career = useGameStore((s) => s.career);
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
+  const kit = useGameStore((s) => s.kit);
   const onboarded = useGameStore((s) => s.onboarded);
   const [activeTab, setActiveTab] = useState<Tab>('formation');
   const [tutorialOpen, setTutorialOpen] = useState(false);
@@ -208,7 +211,8 @@ export default function App() {
           <Sparkles size={20} />
         </div>
         {clubName && (
-          <p className="-mt-1 font-display text-sm text-chrome">
+          <p className="-mt-1 flex items-center gap-1.5 font-display text-sm text-chrome">
+            <KitShirt kit={kit ?? DEFAULT_KIT} size={18} />
             {clubName}
             {managerName && <span className="text-chrome-muted"> · {managerName}</span>}
           </p>

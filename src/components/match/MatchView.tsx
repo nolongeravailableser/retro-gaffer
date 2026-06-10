@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronsRight, Trophy, Ban, HeartCrack } from 'lucide-react';
+import { X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft } from 'lucide-react';
 import { simulateMatch, DEFAULT_TUNING, type MatchTeam, type EngineTuning } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
+import { buildVizTimeline } from '@/lib/matchviz';
+import { resolveKits, DEFAULT_KIT } from '@/lib/kits';
 import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
+import MatchPitchView from './MatchPitchView';
 import type { MatchResult } from '@/lib/types';
 
 interface MatchViewProps {
@@ -54,6 +57,7 @@ export default function MatchView({
 }: MatchViewProps) {
   const lastIncome = useGameStore((s) => s.lastIncome);
   const bankroll = useGameStore((s) => s.bankroll);
+  const playerKit = useGameStore((s) => s.kit);
   const [match, setMatch] = useState<{
     result: MatchResult;
     opponent: MatchTeam;
@@ -61,6 +65,8 @@ export default function MatchView({
   } | null>(null);
   const [shown, setShown] = useState(0);
   const [speed, setSpeed] = useState<Speed>(1);
+  /** 2D pitch view (default) vs. the full text ticker. */
+  const [pitchMode, setPitchMode] = useState(true);
   const completedRef = useRef(false);
   const tickerRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +120,28 @@ export default function MatchView({
     const el = tickerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [shown]);
+
+  // Choreograph the 2D pitch once per match. Deterministic per seed and fully
+  // decoupled from the engine (its own `-viz` RNG stream).
+  const timeline = useMemo(
+    () =>
+      match
+        ? buildVizTimeline(
+            match.result.events,
+            match.seed,
+            playerTeamRef.current?.squad ?? [],
+            match.opponent.squad,
+            match.result.xg.a / (match.result.xg.a + match.result.xg.b || 1)
+          )
+        : null,
+    [match]
+  );
+
+  // What both sides wear — clash-resolved so the teams always read distinctly.
+  const kits = useMemo(
+    () => resolveKits(playerKit ?? DEFAULT_KIT, match?.opponent.name ?? ''),
+    [playerKit, match]
+  );
 
   if (!open || !playerTeam || !match) return null;
 
@@ -215,25 +243,47 @@ export default function MatchView({
           </div>
         </div>
 
-        {/* ── Ticker ── */}
+        {/* ── Action area: 2D pitch + caption feed, or the full ticker ── */}
         <div
           ref={tickerRef}
           className="flex-1 space-y-1.5 overflow-y-auto bg-pitch-950 px-5 py-4 font-ticker text-base leading-snug"
         >
-          {visible.map((e, i) => (
-            <motion.p
-              key={i}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.15 }}
-              className={eventClass(e.kind)}
-            >
-              {e.minute > 0 && e.kind !== 'flavour' && (
-                <span className="text-chrome-muted">{e.minute}' </span>
-              )}
-              {e.text}
-            </motion.p>
-          ))}
+          {pitchMode && timeline && (
+            <MatchPitchView
+              timeline={timeline}
+              shown={shown}
+              speedDelay={SPEED_DELAY[speed]}
+              finished={finished}
+              kitA={kits.a}
+              kitB={kits.b}
+            />
+          )}
+
+          {pitchMode && timeline
+            ? // Compact caption feed under the pitch — the last few beats.
+              !finished &&
+              visible.slice(-3).map((e, i) => (
+                <p key={`${shown}-${i}`} className={`${eventClass(e.kind)} text-sm`}>
+                  {e.minute > 0 && e.kind !== 'flavour' && (
+                    <span className="text-chrome-muted">{e.minute}' </span>
+                  )}
+                  {e.text}
+                </p>
+              ))
+            : visible.map((e, i) => (
+                <motion.p
+                  key={i}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={eventClass(e.kind)}
+                >
+                  {e.minute > 0 && e.kind !== 'flavour' && (
+                    <span className="text-chrome-muted">{e.minute}' </span>
+                  )}
+                  {e.text}
+                </motion.p>
+              ))}
 
           <AnimatePresence>
             {finished && (
@@ -321,8 +371,20 @@ export default function MatchView({
 
         {/* ── Controls ── */}
         <div className="flex items-center justify-between gap-3 border-t border-crt-dim bg-pitch-900/80 px-5 py-3">
-          <span className="font-ticker text-[11px] text-chrome-muted shrink-0">
-            seed {match.seed}
+          <span className="flex shrink-0 items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setPitchMode((v) => !v)}
+              data-testid="toggle-pitch-view"
+              title={pitchMode ? 'Switch to the full text ticker' : 'Switch to the 2D pitch view'}
+              className="flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 font-display text-xs text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+            >
+              {pitchMode ? <AlignLeft size={13} /> : <Tv size={13} />}
+              <span className="hidden sm:inline">{pitchMode ? 'Ticker' : 'Pitch'}</span>
+            </button>
+            <span className="hidden font-ticker text-[11px] text-chrome-muted sm:inline">
+              seed {match.seed}
+            </span>
           </span>
 
           {finished ? (

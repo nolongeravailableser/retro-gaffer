@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Shield, Check, GraduationCap } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
+import { DEFAULT_KIT, type Kit } from '@/lib/kits';
+import KitPicker from './KitPicker';
 
 interface ClubSettingsProps {
   /** Reopen the onboarding tutorial carousel. */
@@ -11,16 +13,24 @@ interface ClubSettingsProps {
 export default function ClubSettings({ onReplayTutorial }: ClubSettingsProps) {
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
+  const storeKit = useGameStore((s) => s.kit);
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
 
   const [club, setClub] = useState(clubName ?? '');
   const [manager, setManager] = useState(managerName ?? '');
+  const [kit, setKit] = useState<Kit>(storeKit ?? DEFAULT_KIT);
   const [saved, setSaved] = useState(false);
 
-  const dirty = club.trim() !== (clubName ?? '') || manager.trim() !== (managerName ?? '');
+  const baseKit = storeKit ?? DEFAULT_KIT;
+  const dirty =
+    club.trim() !== (clubName ?? '') ||
+    manager.trim() !== (managerName ?? '') ||
+    kit.primary !== baseKit.primary ||
+    kit.secondary !== baseKit.secondary ||
+    kit.pattern !== baseKit.pattern;
 
   const save = () => {
-    completeOnboarding(club, manager);
+    completeOnboarding(club, manager, kit);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -61,6 +71,14 @@ export default function ClubSettings({ onReplayTutorial }: ClubSettingsProps) {
             className="rounded-md border border-white/15 bg-pitch-950 px-3 py-2 font-display text-sm text-chrome placeholder:text-chrome-muted/50 focus:border-crt-green/60 focus:outline-none"
           />
         </label>
+      </div>
+
+      {/* Kit designer */}
+      <div className="mt-4 rounded-lg border border-white/10 bg-pitch-950/40 p-3">
+        <p className="mb-2 font-display text-[11px] uppercase tracking-wide text-chrome-muted">
+          Club kit
+        </p>
+        <KitPicker value={kit} onChange={setKit} compact />
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">

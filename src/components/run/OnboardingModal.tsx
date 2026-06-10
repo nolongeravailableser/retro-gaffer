@@ -5,6 +5,8 @@ import {
   ArrowRight, ArrowLeft, Dice5, Play,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
+import { DEFAULT_KIT, type Kit } from '@/lib/kits';
+import KitPicker from './KitPicker';
 
 interface OnboardingModalProps {
   /** Opened just to replay the tutorial (player already onboarded). */
@@ -57,15 +59,17 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
   const existingClub = useGameStore((s) => s.clubName);
   const existingManager = useGameStore((s) => s.managerName);
+  const existingKit = useGameStore((s) => s.kit);
 
-  const [stage, setStage] = useState<'club' | 'tour'>(tutorialOnly ? 'tour' : 'club');
+  const [stage, setStage] = useState<'club' | 'kit' | 'tour'>(tutorialOnly ? 'tour' : 'club');
   const [club, setClub] = useState(existingClub ?? '');
   const [manager, setManager] = useState(existingManager ?? '');
+  const [kit, setKit] = useState<Kit>(existingKit ?? DEFAULT_KIT);
   const [card, setCard] = useState(0);
 
-  // First-run: name is locked in only when the tour finishes (or on skip).
+  // First-run: identity is locked in only when the tour finishes (or on skip).
   const finish = () => {
-    if (!tutorialOnly) completeOnboarding(club, manager);
+    if (!tutorialOnly) completeOnboarding(club, manager, kit);
     onClose();
   };
 
@@ -91,14 +95,16 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
           <div className="mx-auto mb-1 flex items-center justify-center gap-2 text-crt-green">
             <Trophy size={20} />
             <h2 className="font-display text-xl tracking-wide">
-              {stage === 'club' ? 'WELCOME, GAFFER' : 'HOW IT WORKS'}
+              {stage === 'club' ? 'WELCOME, GAFFER' : stage === 'kit' ? 'DESIGN YOUR KIT' : 'HOW IT WORKS'}
             </h2>
             <Sparkles size={20} />
           </div>
           <p className="text-xs text-chrome-muted">
             {stage === 'club'
               ? 'Name your club and take charge.'
-              : `${card + 1} of ${CARDS.length}`}
+              : stage === 'kit'
+                ? 'The colours your XI will wear on the pitch.'
+                : `${card + 1} of ${CARDS.length}`}
           </p>
         </div>
 
@@ -141,6 +147,8 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
                 <Dice5 size={13} /> Surprise me
               </button>
             </div>
+          ) : stage === 'kit' ? (
+            <KitPicker value={kit} onChange={setKit} />
           ) : (
             <motion.div
               key={card}
@@ -195,6 +203,24 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
               )}
               <button
                 type="button"
+                onClick={() => setStage('kit')}
+                data-testid="onboarding-next"
+                className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
+              >
+                Next <ArrowRight size={15} />
+              </button>
+            </>
+          ) : stage === 'kit' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setStage('club')}
+                className="flex items-center gap-1 text-xs font-display text-chrome-muted hover:text-chrome"
+              >
+                <ArrowLeft size={14} /> Back
+              </button>
+              <button
+                type="button"
                 onClick={() => setStage('tour')}
                 data-testid="onboarding-next"
                 className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
@@ -208,8 +234,8 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
                 type="button"
                 onClick={() => {
                   if (card > 0) setCard((c) => c - 1);
-                  else if (tutorialOnly) onClose(); // no club stage when just replaying
-                  else setStage('club');
+                  else if (tutorialOnly) onClose(); // no setup stages when just replaying
+                  else setStage('kit');
                 }}
                 className="flex items-center gap-1 text-xs font-display text-chrome-muted hover:text-chrome"
               >

@@ -116,6 +116,15 @@ describe('migrations', () => {
       expect(r.state.onboarded).toBe(true);
     }
   });
+
+  it('defaults pre-kit saves to the classic strip and round-trips a kit', () => {
+    const migrated = migrateSave(validSave(), 16) as Record<string, unknown>;
+    expect(migrated.kit).toBeNull();
+    const kit = { primary: '#ff4d4d', secondary: '#ffffff', pattern: 'stripes' };
+    const r = decodeSave(encodeSave(validSave({ kit })));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.state.kit).toEqual(kit);
+  });
 });
 
 describe('cross-tab sync guard (externalSaveChange)', () => {

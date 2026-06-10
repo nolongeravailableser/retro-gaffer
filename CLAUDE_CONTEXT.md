@@ -78,7 +78,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **185/185 passing** across 19 files.
+- `npm test` — **203/203 passing** across 21 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -310,6 +310,61 @@ resistance · **CMP** → 75'+ clutch window · **DIS** → who collects cards.
   per-round win% drift ≤3pp, R12 boss unchanged. Tests: `tests/stats.test.ts`
   (11: archetypes, bounds, GK rule, quality coupling, profile aggregates,
   sharp-vs-blunt sensitivity, statInfluence:0 independence, card-magnet share).
+
+---
+
+## 2h. 2D match visualization — the pitch view (uncommitted)
+
+Playtesters couldn't SEE the action. Architecture: the engine stays an event
+generator; a **choreographer** turns its event timeline into 2D scenes.
+
+- **`src/lib/matchviz.ts`** (pure, 9 tests) — `buildVizTimeline(events, seed,
+  squadA, squadB, xgShareA)` → one `VizScene` per engine event (build-up →
+  GOAL/CHANCE at the right net, foul→card scenes, injury, kickoff/HT/FT set
+  pieces; neutral possession weighted by xG dominance between incidents).
+  Formation anchors derive from squad ROLES (`anchorsFromSquad`) so any squad
+  works (XI, PvP imports, rival spines, partial XIs). Own seeded RNG
+  (`{seed}-viz`) — engine RNG untouched (tested: simulateMatch before/after viz
+  build is identical). `ballAt(scene, t)` = smoothstep keyframe sampler.
+- **`MatchPitchView.tsx`** — ONE canvas + ONE rAF loop, ~23 dots + ball, DPR-
+  aware, no per-frame React state, no new deps. Honors prefers-reduced-motion
+  (slow static redraws). Team colours: crt-green vs fuchsia.
+- **MatchView** — pitch-dominant layout: pitch (16:10, max 38vh) + a compact
+  3-line caption feed; "Ticker/Pitch" toggle in the controls swaps to the full
+  text ticker. Sync is structural: pitch + ticker both derive from the same
+  `(events, shown, speed)` cursor, so 1×/2×/4×/Instant work for free and the
+  two views cannot drift.
+- Verified live (375px + desktop): canvas pixel-sampling confirmed both teams
+  rendered and the ball moving mid-match; toggle round-trips; FT scene under
+  the result banner; no console errors. 194/194 tests.
+
+---
+
+## 2i. Team kits — identity for every side (uncommitted, builds on 2h)
+
+- **`src/lib/kits.ts`** (pure, 8 tests) — `Kit = {primary, secondary, pattern:
+  solid|stripes|hoops|sash|halves}`. Curated 10-colour palette (legible on the
+  dark pitch). **Authored kits for all 13 named opponents** (10 rivals + 3
+  bosses); unknown names (PvP) hash deterministically to a palette kit.
+  `resolveKits(playerKit, oppName)` guarantees contrast: clash → away variant
+  (colours swapped) → emergency third kit (tested exhaustively: every palette
+  colour × every opponent ≥ CLASH_THRESHOLD apart). `gkColor` keeps keepers
+  distinct from their own side. `sanitizeKit` validates untrusted save input.
+- **Store/persistence** — `kit: Kit|null` top-level persisted (**v17**),
+  `setKit`, `completeOnboarding(club, manager, kit?)`. Migration v17: existing
+  saves keep the classic strip (kit: null → DEFAULT_KIT at render).
+- **`KitPicker.tsx`** — SVG shirt preview (`KitShirt`) + swatch rows + pattern
+  chips + randomiser. Lives in BOTH the onboarding flow (new stage: club → kit
+  → tour) and ClubSettings (edit any time). Header shows a mini shirt next to
+  the club name.
+- **Visualizer** — `MatchPitchView` takes `kitA/kitB`; dots are painted shirt
+  colour + pattern overlay readable at dot scale; keepers wear a contrast
+  shirt. `MatchView` resolves the fixture's kits via `resolveKits`.
+- Verified live: onboarding kit stage → red/white-stripes kit persisted →
+  match showed Crimson Casuals (red stripes) vs Hartlepool Galacticos
+  (authored yellow/blue sash), keepers distinct. Note: dev-only HMR errors
+  appeared when the component gained props while mounted — clean loads are
+  error-free; production unaffected.
 
 ---
 

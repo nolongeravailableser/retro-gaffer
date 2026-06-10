@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 16;
+export const CURRENT_VERSION = 17;
 
 type Save = Record<string, unknown>;
 
@@ -100,6 +100,11 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   // save to migrate, so it keeps the create() default of onboarded:false.
   16: (s) => ({
     onboarded: true,
+    ...s,
+  }),
+  // Kits: existing saves keep the classic strip until they design one.
+  17: (s) => ({
+    kit: null,
     ...s,
   }),
 };

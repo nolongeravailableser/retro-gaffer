@@ -61,6 +61,7 @@ import {
 } from '@/lib/economy';
 import { getBrief } from '@/lib/scouting';
 import { pickBestXI, planAutoBuy, AUTO_BUY_RESERVE, type ShopOffer } from '@/lib/autopick';
+import { sanitizeKit, type Kit } from '@/lib/kits';
 import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
@@ -198,6 +199,8 @@ interface GameState {
   managerName: string | null;
   /** Whether the first-time onboarding (club setup + tutorial) has been completed. */
   onboarded: boolean;
+  /** The club's designed kit (colours + pattern). null → classic default strip. */
+  kit: Kit | null;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -307,8 +310,10 @@ interface GameState {
   advanceCareerSeason: (youthId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
   newDailyRun: () => void;
-  /** Complete first-time onboarding (or rename later): set club + manager name. */
-  completeOnboarding: (clubName: string, managerName: string) => void;
+  /** Complete first-time onboarding (or rename later): set club + manager name (+ kit). */
+  completeOnboarding: (clubName: string, managerName: string, kit?: Kit) => void;
+  /** Update the club kit (validated; malformed input is ignored). */
+  setKit: (kit: Kit) => void;
   /** Serialize the current run to a portable save code. */
   exportSave: () => string;
   /** Load a run from a save code; returns an error string or null on success. */
@@ -390,6 +395,7 @@ function saveSlice(s: GameState) {
     clubName: s.clubName,
     managerName: s.managerName,
     onboarded: s.onboarded,
+    kit: s.kit,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -439,6 +445,7 @@ export const useGameStore = create<GameState>()(
       clubName: null,
       managerName: null,
       onboarded: false,
+      kit: null,
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -1142,12 +1149,16 @@ export const useGameStore = create<GameState>()(
           };
         }),
 
-      completeOnboarding: (clubName, managerName) =>
-        set({
+      completeOnboarding: (clubName, managerName, kit) =>
+        set((s) => ({
           clubName: clubName.trim() ? clubName.trim().slice(0, 24) : null,
           managerName: managerName.trim() ? managerName.trim().slice(0, 24) : null,
           onboarded: true,
-        }),
+          kit: kit ? sanitizeKit(kit) ?? s.kit : s.kit,
+        })),
+
+      setKit: (kit) =>
+        set((s) => ({ kit: sanitizeKit(kit) ?? s.kit })),
 
       exportSave: () => encodeSave(saveSlice(get())),
 
