@@ -3,6 +3,7 @@ import { Coins, Sparkles } from 'lucide-react';
 import type { Player } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { RARITY_STYLES } from '@/components/ui/rarityStyles';
+import MiniStats from '@/components/ui/MiniStats';
 
 interface PlayerCardProps {
   player: Player;
@@ -75,6 +76,10 @@ export default function PlayerCard({
         <span className="flex items-center gap-1 text-crt-amber">
           <Coins size={13} />£{player.cost}M
         </span>
+      </div>
+
+      <div className="mt-2 border-t border-white/5 pt-1.5">
+        <MiniStats player={player} />
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1">

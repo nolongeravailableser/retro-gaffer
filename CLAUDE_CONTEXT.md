@@ -78,7 +78,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **174/174 passing** across 18 files.
+- `npm test` — **185/185 passing** across 19 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -282,6 +282,34 @@ with one derived "journey stage" driving the whole UI:
   Auto-Sign loop → "Ready! Play Round 1"; remove player → step ② with
   Auto-Pick; full loop to kickoff; post-match red card correctly flipped the
   bar back to "sign a FWD" with the dot on Transfers.
+
+---
+
+## 2g. Extended player stats → match-engine integration (uncommitted)
+
+Eight stats (`src/lib/stats.ts`), each owning ONE engine lever — nothing
+decorative: **PAC/PAS** → chance creation · **SHO** → conversion + scorer
+identity · **DEF(ending)** → blunts opponent creation · **GK** (single keeper
+stat, tracks a GK's DEF) → blunts opponent conversion · **PHY** → injury
+resistance · **CMP** → 75'+ clutch window · **DIS** → who collects cards.
+
+- **Derived, not authored**: `deriveStats(p)` (pure, memoized) = positional
+  archetype base (8 Position archetypes + Role fallback) + quality coupling
+  (ATK/DEF) + per-player id-hash jitter. Nothing persisted, no players.json
+  change, no save/codec/version bump; youth, aged, rivals, bosses covered free.
+- **Engine** (`engine.ts`): `teamStatProfile(squad)` aggregates feed a bounded
+  xG multiplier (±14% clamp — stats season the ATK/DEF core, never replace it);
+  composure swings per-minute rates after 75' (±7%); `pickScorer` weights by
+  shooting; card/injury victim picks weighted by discipline/physical via a
+  one-roll `weightedPick` (RNG consumption per minute UNCHANGED → determinism
+  structure intact). New `EngineTuning.statInfluence` master dial (default 1;
+  0 reproduces pure ATK/DEF math — tested).
+- **UI**: `MiniStats.tsx` — tier-coloured 3×2 grid on ShopCard + PlayerCard
+  (keepers swap in GK; full 8 in the tooltip).
+- **Balance gate**: `npm run sim` before/after — completion 36.5%→37.2%,
+  per-round win% drift ≤3pp, R12 boss unchanged. Tests: `tests/stats.test.ts`
+  (11: archetypes, bounds, GK rule, quality coupling, profile aggregates,
+  sharp-vs-blunt sensitivity, statInfluence:0 independence, card-magnet share).
 
 ---
 

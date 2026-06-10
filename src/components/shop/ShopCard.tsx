@@ -5,6 +5,7 @@ import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { RARITY_STYLES } from '@/components/ui/rarityStyles';
 import { positionLabel, leagueCode } from '@/lib/playerMeta';
 import StatBar from '@/components/ui/StatBar';
+import MiniStats from '@/components/ui/MiniStats';
 
 /** What signing this player would add to the current XI's chemistry. */
 export interface ChemPreview {
@@ -83,6 +84,11 @@ export default function ShopCard({ player, affordable, blockedReason, chem, onBu
       <div className="mt-2.5 flex flex-col gap-1.5">
         <StatBar label="ATK" value={player.stats.attack} labelClass="text-rose-300/80" />
         <StatBar label="DEF" value={player.stats.defense} labelClass="text-sky-300/80" />
+      </div>
+
+      {/* Extended profile — every number drives the sim */}
+      <div className="mt-2 border-t border-white/5 pt-1.5">
+        <MiniStats player={player} />
       </div>
 
       {/* Chemistry preview — what this signing adds to the current XI */}

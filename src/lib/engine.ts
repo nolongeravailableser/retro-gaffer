@@ -6,6 +6,7 @@
 
 import type { Player, MatchEvent, MatchResult } from './types';
 import { Rng } from './rng';
+import { deriveStats, teamStatProfile, type TeamStatProfile } from './stats';
 
 export interface MatchTeam {
   name: string;
@@ -34,6 +35,14 @@ export interface EngineTuning {
   pStraightRed: number;
   /** Per-minute probability of an injury for side A. */
   pInjury: number;
+  /**
+   * Master dial (0–1) for how much the EXTENDED stats (pace/shooting/passing/
+   * defending/goalkeeping/composure/discipline/physical) sway the sim. At 0 the
+   * engine reproduces the pure ATK/DEF math; at 1 (default) stat profiles
+   * modulate xG (bounded ±14%), the 75'+ window, scorer identity, and who
+   * picks up cards/injuries. Defaults to 1 when omitted.
+   */
+  statInfluence?: number;
 }
 
 /** The classic ruleset — the single source of truth for default match feel. */
@@ -45,6 +54,7 @@ export const DEFAULT_TUNING: EngineTuning = {
   pYellow: 0.025, // ~2.25 yellows/game
   pStraightRed: 0.003, // ~0.27 reds/game
   pInjury: 0.005, // ~0.45 injuries/game
+  statInfluence: 1,
 };
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -121,12 +131,24 @@ const RED_OPP = 1.12; // the opponent's scoring rate after your red
 const INJ_SELF = 0.95;
 const INJ_OPP = 1.05;
 
-/** Weight scorers toward the front of the pitch. Keepers never score. */
-function pickScorer(rng: Rng, squad: Player[]): string {
+/** Pull a stat-derived factor toward neutral (1) by the influence dial. */
+function swayBy(inf: number): (m: number) => number {
+  return (m) => 1 + (m - 1) * inf;
+}
+
+/**
+ * Weight scorers toward the front of the pitch AND toward sharp shooters —
+ * your 95-SHO striker leads the charts. Keepers never score. Consumes exactly
+ * one rng value (same as a uniform pick).
+ */
+function pickScorer(rng: Rng, squad: Player[], inf: number): string {
   if (squad.length === 0) return 'a trialist';
-  const weights: number[] = squad.map((p) =>
-    p.role === 'FWD' ? 4 : p.role === 'MID' ? 3 : p.role === 'DEF' ? 1 : 0
-  );
+  const sway = swayBy(inf);
+  const weights: number[] = squad.map((p) => {
+    const roleW = p.role === 'FWD' ? 4 : p.role === 'MID' ? 3 : p.role === 'DEF' ? 1 : 0;
+    if (roleW === 0) return 0;
+    return roleW * sway(0.45 + deriveStats(p).shooting / 90);
+  });
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return squad[squad.length - 1].name; // all-keeper edge case
   let r = rng.next() * total;
@@ -137,6 +159,46 @@ function pickScorer(rng: Rng, squad: Player[]): string {
   return squad[squad.length - 1].name;
 }
 
+/** Weighted pick consuming exactly ONE rng value (like rng.pick). */
+function weightedPick(rng: Rng, squad: readonly Player[], weight: (p: Player) => number): Player {
+  let total = 0;
+  const ws = squad.map((p) => {
+    const w = Math.max(0.01, weight(p));
+    total += w;
+    return w;
+  });
+  let r = rng.next() * total;
+  for (let i = 0; i < squad.length; i++) {
+    r -= ws[i];
+    if (r <= 0) return squad[i];
+  }
+  return squad[squad.length - 1];
+}
+
+/** Card-proneness: low discipline → up to ~1.3×; high → down to ~0.25×. */
+function cardWeight(inf: number): (p: Player) => number {
+  const sway = swayBy(inf);
+  return (p) => sway((115 - deriveStats(p).discipline) / 65);
+}
+
+/** Injury-proneness: frail (low physical) players go down more often. */
+function injuryWeight(inf: number): (p: Player) => number {
+  const sway = swayBy(inf);
+  return (p) => sway((115 - deriveStats(p).physical) / 65);
+}
+
+/**
+ * Attack-vs-defense stat multiplier for one side's xG. Creation+finishing push
+ * it up; the opponent's defending blunts creation and their keeper blunts
+ * conversion. Bounded so stats stay a MODIFIER on the ATK/DEF core, never the
+ * main event.
+ */
+function statXgMult(atk: TeamStatProfile, def: TeamStatProfile): number {
+  const attackSide = 1 + (atk.creation - 50) * 0.0009 + (atk.finishing - 50) * 0.0013;
+  const defenseSide = 1 - (def.defending - 50) * 0.0007 - (def.goalkeeping - 50) * 0.0009;
+  return clamp(attackSide * defenseSide, 0.86, 1.14);
+}
+
 /** Simulate a 90-minute match. Deterministic for a given seed. */
 export function simulateMatch(
   a: MatchTeam,
@@ -145,10 +207,29 @@ export function simulateMatch(
   tuning: EngineTuning = DEFAULT_TUNING
 ): MatchResult {
   const rng = new Rng(seed);
-  const xgA = expectedGoals(a.attack, b.defense, tuning);
-  const xgB = expectedGoals(b.attack, a.defense, tuning);
+  const inf = tuning.statInfluence ?? 1;
+  const sway = swayBy(inf);
+
+  // Extended-stat layer: team profiles modulate the ATK/DEF xG core (bounded).
+  const profA = teamStatProfile(a.squad);
+  const profB = teamStatProfile(b.squad);
+  const xgA = clamp(
+    expectedGoals(a.attack, b.defense, tuning) * sway(statXgMult(profA, profB)),
+    tuning.minXg,
+    tuning.maxXg
+  );
+  const xgB = clamp(
+    expectedGoals(b.attack, a.defense, tuning) * sway(statXgMult(profB, profA)),
+    tuning.minXg,
+    tuning.maxXg
+  );
   const perMinuteA = xgA / 90;
   const perMinuteB = xgB / 90;
+
+  // Composure: from the 76th minute the clutch side creates a little more,
+  // the bottlers a little less. Zero-sum-ish and bounded.
+  const lateMultA = sway(clamp(1 + (profA.composure - profB.composure) * 0.0014, 0.93, 1.07));
+  const lateMultB = sway(clamp(1 + (profB.composure - profA.composure) * 0.0014, 0.93, 1.07));
 
   const events: MatchEvent[] = [
     { minute: 0, side: 'A', kind: 'flavour', text: KICKOFF },
@@ -174,9 +255,10 @@ export function simulateMatch(
   for (let minute = 1; minute <= 90; minute++) {
     for (const side of sides) {
       const team = side === 'A' ? a : b;
-      const perMinute = (side === 'A' ? perMinuteA * aMult : perMinuteB * bMult);
+      const late = minute > 75 ? (side === 'A' ? lateMultA : lateMultB) : 1;
+      const perMinute = (side === 'A' ? perMinuteA * aMult : perMinuteB * bMult) * late;
       if (rng.chance(perMinute)) {
-        const scorer = pickScorer(rng, team.squad);
+        const scorer = pickScorer(rng, team.squad, inf);
         if (side === 'A') goalsA++;
         else goalsB++;
         events.push({
@@ -186,7 +268,7 @@ export function simulateMatch(
           text: `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorer)}`,
         });
       } else if (rng.chance(perMinute * tuning.chanceFactor)) {
-        const p = pickScorer(rng, team.squad);
+        const p = pickScorer(rng, team.squad, inf);
         events.push({
           minute,
           side,
@@ -207,7 +289,7 @@ export function simulateMatch(
     const injuryRoll = rng.next();
 
     if (yellowRoll < tuning.pYellow && a.squad.length > 0) {
-      const player = rng.pick(a.squad);
+      const player = weightedPick(rng, a.squad, cardWeight(inf));
       if (yellowed.has(player.id) && !redPlayer) {
         // Second yellow → red
         redPlayer = player;
@@ -223,7 +305,7 @@ export function simulateMatch(
     }
 
     if (redRoll < tuning.pStraightRed && !redPlayer && a.squad.length > 0) {
-      const player = rng.pick(a.squad);
+      const player = weightedPick(rng, a.squad, cardWeight(inf));
       if (!yellowed.has(player.id)) {
         redPlayer = player;
         aMult *= RED_SELF;
@@ -234,7 +316,7 @@ export function simulateMatch(
     }
 
     if (injuryRoll < tuning.pInjury && !injuredPlayer && a.squad.length > 0) {
-      const player = rng.pick(a.squad);
+      const player = weightedPick(rng, a.squad, injuryWeight(inf));
       const r = rng.next();
       injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
       injuredPlayer = player;
@@ -254,7 +336,7 @@ export function simulateMatch(
       oppRed = true;
       bMult *= RED_SELF;
       aMult *= RED_OPP;
-      const player = rng.pick(b.squad);
+      const player = weightedPick(rng, b.squad, cardWeight(inf));
       const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
       events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}` });
     }
@@ -263,7 +345,7 @@ export function simulateMatch(
       oppInjured = true;
       bMult *= INJ_SELF;
       aMult *= INJ_OPP;
-      const player = rng.pick(b.squad);
+      const player = weightedPick(rng, b.squad, injuryWeight(inf));
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
       events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}` });
     }
