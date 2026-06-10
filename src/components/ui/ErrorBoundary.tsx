@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { encodeSave } from '@/lib/savecode';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -29,10 +30,19 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   private copySave = async () => {
     try {
-      // Raw blob is enough to restore by pasting back into localStorage; the
-      // in-game save-code flow is unavailable if the store itself is broken.
+      // Encode a proper GAFFER-SAVE code so the player can restore it through
+      // the normal Club-tab import after reloading. encodeSave is a pure lib
+      // function — safe even when the store/UI is what crashed. Fall back to
+      // the raw blob if the persisted JSON is too mangled to encode.
       const raw = localStorage.getItem('gaffer-run') ?? '';
-      await navigator.clipboard.writeText(raw);
+      let payload = raw;
+      try {
+        const blob = JSON.parse(raw) as { state?: Record<string, unknown> };
+        if (blob?.state) payload = encodeSave(blob.state);
+      } catch {
+        /* keep raw */
+      }
+      await navigator.clipboard.writeText(payload);
       this.setState({ copied: true });
       setTimeout(() => this.setState({ copied: false }), 1600);
     } catch {
@@ -65,9 +75,12 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
             onClick={this.copySave}
             className="rounded-lg border border-white/15 px-4 py-2 font-display text-sm text-chrome-muted hover:bg-white/5 hover:text-chrome"
           >
-            {this.state.copied ? 'Copied!' : 'Copy save backup'}
+            {this.state.copied ? 'Copied!' : 'Copy save code'}
           </button>
         </div>
+        <p className="max-w-md text-xs text-chrome-muted">
+          The copied code restores via Club → Move Your Run → paste &amp; Load.
+        </p>
       </div>
     );
   }

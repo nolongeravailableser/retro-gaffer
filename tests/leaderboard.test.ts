@@ -62,16 +62,28 @@ describe('submitDailyScore', () => {
 
 describe('fetchDailyTop', () => {
   it('returns entries on success and null on any failure', async () => {
+    // Distinct days per case — results are memoized for 60s per day.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ entries: [{ id: 'a', club: 'FC A', score: 9000 }] }),
     }));
-    expect(await fetchDailyTop('2026-06-10')).toEqual([{ id: 'a', club: 'FC A', score: 9000 }]);
+    expect(await fetchDailyTop('2030-01-01')).toEqual([{ id: 'a', club: 'FC A', score: 9000 }]);
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
-    expect(await fetchDailyTop('2026-06-10')).toBeNull();
+    expect(await fetchDailyTop('2030-01-02')).toBeNull();
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('net')));
-    expect(await fetchDailyTop('2026-06-10')).toBeNull();
+    expect(await fetchDailyTop('2030-01-03')).toBeNull();
+  });
+
+  it('serves repeat same-day requests from cache (no second fetch)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ entries: [{ id: 'b', club: 'FC B', score: 100 }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchDailyTop('2030-02-01');
+    await fetchDailyTop('2030-02-01');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -72,17 +72,29 @@ export async function submitDailyScore(opts: {
   }
 }
 
+// Short-lived cache: tab-hopping to Records shouldn't refetch (or blank) the
+// board, nor burn API commands. Entries refresh after a minute.
+const CACHE_TTL_MS = 60_000;
+const topCache = new Map<string, { at: number; entries: LeaderboardEntry[] | null }>();
+
 /** Today's top entries, or null when the leaderboard is unavailable. */
 export async function fetchDailyTop(day: string): Promise<LeaderboardEntry[] | null> {
+  const cached = topCache.get(day);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.entries;
   try {
     const resp = await fetch(`/api/daily?day=${encodeURIComponent(day)}`);
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      topCache.set(day, { at: Date.now(), entries: null });
+      return null;
+    }
     const data = (await resp.json()) as { entries?: LeaderboardEntry[] };
-    if (!Array.isArray(data.entries)) return null;
-    return data.entries.filter(
-      (e) => typeof e.club === 'string' && typeof e.score === 'number'
-    );
+    const entries = Array.isArray(data.entries)
+      ? data.entries.filter((e) => typeof e.club === 'string' && typeof e.score === 'number')
+      : null;
+    topCache.set(day, { at: Date.now(), entries });
+    return entries;
   } catch {
+    topCache.set(day, { at: Date.now(), entries: null });
     return null;
   }
 }

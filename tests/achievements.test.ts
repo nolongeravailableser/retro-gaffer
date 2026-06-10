@@ -77,6 +77,7 @@ describe('achievement checks', () => {
       ['on_the_brink', snap({ lives: 1 })],
       ['marathon_man', snap({ endless: true, round: 15 })],
       ['daily_grind', snap({ daily: true, runStatus: 'lost', outcome: 'loss', result: result({ outcome: 'loss', score: { a: 0, b: 2 } }) })],
+      ['daily_winner', snap({ daily: true, runStatus: 'won' })],
       ['dynasty', snap({ careerSeasons: 3 })],
       ['challenge_taker', snap({ runStatus: 'won', scenario: 'one_shot' })],
     ];
@@ -85,9 +86,10 @@ describe('achievement checks', () => {
     }
   });
 
-  it('Champions requires Classic (not endless, not a scenario)', () => {
+  it('Champions requires Classic (not endless, scenario, or Daily)', () => {
     expect(newlyUnlocked([], snap({ runStatus: 'won', endless: true }))).not.toContain('champions');
     expect(newlyUnlocked([], snap({ runStatus: 'won', scenario: 'x' }))).not.toContain('champions');
+    expect(newlyUnlocked([], snap({ runStatus: 'won', daily: true }))).not.toContain('champions');
   });
 
   it('every achievement has unique id and resolvable metadata', () => {

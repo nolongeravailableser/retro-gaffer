@@ -53,3 +53,16 @@ export function applyTalk(team: MatchTeam, talk: TeamTalk): MatchTeam {
     defense: Math.round(team.defense * talk.def),
   };
 }
+
+/**
+ * The OPPONENT's half-time response — purely score-derived, so it's
+ * deterministic and readable: trailing by 2+ they throw men forward, leading
+ * by 2+ they shut up shop, otherwise no change. The player can reason about
+ * it ("if I attack while 2 up, they'll park anyway").
+ */
+export function aiTalkFor(scoreFor: number, scoreAgainst: number): TeamTalk | null {
+  const diff = scoreFor - scoreAgainst;
+  if (diff <= -2) return TEAM_TALKS.find((t) => t.id === 'attack')!;
+  if (diff >= 2) return TEAM_TALKS.find((t) => t.id === 'park')!;
+  return null;
+}

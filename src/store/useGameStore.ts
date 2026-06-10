@@ -665,11 +665,18 @@ export const useGameStore = create<GameState>()(
           } else if (finalRound) {
             statusAfter = outcome === 'win' || config.finalMustWin === false ? 'won' : 'lost';
           }
-          // A career season completed (review path) counts toward Dynasty.
-          const careerSeasons =
-            s.career && statusAfter !== 'lost' && (lives <= 0 || finalRound)
-              ? Math.max(s.careerBest, s.career.season)
-              : s.careerBest;
+          // Seasons completed toward Dynasty — mirrors EXACTLY what the career
+          // branches below will write to careerBest: a met review banks the
+          // current season; a sacking still banks the seasons already survived
+          // (season − 1). Keeping this in sync matters: a manager sacked in
+          // season 5 has completed 4 and must unlock Dynasty NOW, not next career.
+          const careerSeasons = s.career
+            ? statusAfter === 'lost'
+              ? Math.max(s.careerBest, s.career.season - 1)
+              : lives <= 0 || finalRound
+                ? Math.max(s.careerBest, s.career.season)
+                : s.careerBest
+            : s.careerBest;
 
           const squadValue = s.owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
           const unlocked = newlyUnlocked(s.achievements, {

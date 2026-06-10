@@ -52,7 +52,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'Champions of Europe',
     emoji: '🏆',
     blurb: 'Win a full Classic climb.',
-    check: (s) => s.runStatus === 'won' && !s.scenario && !s.endless,
+    check: (s) => s.runStatus === 'won' && !s.scenario && !s.endless && !s.daily,
+  },
+  {
+    id: 'daily_winner',
+    name: 'Gauntlet Conqueror',
+    emoji: '🗓️',
+    blurb: 'Win a Daily Gauntlet outright.',
+    check: (s) => s.daily && s.runStatus === 'won',
   },
   {
     id: 'giant_slayer',

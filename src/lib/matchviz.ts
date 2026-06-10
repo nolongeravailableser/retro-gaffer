@@ -11,6 +11,7 @@
  */
 
 import type { Player, MatchEvent, Role } from './types';
+import { KICKOFF, HALFTIME, FULLTIME } from './engine';
 import { Rng } from './rng';
 
 export interface VizPoint {
@@ -205,11 +206,16 @@ export function buildVizTimeline(
         break;
       }
       default: {
-        // Flavour beats: kickoff / half-time / full-time reset to the spot;
-        // anything else is neutral possession weighted by xG dominance.
-        if (e.minute === 0 || e.minute === 45 || e.minute === 90) {
-          const isFT = e.minute === 90 && e.text.includes('full-time');
-          const isHT = e.minute === 45;
+        // Flavour beats: the CANONICAL kickoff/half-time/full-time events
+        // (matched by text, not minute — driver-inserted subs/talks can land
+        // on minute 45) reset to the spot; everything else is neutral
+        // possession weighted by xG dominance.
+        const whistle =
+          e.text === FULLTIME ? 'FULL-TIME'
+          : e.text === HALFTIME ? 'HALF-TIME'
+          : e.text === KICKOFF ? 'KICK-OFF'
+          : null;
+        if (whistle) {
           scenes.push({
             kind: 'flavour',
             side: 'A',
@@ -219,10 +225,7 @@ export function buildVizTimeline(
             ],
             shiftA: 0,
             shiftB: 0,
-            flash:
-              isFT ? { text: 'FULL-TIME', color: FLASH_COLORS.flavour }
-              : isHT ? { text: 'HALF-TIME', color: FLASH_COLORS.flavour }
-              : { text: 'KICK-OFF', color: FLASH_COLORS.flavour },
+            flash: { text: whistle, color: FLASH_COLORS.flavour },
           });
         } else {
           scenes.push(possession(rng, rng.next() < xgShareA ? 'A' : 'B'));

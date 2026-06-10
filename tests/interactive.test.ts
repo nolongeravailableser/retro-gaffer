@@ -11,7 +11,7 @@ import {
   DEFAULT_TUNING,
   type MatchTeam,
 } from '@/lib/engine';
-import { TEAM_TALKS, applyTalk } from '@/lib/teamtalk';
+import { TEAM_TALKS, applyTalk, aiTalkFor } from '@/lib/teamtalk';
 import type { Player, Role } from '@/lib/types';
 
 function squad(prefix: string): Player[] {
@@ -125,6 +125,15 @@ describe('team talks', () => {
     const bus = applyTalk(teamA, park);
     expect(bus.defense).toBeGreaterThan(teamA.defense);
     expect(bus.attack).toBeLessThan(teamA.attack);
+  });
+
+  it('the AI half-time response is score-derived and deterministic', () => {
+    expect(aiTalkFor(0, 2)?.id).toBe('attack'); // trailing by 2 → chase
+    expect(aiTalkFor(0, 3)?.id).toBe('attack');
+    expect(aiTalkFor(2, 0)?.id).toBe('park'); // leading by 2 → shut up shop
+    expect(aiTalkFor(1, 0)).toBeNull(); // narrow games → no change
+    expect(aiTalkFor(1, 1)).toBeNull();
+    expect(aiTalkFor(1, 2)).toBeNull();
   });
 
   it('all-out attack produces more second-half goals than staying steady', () => {

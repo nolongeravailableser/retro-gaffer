@@ -119,9 +119,12 @@ const INJURY_LINES = [
   '{p} limps off after a heavy challenge. Fingers crossed it\'s nothing serious.',
 ];
 
-const KICKOFF = 'And we are underway at the Theatre of Nostalgia!';
-const HALFTIME = 'The referee blows for half-time.';
-const FULLTIME = "That's full-time!";
+// Exported so presentation layers (sound, 2D viz) can recognise the canonical
+// whistle beats by TEXT — a driver-inserted flavour event (substitution, team
+// talk) that lands on minute 45 must not read as half-time.
+export const KICKOFF = 'And we are underway at the Theatre of Nostalgia!';
+export const HALFTIME = 'The referee blows for half-time.';
+export const FULLTIME = "That's full-time!";
 
 // A sending-off / injury reshapes the rest of the match: the offending side
 // creates less and concedes more for the remaining minutes. Reds bite harder
