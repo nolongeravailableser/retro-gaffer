@@ -27,6 +27,7 @@ interface PvpPanelProps {
 export default function PvpPanel({ canPlay, onPlayImported }: PvpPanelProps) {
   const xi = useGameStore((s) => s.xi);
   const formation = useGameStore((s) => s.formation);
+  const clubName = useGameStore((s) => s.clubName);
 
   const [myCode, setMyCode] = useState<string | null>(null);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
@@ -35,7 +36,7 @@ export default function PvpPanel({ canPlay, onPlayImported }: PvpPanelProps) {
   const [error, setError] = useState<string | null>(null);
 
   const generate = () => {
-    setMyCode(exportTeam(xi, 'Your XI', formation));
+    setMyCode(exportTeam(xi, clubName ?? 'Your XI', formation));
     setCopied(null);
   };
 

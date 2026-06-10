@@ -62,6 +62,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
   const careerBest = useGameStore((s) => s.careerBest);
+  const clubName = useGameStore((s) => s.clubName);
   const startRun = useGameStore((s) => s.startRun);
   const startScenario = useGameStore((s) => s.startScenario);
   const startCareer = useGameStore((s) => s.startCareer);
@@ -166,6 +167,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
                 record,
                 peakBankroll,
                 bestStreak,
+                clubName,
               });
               try {
                 await navigator.clipboard.writeText(text);

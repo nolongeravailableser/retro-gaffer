@@ -190,6 +190,12 @@ interface GameState {
   collection: string[];
   /** Best score per scored mode ('endless', 'daily') — persisted across runs. */
   bestScore: Record<string, number>;
+  /** Player's club name (the team's display name). null → falls back to 'Your XI'. */
+  clubName: string | null;
+  /** Player's manager name (flavour / identity). */
+  managerName: string | null;
+  /** Whether the first-time onboarding (club setup + tutorial) has been completed. */
+  onboarded: boolean;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -295,6 +301,8 @@ interface GameState {
   advanceCareerSeason: (youthId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
   newDailyRun: () => void;
+  /** Complete first-time onboarding (or rename later): set club + manager name. */
+  completeOnboarding: (clubName: string, managerName: string) => void;
   /** Serialize the current run to a portable save code. */
   exportSave: () => string;
   /** Load a run from a save code; returns an error string or null on success. */
@@ -373,6 +381,9 @@ function saveSlice(s: GameState) {
     careerBest: s.careerBest,
     collection: s.collection,
     bestScore: s.bestScore,
+    clubName: s.clubName,
+    managerName: s.managerName,
+    onboarded: s.onboarded,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -419,6 +430,9 @@ export const useGameStore = create<GameState>()(
       collection: [],
       bestScore: {},
       dailyCompleted: null,
+      clubName: null,
+      managerName: null,
+      onboarded: false,
       ...freshRun(),
 
       buy: (shopIndex) => {
@@ -1046,6 +1060,13 @@ export const useGameStore = create<GameState>()(
               : `Season ${nextSeason}: reach round ${target} or you're sacked.`,
             noticeKind: 'info',
           };
+        }),
+
+      completeOnboarding: (clubName, managerName) =>
+        set({
+          clubName: clubName.trim() ? clubName.trim().slice(0, 24) : null,
+          managerName: managerName.trim() ? managerName.trim().slice(0, 24) : null,
+          onboarded: true,
         }),
 
       exportSave: () => encodeSave(saveSlice(get())),

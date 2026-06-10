@@ -99,6 +99,23 @@ describe('migrations', () => {
     const migrated = migrateSave(validSave({ relics: ['agent'] }), 6) as Record<string, unknown>;
     expect(migrated.relics).toEqual(['agent']);
   });
+
+  it('marks an existing (pre-onboarding) save as already onboarded', () => {
+    // Existing players must never be walled with the first-time flow.
+    const migrated = migrateSave(validSave(), 15) as Record<string, unknown>;
+    expect(migrated.onboarded).toBe(true);
+  });
+
+  it('round-trips club identity (name + manager + onboarded)', () => {
+    const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
+    const r = decodeSave(encodeSave(save));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.state.clubName).toBe('Pixel Rovers');
+      expect(r.state.managerName).toBe('The Gaffer');
+      expect(r.state.onboarded).toBe(true);
+    }
+  });
 });
 
 describe('cross-tab sync guard (externalSaveChange)', () => {

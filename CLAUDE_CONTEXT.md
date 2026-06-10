@@ -74,7 +74,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **153/153 passing** across 16 files.
+- `npm test` — **155/155 passing** across 16 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -171,6 +171,32 @@ Files touched: `store/useGameStore.ts`, `store/persistence.ts` (v15), `lib/engin
 `components/season/EventBanner.tsx`, `components/run/NewRunModal.tsx`,
 `components/run/RunOverModal.tsx` (new), `components/career/CareerReview.tsx`,
 `components/shop/Shop.tsx`, `App.tsx`, `tests/engine.test.ts` (+1).
+
+---
+
+## 2c. First-Time User Experience (FTUE) — onboarding + club identity (uncommitted)
+
+A brand-new visitor now gets onboarding; players can name their club.
+
+- **Club identity** — store gained `clubName`/`managerName` (+ `onboarded`), all
+  **top-level persisted** (survive New Game / mode switches), in `saveSlice`, and
+  round-tripped by save codes. `completeOnboarding(club, manager)` sets them (trim,
+  24-char cap). The name flows into the match scoreboard (`playerTeam.name`),
+  the header subtitle, the SquadList header, the PvP export code, and the share text
+  (`formatRunResult` gained an optional `clubName`). Falls back to `'Your XI'`.
+- **First-run detection** — persistence **v16**: the migration marks any *existing*
+  save `onboarded: true` so live players are never walled; a truly fresh install (no
+  save to migrate) keeps the create() default `onboarded: false` → onboarding shows.
+- **`OnboardingModal.tsx`** (App-level, z-70) — stage 1 club/manager setup (with a
+  "Surprise me" randomiser + Skip), stage 2 a 4-card mechanics carousel
+  (Draft → Tactics/Chemistry → Season/lives/bosses → Modes/Daily). Rendered when
+  `!onboarded || tutorialOpen`.
+- **`ClubSettings.tsx`** (More tab) — rename club/manager any time (reuses
+  `completeOnboarding`) and a **Replay tutorial** button (opens the modal in
+  `tutorialOnly` mode — carousel only).
+- Tests: `tests/savecode.test.ts` +2 (v16 migration marks existing saves onboarded;
+  club identity round-trips). Verified live: fresh flow names the club → propagates to
+  header/squad/persistence; reload doesn't re-onboard; replay-tutorial works.
 
 ---
 

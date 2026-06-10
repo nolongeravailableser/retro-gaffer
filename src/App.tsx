@@ -34,6 +34,8 @@ import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
+import OnboardingModal from '@/components/run/OnboardingModal';
+import ClubSettings from '@/components/run/ClubSettings';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
@@ -60,7 +62,11 @@ export default function App() {
 
   const suspensions = useGameStore((s) => s.suspensions);
   const injuries = useGameStore((s) => s.injuries);
+  const clubName = useGameStore((s) => s.clubName);
+  const managerName = useGameStore((s) => s.managerName);
+  const onboarded = useGameStore((s) => s.onboarded);
   const [activeTab, setActiveTab] = useState<Tab>('formation');
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [matchOpen, setMatchOpen] = useState(false);
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
   const [matchSeed, setMatchSeed] = useState<string | null>(null);
@@ -108,10 +114,10 @@ export default function App() {
     const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods);
     const playerTeam: MatchTeam | null =
       starters.length > 0
-        ? { name: 'Your XI', attack, defense, squad: starters }
+        ? { name: clubName ?? 'Your XI', attack, defense, squad: starters }
         : null;
     return { chemistry, multipliers, filled: starters.length, playerTeam };
-  }, [xi, roundMods, relics]);
+  }, [xi, roundMods, relics, clubName]);
 
   const config = useMemo(
     () => runConfig({ scenario, mode, mutator }),
@@ -170,6 +176,12 @@ export default function App() {
           </h1>
           <Sparkles size={20} />
         </div>
+        {clubName && (
+          <p className="-mt-1 font-display text-sm text-chrome">
+            {clubName}
+            {managerName && <span className="text-chrome-muted"> · {managerName}</span>}
+          </p>
+        )}
         <Hud onNewRun={() => setNewRunOpen(true)} />
       </header>
 
@@ -257,6 +269,7 @@ export default function App() {
             <RecordsPanel />
             <ScenariosPanel onStart={() => setActiveTab('formation')} />
             <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
+            <ClubSettings onReplayTutorial={() => setTutorialOpen(true)} />
             <SavePanel />
           </div>
         )}
@@ -290,6 +303,12 @@ export default function App() {
 
       <CareerReview />
       <RunOverModal onNewRun={() => setNewRunOpen(true)} />
+      {(!onboarded || tutorialOpen) && (
+        <OnboardingModal
+          tutorialOnly={onboarded}
+          onClose={() => setTutorialOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -37,6 +37,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const scenarioStars = useGameStore((s) => s.scenarioStars);
   const career = useGameStore((s) => s.career);
   const careerBest = useGameStore((s) => s.careerBest);
+  const clubName = useGameStore((s) => s.clubName);
 
   const startRun = useGameStore((s) => s.startRun);
   const startScenario = useGameStore((s) => s.startScenario);
@@ -114,7 +115,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
 
   const share = async () => {
     const text = formatRunResult({
-      daily, status: runStatus, round, record, peakBankroll, bestStreak,
+      daily, status: runStatus, round, record, peakBankroll, bestStreak, clubName,
     });
     try {
       await navigator.clipboard.writeText(text);

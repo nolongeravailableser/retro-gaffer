@@ -28,13 +28,14 @@ export interface RunResult {
   record: { w: number; d: number; l: number };
   peakBankroll: number;
   bestStreak: number;
+  /** Optional club name to personalise the summary. */
+  clubName?: string | null;
 }
 
 /** A short, copy-pasteable summary of a finished run. */
 export function formatRunResult(r: RunResult): string {
-  const head = r.daily
-    ? `Retro Gaffer — Daily ${r.daily}`
-    : 'Retro Gaffer';
+  const game = r.daily ? `Retro Gaffer — Daily ${r.daily}` : 'Retro Gaffer';
+  const head = r.clubName ? `${r.clubName} · ${game}` : game;
   const reached =
     r.status === 'won'
       ? 'CHAMPIONS OF EUROPE 🏆'

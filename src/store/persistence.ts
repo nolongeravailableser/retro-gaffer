@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 15;
+export const CURRENT_VERSION = 16;
 
 type Save = Record<string, unknown>;
 
@@ -92,6 +92,14 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   }),
   15: (s) => ({
     dailyCompleted: null,
+    ...s,
+  }),
+  // Existing players are already past onboarding — never wall them with the
+  // first-time flow. clubName/managerName stay unset (fall back to 'Your XI')
+  // and can be set later from the Club settings. A truly fresh install has no
+  // save to migrate, so it keeps the create() default of onboarded:false.
+  16: (s) => ({
+    onboarded: true,
     ...s,
   }),
 };

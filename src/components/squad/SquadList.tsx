@@ -23,6 +23,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const sell = useGameStore((s) => s.sell);
+  const clubName = useGameStore((s) => s.clubName);
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
@@ -53,8 +54,8 @@ export default function SquadList({ multipliers }: SquadListProps) {
     <div className="flex flex-col rounded-xl border border-white/10 bg-pitch-900/70 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-pitch-900/80">
-        <span className="font-display text-sm uppercase tracking-wide text-chrome">
-          Your Squad
+        <span className="truncate font-display text-sm uppercase tracking-wide text-chrome">
+          {clubName ?? 'Your Squad'}
         </span>
         <span className="font-ticker text-xs text-chrome-muted">
           {onPitch.size}/11 · {owned.length} owned
