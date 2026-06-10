@@ -17,6 +17,7 @@ import {
   DEFAULT_FORMATION,
   getFormation,
   slotRole,
+  roleCounts,
 } from '@/lib/formations';
 import { getPack } from '@/lib/packs';
 import {
@@ -59,6 +60,7 @@ import {
   drawShop,
 } from '@/lib/economy';
 import { getBrief } from '@/lib/scouting';
+import { pickBestXI, planAutoBuy, AUTO_BUY_RESERVE, type ShopOffer } from '@/lib/autopick';
 import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
@@ -286,6 +288,10 @@ interface GameState {
   removeFromSlot: (slotIndex: number) => void;
   removeFromBench: (id: string) => void;
   benchAll: () => void;
+  /** One-click: field the strongest available XI (chemistry-aware). */
+  autoPickXI: () => void;
+  /** One-click: sign current offers that fill the XI's missing roles. */
+  autoBuy: () => void;
 
   clearNotice: () => void;
   newGame: () => void;
@@ -920,6 +926,74 @@ export const useGameStore = create<GameState>()(
 
       // Pull everyone off the pitch back into the squad (unassigned); keep bench.
       benchAll: () => set({ xi: emptyXi(), selectedPlayerId: null }),
+
+      // One-click strongest XI: role-weighted stats + chemistry refinement,
+      // skipping suspended/injured players (lib/autopick — pure & deterministic).
+      autoPickXI: () =>
+        set((s) => {
+          if (s.owned.length === 0) {
+            return { notice: 'No players to pick — sign some first', noticeKind: 'error' as NoticeKind };
+          }
+          const result = pickBestXI(
+            s.owned,
+            s.formation,
+            { suspensions: s.suspensions, injuries: s.injuries },
+            getPlayer
+          );
+          const full = result.filled === XI_SIZE;
+          return {
+            xi: result.xi,
+            bench: result.bench,
+            selectedPlayerId: null,
+            notice: full
+              ? 'Auto-picked your strongest XI'
+              : `Auto-picked ${result.filled}/${XI_SIZE} — sign more players to fill the gaps`,
+            noticeKind: (full ? 'success' : 'info') as NoticeKind,
+          };
+        }),
+
+      // One-click need-driven signings from the CURRENT offers only (never
+      // chains paid refreshes, never spends below the reserve).
+      autoBuy: () => {
+        const s = get();
+        const discount = relicBuyDiscount(s.relics);
+        const offers: ShopOffer[] = [];
+        s.shop.forEach((id, index) => {
+          const player = getPlayer(id);
+          if (player) offers.push({ index, player, cost: Math.max(0, player.cost - discount) });
+        });
+        const starters = s.xi.map((id) => getPlayer(id)).filter((p): p is Player => !!p);
+        const ownedPlayers = s.owned.map((id) => getPlayer(id)).filter((p): p is Player => !!p);
+        const plan = planAutoBuy(
+          offers,
+          ownedPlayers,
+          starters,
+          s.formation,
+          s.bankroll,
+          s.owned.length,
+          ROSTER_CAP,
+          AUTO_BUY_RESERVE
+        );
+        if (plan.length === 0) {
+          const required = roleCounts(s.formation);
+          const have = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
+          for (const p of ownedPlayers) have[p.role]++;
+          const gaps = (['GK', 'DEF', 'MID', 'FWD'] as const).filter((r) => have[r] < required[r]);
+          set({
+            notice:
+              gaps.length === 0
+                ? 'Squad already covers every role — nothing to sign'
+                : `No affordable ${gaps.join('/')} in these offers — try a refresh or scout`,
+            noticeKind: 'info',
+          });
+          return;
+        }
+        // Reuse buy() per planned slot: it re-validates and auto-assigns.
+        for (const b of plan) get().buy(b.index);
+        const spent = plan.reduce((t, b) => t + b.cost, 0);
+        const names = plan.map((b) => b.player.name).join(', ');
+        set({ notice: `Auto-signed ${names} (£${spent}M)`, noticeKind: 'success' });
+      },
 
       clearNotice: () => set({ notice: null }),
 

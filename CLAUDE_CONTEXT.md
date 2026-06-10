@@ -74,7 +74,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **155/155 passing** across 16 files.
+- `npm test` — **168/168 passing** across 17 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -221,6 +221,30 @@ especially on mobile where it sat below the fold — had no clear path to start.
   squad-building, where the CTA then guides kick-off.
 - No engine/store/persistence changes; purely flow/affordance. Verified live at
   375px and desktop (sticky, no nav overlap, no console errors); 155 tests + build green.
+
+---
+
+## 2e. Auto-Pick & Auto-Sign (uncommitted)
+
+One-click squad helpers, both pure/deterministic in `src/lib/autopick.ts` (no RNG,
+ties break on id → Daily-safe):
+
+- **`pickBestXI`** — fields the strongest available XI: role-weighted scoring
+  (GK/DEF judged on DEF, FWD on ATK, MID balanced), excludes suspended/injured,
+  then a bounded chemistry refinement pass (accept same-role swaps that raise the
+  `computeChemistry` squad strength — so tag-sharers can beat raw stats). Bench =
+  best leftovers, fit players first. Store action `autoPickXI()`; "Auto-Pick" wand
+  button in the SquadList header (Tactics tab).
+- **`planAutoBuy`** — need-driven signings from the CURRENT 3 offers only: buys
+  players whose role the squad can't yet field a full XI with, best chemistry-aware
+  value first. **Never chains paid refreshes** and **never spends below
+  `AUTO_BUY_RESERVE` (£5M)** — a helper must not drain the bankroll. Store action
+  `autoBuy()` reuses `buy()` per slot (re-validates + auto-assigns); "Auto-Sign"
+  wand button in the Shop header. No-op paths give an info toast ("squad already
+  covers every role" / "no affordable GK in these offers").
+- Tests: `tests/autopick.test.ts` (13). Verified live on a fresh run:
+  Auto-Sign×refresh loop built an 11-man, all-chemistry squad for ~£38M, Auto-Pick
+  fielded 11/11, kickoff CTA flipped to "Ready! Play Round 1".
 
 ---
 

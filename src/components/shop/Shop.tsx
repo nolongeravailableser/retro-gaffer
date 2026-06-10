@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCw, Sparkles, Lock, LockOpen, ArrowDownUp } from 'lucide-react';
+import { RefreshCw, Sparkles, Lock, LockOpen, ArrowDownUp, Wand2 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { checkBuy, ROSTER_CAP } from '@/lib/economy';
 import { computeChemistry } from '@/lib/chemistry';
@@ -28,6 +28,7 @@ export default function Shop() {
   const refreshShop = useGameStore((s) => s.refreshShop);
   const setPack = useGameStore((s) => s.setPack);
   const toggleLock = useGameStore((s) => s.toggleLock);
+  const autoBuy = useGameStore((s) => s.autoBuy);
 
   const [sort, setSort] = useState<SortKey>('default');
 
@@ -67,6 +68,16 @@ export default function Shop() {
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="font-display text-xl">Transfer Market</h2>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={autoBuy}
+            data-testid="auto-buy"
+            title="Sign the best offers that fill your XI's missing roles (keeps a cash reserve; never auto-refreshes)"
+            className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1.5 text-xs font-display text-crt-green transition hover:bg-crt-green/20"
+          >
+            <Wand2 size={13} />
+            <span className="hidden sm:inline">Auto-Sign</span>
+          </button>
           <button
             type="button"
             onClick={toggleLock}

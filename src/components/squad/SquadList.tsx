@@ -1,4 +1,4 @@
-import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical } from 'lucide-react';
+import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
@@ -24,6 +24,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const sell = useGameStore((s) => s.sell);
   const clubName = useGameStore((s) => s.clubName);
+  const autoPickXI = useGameStore((s) => s.autoPickXI);
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
@@ -57,8 +58,20 @@ export default function SquadList({ multipliers }: SquadListProps) {
         <span className="truncate font-display text-sm uppercase tracking-wide text-chrome">
           {clubName ?? 'Your Squad'}
         </span>
-        <span className="font-ticker text-xs text-chrome-muted">
-          {onPitch.size}/11 · {owned.length} owned
+        <span className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={autoPickXI}
+            disabled={owned.length === 0}
+            data-testid="auto-pick"
+            title="Field your strongest available XI (chemistry-aware; skips banned/injured players)"
+            className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Wand2 size={12} /> Auto-Pick
+          </button>
+          <span className="font-ticker text-xs text-chrome-muted">
+            {onPitch.size}/11 · {owned.length} owned
+          </span>
         </span>
       </div>
 
