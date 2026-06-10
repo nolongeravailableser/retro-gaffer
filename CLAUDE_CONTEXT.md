@@ -72,8 +72,17 @@ live** unless noted.
   the wager, incl. the loss life-cost. Round/lives/streak promoted into the HUD.
 
 **Quality gates (current):**
-- `npm run build` — green (tsc -b + vite build).
+- `npm run build` — green (tsc -b + vite build). Bundle is code-split via
+  `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
 - `npm test` — **146/146 passing** across 15 files.
+
+**Records & collection:**
+- `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
+  runs. Recorded in buy / startScenario / advanceCareerSeason and at scored-run end.
+- **Records screen** (`RecordsPanel`, More tab): players signed X/503, career-best division,
+  best Endless/Daily score, best career (seasons), scenario stars, collection-by-rarity bars.
+- (Unseen-weighting deliberately NOT done — would risk Daily's shared-seed fairness, and the
+  Scout Network already makes any player findable on demand.)
 
 **Player acquisition (transfer market fairness):**
 - **Pity / bad-luck protection** — `dryStreak` (run state) counts refreshes with no

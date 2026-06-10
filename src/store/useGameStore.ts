@@ -57,6 +57,7 @@ import {
   drawShop,
 } from '@/lib/economy';
 import { getBrief } from '@/lib/scouting';
+import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
 import type { MatchResult } from '@/lib/types';
 
@@ -110,6 +111,14 @@ const isGoldPlus = (id: string | null): boolean => {
   const r = id ? getPlayer(id)?.rarity : undefined;
   return r === 'gold' || r === 'icon';
 };
+
+/** Merge ids into the all-time collection (returns same ref if unchanged). */
+function addToCollection(collection: string[], ...ids: string[]): string[] {
+  const set = new Set(collection);
+  const before = set.size;
+  for (const id of ids) set.add(id);
+  return set.size === before ? collection : [...set];
+}
 
 /**
  * Roll a shop with bad-luck protection. When `dryStreak` has reached the pity
@@ -169,6 +178,10 @@ interface GameState {
   careerReview: ReviewState | null;
   /** Most seasons completed in a single career — persisted across careers. */
   careerBest: number;
+  /** Every player id ever signed — an all-time "club legends" collection. */
+  collection: string[];
+  /** Best score per scored mode ('endless', 'daily') — persisted across runs. */
+  bestScore: Record<string, number>;
   /** Current round (1-based). */
   round: number;
   /** Lives remaining; 0 ends the run. */
@@ -343,6 +356,8 @@ function saveSlice(s: GameState) {
     career: s.career,
     careerReview: s.careerReview,
     careerBest: s.careerBest,
+    collection: s.collection,
+    bestScore: s.bestScore,
     bankroll: s.bankroll,
     owned: s.owned,
     shop: s.shop,
@@ -385,10 +400,12 @@ export const useGameStore = create<GameState>()(
       best: { round: 0 },
       scenarioStars: {},
       careerBest: 0,
+      collection: [],
+      bestScore: {},
       ...freshRun(),
 
       buy: (shopIndex) => {
-        const { shop, bankroll, owned, relics, xi, bench, formation } = get();
+        const { shop, bankroll, owned, relics, xi, bench, formation, collection } = get();
         const id = shop[shopIndex];
         const player = getPlayer(id);
         if (!id || !player) return;
@@ -422,6 +439,7 @@ export const useGameStore = create<GameState>()(
         set({
           bankroll: bankroll - cost,
           owned: [...owned, id],
+          collection: addToCollection(collection, id),
           shop: nextShop,
           xi: placedInXi ? newXi : xi,
           bench: placedOnBench ? newBench : bench,
@@ -587,6 +605,21 @@ export const useGameStore = create<GameState>()(
             best: { round: Math.max(s.best.round, reached) },
           });
 
+          // Scored modes (Endless / Daily) bank a personal best on a terminal run.
+          const scoredKey = s.career ? null : config.scored ? 'endless' : s.daily ? 'daily' : null;
+          const bestScoreUpdate = (status: 'won' | 'lost') => {
+            if (!scoredKey) return {};
+            const sc = runScore({
+              round: s.round,
+              runStatus: status,
+              peakBankroll: Math.max(s.peakBankroll, bankroll),
+              bestStreak: Math.max(s.bestStreak, newStreak),
+              record,
+              maxRounds: config.maxRounds,
+            });
+            return { bestScore: { ...s.bestScore, [scoredKey]: Math.max(s.bestScore[scoredKey] ?? 0, sc) } };
+          };
+
           // CAREER MODE: a season ends (sacked OR reached the final) but the game
           // does not — the board reviews you. You're only fired if you went out
           // BEFORE meeting their target division.
@@ -627,14 +660,14 @@ export const useGameStore = create<GameState>()(
           }
 
           if (lives <= 0)
-            return { ...base, runStatus: 'lost' as const, ...endReached(s.round) };
+            return { ...base, runStatus: 'lost' as const, ...endReached(s.round), ...bestScoreUpdate('lost') };
           if (s.round >= config.maxRounds) {
             // Classic: the final must be WON. Survival scenarios: reaching the
             // final round alive is enough (finalMustWin === false).
             const survived = outcome === 'win' || config.finalMustWin === false;
             const reached = Number.isFinite(config.maxRounds) ? config.maxRounds : s.round;
             if (!survived)
-              return { ...base, runStatus: 'lost' as const, ...endReached(reached) };
+              return { ...base, runStatus: 'lost' as const, ...endReached(reached), ...bestScoreUpdate('lost') };
             // Grade the scenario, banking the best stars earned across attempts.
             let scenarioStars = s.scenarioStars;
             const sc = getScenario(s.scenario);
@@ -651,7 +684,7 @@ export const useGameStore = create<GameState>()(
                 [sc.id]: Math.max(s.scenarioStars[sc.id] ?? 0, earned),
               };
             }
-            return { ...base, runStatus: 'won' as const, scenarioStars, ...endReached(reached) };
+            return { ...base, runStatus: 'won' as const, scenarioStars, ...endReached(reached), ...bestScoreUpdate('won') };
           }
 
           // Advance: draw the next round's event + reset the free refresh.
@@ -857,6 +890,7 @@ export const useGameStore = create<GameState>()(
             owned,
             xi,
             bench: [],
+            collection: addToCollection(s.collection, ...owned),
             // Re-roll the shop excluding the prebuilt squad.
             shop: rollSlots(owned, fresh.shopSeed, 'all'),
           };
@@ -901,10 +935,12 @@ export const useGameStore = create<GameState>()(
 
           // Fold in the chosen academy prospect (joins at full freshness).
           const chosen = youthId ? review.youth.find((y) => y.id === youthId) : null;
+          let collection = s.collection;
           if (chosen) {
             owned.push(chosen.id);
             meta[chosen.id] = youthMeta();
             roster[chosen.id] = chosen;
+            collection = addToCollection(s.collection, chosen.id);
           }
           registerPlayers(Object.values(roster));
 
@@ -917,6 +953,7 @@ export const useGameStore = create<GameState>()(
             career: { season: nextSeason, targetRound: target, meta, roster },
             careerReview: null,
             owned,
+            collection,
             bankroll: s.bankroll + review.bonus,
             round: 1,
             lives: startLives,
