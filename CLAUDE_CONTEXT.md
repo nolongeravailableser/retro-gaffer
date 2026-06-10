@@ -404,9 +404,14 @@ All proposals from the improvement review, built in one pass on the
   (RunOverModal), `DailyLeaderboard` panel in RunOverModal + Records + the
   **Compete** tab (the PvP tab, renamed 2026-06-10 to host async PvP *and* the
   world standings under one roof; it sits below the PvP panel in `App.tsx`).
-  **Degrades gracefully**: until Upstash Redis is provisioned in the Vercel
-  dashboard (Storage → Upstash Redis → connect to project → redeploy), the
-  API returns 503 and the UI hides the board — zero code changes to activate.
+  **LIVE as of 2026-06-10**: Upstash Redis (`upstash-kv-carmine-chair`) is
+  provisioned and connected; prod `/api/daily` returns 200 (verified). The
+  function reads `KV_REST_API_URL`/`KV_REST_API_TOKEN` (Upstash's default Vercel
+  env names; falls back to `UPSTASH_REDIS_REST_*`). **Degradation tiers**:
+  `entries === null` (offline/503/dev — Vite has no `/api`) hides the board;
+  `entries === []` (live but no scores yet today) shows a "be the first" empty
+  state; non-empty shows the ranked list. Board populates when a Daily run
+  finishes (RunOverModal posts the score).
 
 ---
 
