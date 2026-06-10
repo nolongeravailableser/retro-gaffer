@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10
+> **Last updated:** 2026-06-10 (QA audit-fix pass)
 
 ---
 
@@ -74,7 +74,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **152/152 passing** across 16 files.
+- `npm test` — **153/153 passing** across 16 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -127,6 +127,50 @@ live** unless noted.
     (`scoutYouth` action + `careerReview.scouted`). Aging growth ramps stats toward potential.
   - **Board variety**: demands escalate to "win the title" once the target reaches the top
     division (`boardWantsTitle`/`boardMet`) — late seasons need a trophy, not just survival.
+
+---
+
+## 2b. QA Audit-Fix Pass (2026-06-10, uncommitted as of writing)
+
+A full QA/UX audit produced a 22-item report (bugs / gameplay / UX); all actioned
+except the round-4 boss (left as intentional comic relief). Shipped in the working
+tree (build + 153 tests green):
+
+- **End-of-run moment** — new `RunOverModal.tsx` (App-level overlay, shown over any
+  tab when `runStatus !== 'playing'`): animated win/lose reveal, stats, **mode-aware
+  replay** (Retry Challenge / New Career / Replay Daily / New Endless Run), and a
+  career **shortfall line** (board demand vs. reached). Replaces the silent inline
+  swap and fixes the "lost run + red card dropped you to Tactics with no signal" flow.
+  SeasonPanel's inline end card remains as the dismissed-state fallback (its replay is
+  now mode-aware too).
+- **Toast tones** — store gained `noticeKind: 'error'|'success'|'info'`; `Hud` styles
+  colour/icon/lifetime per kind (errors linger 4.5s, success 1.8s) and the toast is
+  tap-to-dismiss. Success messages ("Signed X!", shield-saved) no longer look like red
+  errors.
+- **In-match discipline** (`engine.ts`) — reds/injuries now **swing the live match**
+  (offending side scores less, concedes more for the rest of the game), and the
+  **opponent (side B) can pick up reds/injuries too** (in-match + commentary only;
+  player-side suspensions/injuries still the only persisted ones). GKs no longer score.
+- **Relic carry-over** — an unclaimed relic offer is no longer overwritten on round
+  advance (carried until claimed/dismissed). Relic claim now has a confirm step.
+- **Daily integrity** — `dailyCompleted` (persisted, **v15**) records the day's run;
+  replays are "practice" and don't re-bank the score; Daily popover warns.
+- **`best.round` is now per-finite-climb** — Endless/scenarios no longer pollute the
+  Classic career-best crown / "NEW CAREER BEST" banner.
+- **Match payout** — the full net (result+income+interest+streak−wages±bet) + resulting
+  bankroll now show in the match result banner for ladder games (`MatchView` reads
+  `lastIncome`), not only on the Season tab afterward.
+- **Smaller UX** — New Game confirms before wiping an in-progress run; active-ruleset
+  line on the Season panel; disabled-button tooltips (Play / Refresh); clearer fuzzy
+  youth-potential stars; honest StatBar at the low end; career-advance notice names
+  the signed youth.
+
+Files touched: `store/useGameStore.ts`, `store/persistence.ts` (v15), `lib/engine.ts`,
+`lib/ladder.ts` (comment), `components/match/MatchView.tsx`, `components/ui/Hud.tsx`,
+`components/ui/StatBar.tsx`, `components/ui/Stars.tsx`, `components/season/SeasonPanel.tsx`,
+`components/season/EventBanner.tsx`, `components/run/NewRunModal.tsx`,
+`components/run/RunOverModal.tsx` (new), `components/career/CareerReview.tsx`,
+`components/shop/Shop.tsx`, `App.tsx`, `tests/engine.test.ts` (+1).
 
 ---
 
