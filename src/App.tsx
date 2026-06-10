@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Sparkles, Play, Swords, X, Users, ChevronRight } from 'lucide-react';
+import { Trophy, Sparkles, Play, Swords, X } from 'lucide-react';
 import {
   DndContext,
   PointerSensor,
@@ -15,6 +15,7 @@ import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
 import { runConfig } from '@/lib/scenarios';
+import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { relicModifiers } from '@/lib/relics';
 import { importTeam, readChallengeCode, type OpponentTeam } from '@/lib/codec';
@@ -34,6 +35,7 @@ import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
+import JourneyBar from '@/components/run/JourneyBar';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
@@ -62,6 +64,8 @@ export default function App() {
 
   const suspensions = useGameStore((s) => s.suspensions);
   const injuries = useGameStore((s) => s.injuries);
+  const owned = useGameStore((s) => s.owned);
+  const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
@@ -166,25 +170,30 @@ export default function App() {
     window.history.replaceState({}, '', window.location.pathname);
   };
 
-  // The one always-visible "how do I start?" call-to-action. It routes squad-
-  // building to the right tab, then kicks the match off — so the player is never
-  // stranded after picking their XI (the core Career-flow friction).
-  const showKickoff = runStatus === 'playing' && !matchOpen;
-  const seasonReady = showKickoff && ready && activeTab !== 'season';
-  const kickoffLabel = !ready
-    ? `Fill your XI to kick off · ${filled}/${XI_SIZE}`
-    : career && round === 1
-      ? `Start Season ${career.season}`
-      : activeTab === 'season'
-        ? `Kick off — Play Round ${round}`
-        : `Ready! Play Round ${round}`;
-  const onKickoff = () => {
-    if (!ready) {
-      setActiveTab('formation');
+  // Where the player is in the core loop (SIGN → PICK → KICK OFF). Drives the
+  // journey bar, the nav attention dot, and stage-aware routing — the next
+  // action is always obvious and one tap away.
+  const journey = useMemo(() => {
+    const fieldable = owned
+      .map(getPlayer)
+      .filter(
+        (p): p is Player => !!p && !suspensions.includes(p.id) && !injuries[p.id]
+      );
+    return journeyFor(fieldable, formation, filled);
+  }, [owned, suspensions, injuries, formation, filled]);
+
+  const showJourney = runStatus === 'playing' && !matchOpen;
+  /** The tab the current stage wants the player on. */
+  const stageTab: Tab =
+    journey.stage === 'sign' ? 'transfers' : journey.stage === 'pick' ? 'formation' : 'season';
+  const attentionTab = showJourney && stageTab !== activeTab ? stageTab : undefined;
+
+  const onJourneyGo = () => {
+    if (journey.stage === 'play' && activeTab === 'season') {
+      playRound();
       return;
     }
-    if (activeTab === 'season') playRound();
-    else setActiveTab('season');
+    setActiveTab(stageTab);
   };
 
   return (
@@ -207,27 +216,18 @@ export default function App() {
         <Hud onNewRun={() => setNewRunOpen(true)} />
       </header>
 
-      <TabNav active={activeTab} onChange={setActiveTab} seasonReady={seasonReady} />
+      <TabNav active={activeTab} onChange={setActiveTab} attentionTab={attentionTab} />
 
-      {/* Always-visible kick-off CTA — the clear path to start/continue a season */}
-      {showKickoff && (
-        <div className="sticky top-0 sm:top-[3.25rem] z-10 -mx-4 mb-4 bg-pitch-950/85 px-4 py-2 backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={onKickoff}
-            data-testid="kickoff-cta"
-            className={[
-              'flex w-full items-center justify-center gap-2 rounded-xl border py-3 font-display text-base shadow-glow transition',
-              ready
-                ? 'border-crt-green/60 bg-crt-green/20 text-crt-green hover:bg-crt-green/30'
-                : 'border-crt-amber/40 bg-crt-amber/10 text-crt-amber hover:bg-crt-amber/20',
-            ].join(' ')}
-          >
-            {ready ? <Play size={18} /> : <Users size={18} />}
-            {kickoffLabel}
-            {ready && activeTab !== 'season' && <ChevronRight size={18} className="opacity-80" />}
-          </button>
-        </div>
+      {/* The core-loop guide: sign → pick → kick off, one obvious action per stage */}
+      {showJourney && (
+        <JourneyBar
+          journey={journey}
+          filled={filled}
+          round={round}
+          onTargetTab={activeTab === stageTab}
+          careerSeason={career?.season ?? null}
+          onGo={onJourneyGo}
+        />
       )}
 
       {challenge && (
@@ -352,7 +352,11 @@ export default function App() {
       <NewRunModal
         open={newRunOpen}
         onClose={() => setNewRunOpen(false)}
-        onStarted={() => setActiveTab('formation')}
+        // Land where the journey starts: an empty squad begins on Transfers
+        // (sign players); a prebuilt one (career season 2+) on Tactics.
+        onStarted={() =>
+          setActiveTab(useGameStore.getState().owned.length === 0 ? 'transfers' : 'formation')
+        }
       />
 
       <CareerReview />

@@ -22,18 +22,18 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 interface TabNavProps {
   active: Tab;
   onChange: (tab: Tab) => void;
-  /** When true, flag the Season tab as "ready to play" (a pulsing dot). */
-  seasonReady?: boolean;
+  /** Tab the player should head to next (gets a pulsing dot), if any. */
+  attentionTab?: Tab;
 }
 
-export default function TabNav({ active, onChange, seasonReady }: TabNavProps) {
+export default function TabNav({ active, onChange, attentionTab }: TabNavProps) {
   return (
     <>
       {/* Desktop: horizontal bar below header (scrolls if the viewport is narrow) */}
       <nav className="hidden sm:flex overflow-x-auto border-b border-white/10 bg-pitch-900/80 backdrop-blur-sm mb-5 -mx-4 px-4 sticky top-0 z-20">
         {TABS.map(({ id, label, icon: Icon }) => {
           const isActive = active === id;
-          const ready = id === 'season' && seasonReady;
+          const ready = id === attentionTab;
           return (
             <button
               key={id}
@@ -60,7 +60,7 @@ export default function TabNav({ active, onChange, seasonReady }: TabNavProps) {
       <nav className="sm:hidden fixed bottom-0 inset-x-0 z-30 flex border-t border-white/10 bg-pitch-950/95 backdrop-blur-sm">
         {TABS.map(({ id, label, icon: Icon }) => {
           const isActive = active === id;
-          const ready = id === 'season' && seasonReady;
+          const ready = id === attentionTab;
           return (
             <button
               key={id}

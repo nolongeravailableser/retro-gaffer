@@ -963,7 +963,13 @@ export const useGameStore = create<GameState>()(
           if (player) offers.push({ index, player, cost: Math.max(0, player.cost - discount) });
         });
         const starters = s.xi.map((id) => getPlayer(id)).filter((p): p is Player => !!p);
-        const ownedPlayers = s.owned.map((id) => getPlayer(id)).filter((p): p is Player => !!p);
+        // Needs count only FIELDABLE players — an injured-out keeper is a real
+        // gap, so Auto-Sign will buy emergency cover (matches the journey bar).
+        const ownedPlayers = s.owned
+          .map((id) => getPlayer(id))
+          .filter(
+            (p): p is Player => !!p && !s.suspensions.includes(p.id) && !s.injuries[p.id]
+          );
         const plan = planAutoBuy(
           offers,
           ownedPlayers,

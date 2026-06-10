@@ -78,7 +78,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **168/168 passing** across 17 files.
+- `npm test` — **174/174 passing** across 18 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
@@ -249,6 +249,39 @@ ties break on id → Daily-safe):
 - Tests: `tests/autopick.test.ts` (13). Verified live on a fresh run:
   Auto-Sign×refresh loop built an 11-man, all-chemistry squad for ~£38M, Auto-Pick
   fielded 11/11, kickoff CTA flipped to "Ready! Play Round 1".
+
+---
+
+## 2f. Core-loop journey redesign — SIGN → PICK → KICK OFF (uncommitted)
+
+Tester feedback: the launch→buy→field→play pipeline had no visual hierarchy. Fixed
+with one derived "journey stage" driving the whole UI:
+
+- **`src/lib/journey.ts`** (pure, 6 tests) — `journeyFor(fieldablePlayers,
+  formationId, filled)` → `'sign' | 'pick' | 'play'` + missing-role summary
+  ("a GK · 2 DEF"). Counts only FIELDABLE players (owned minus banned/injured),
+  so a suspension that breaks role coverage correctly re-enters the sign stage.
+- **`JourneyBar.tsx`** — replaced the kickoff CTA: a 3-step indicator
+  (① Sign → ② Pick XI → ③ Kick Off) over ONE stage-aware primary action
+  (routes to Transfers / Tactics / Season, plays when on Season) with the
+  matching one-tap helper inline (Auto-Sign on sign, Auto-Pick on pick) and a
+  "Still needed: …" detail line. Same sticky placement, mobile + desktop.
+- **TabNav** — `seasonReady` generalised to `attentionTab`: the pulsing dot
+  follows the stage (Transfers → Tactics → Season).
+- **Stage-aware landing** — a new run with an empty squad lands on Transfers
+  (was Tactics-with-an-empty-pitch, the single most confusing moment); prebuilt
+  squads (career S2+, scenarios) land on Tactics. SquadList gained an
+  empty-squad state pointing at Transfers.
+- **Auto-Sign consistency** — `autoBuy` need-counting now also uses fieldable
+  players only, so it buys emergency cover for a banned/injured-out role
+  (matches the journey bar's read).
+- Note: because signings auto-assign into the XI, the pick stage is usually
+  skipped in the happy path (sign-to-ready in one flow) — it appears when
+  players are unplaced (benchAll, formation changes, manual removal).
+- Verified live (375px + desktop): fresh run lands on Transfers at step ①;
+  Auto-Sign loop → "Ready! Play Round 1"; remove player → step ② with
+  Auto-Pick; full loop to kickoff; post-match red card correctly flipped the
+  bar back to "sign a FWD" with the dot on Transfers.
 
 ---
 

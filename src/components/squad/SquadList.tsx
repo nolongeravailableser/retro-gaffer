@@ -117,6 +117,18 @@ export default function SquadList({ multipliers }: SquadListProps) {
         <span className="w-12 text-right">Value</span>
       </div>
 
+      {/* Empty squad — point new managers at the journey's first step */}
+      {owned.length === 0 && (
+        <div className="flex flex-col items-center gap-1.5 px-4 py-8 text-center">
+          <Wand2 size={20} className="text-chrome-muted/60" />
+          <p className="font-display text-sm text-chrome">No players signed yet</p>
+          <p className="text-[11px] text-chrome-muted">
+            Open the <span className="text-crt-amber">Transfers</span> tab (or hit{' '}
+            <span className="text-crt-green">Sign players</span> above) to build your squad.
+          </p>
+        </div>
+      )}
+
       {/* Groups */}
       <div className="flex-1 overflow-y-auto divide-y divide-white/5">
         {groups.map((group) => {
