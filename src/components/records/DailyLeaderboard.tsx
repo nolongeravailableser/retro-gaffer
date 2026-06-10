@@ -32,9 +32,13 @@ export default function DailyLeaderboard({ day, compact = false }: DailyLeaderbo
     };
   }, [day]);
 
-  if (!loaded || entries === null || entries.length === 0) return null;
+  // entries === null → backend offline/unprovisioned: hide entirely.
+  // entries === []   → backend live but no scores yet today: show an inviting
+  //                    empty state so the board never looks broken once it's up.
+  if (!loaded || entries === null) return null;
 
   const me = leaderboardId();
+  const empty = entries.length === 0;
 
   return (
     <div
@@ -47,8 +51,13 @@ export default function DailyLeaderboard({ day, compact = false }: DailyLeaderbo
     >
       <p className={`mb-2 flex items-center gap-1.5 font-display uppercase tracking-wide text-fuchsia-200 ${compact ? 'text-xs' : 'text-sm'}`}>
         <Globe2 size={compact ? 13 : 16} />
-        Daily Gauntlet · {day} · world top {entries.length}
+        Daily Gauntlet · {day}{empty ? '' : ` · world top ${entries.length}`}
       </p>
+      {empty && (
+        <p className={`text-chrome-muted ${compact ? 'text-xs' : 'text-sm'}`}>
+          No scores yet today — finish the Daily Gauntlet to be the first on the board.
+        </p>
+      )}
       <ol className="space-y-0.5">
         {entries.map((e, i) => {
           const mine = e.id === me;
