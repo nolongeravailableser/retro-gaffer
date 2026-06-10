@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10 (… + flat nav + journey bar + extended-stats engine — all deployed)
+> **Last updated:** 2026-06-10 (… + 2D match pitch view + team kits — all deployed)
 
 ---
 
@@ -313,7 +313,7 @@ resistance · **CMP** → 75'+ clutch window · **DIS** → who collects cards.
 
 ---
 
-## 2h. 2D match visualization — the pitch view (uncommitted)
+## 2h. 2D match visualization — the pitch view (shipped, `74876bf`/`0d505bb`)
 
 Playtesters couldn't SEE the action. Architecture: the engine stays an event
 generator; a **choreographer** turns its event timeline into 2D scenes.
@@ -340,7 +340,7 @@ generator; a **choreographer** turns its event timeline into 2D scenes.
 
 ---
 
-## 2i. Team kits — identity for every side (uncommitted, builds on 2h)
+## 2i. Team kits — identity for every side (shipped, `0d505bb`)
 
 - **`src/lib/kits.ts`** (pure, 8 tests) — `Kit = {primary, secondary, pattern:
   solid|stripes|hoops|sash|halves}`. Curated 10-colour palette (legible on the
