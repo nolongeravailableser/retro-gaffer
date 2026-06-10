@@ -12,12 +12,15 @@ import {
   kickoffEvent,
   halfTimeEvent,
   fullTimeEvent,
+  KICKOFF,
+  HALFTIME,
+  FULLTIME,
   DEFAULT_TUNING,
   type MatchTeam,
   type EngineTuning,
   type MatchCarry,
 } from '@/lib/engine';
-import { TEAM_TALKS, applyTalk, type TeamTalk } from '@/lib/teamtalk';
+import { TEAM_TALKS, applyTalk, aiTalkFor, type TeamTalk } from '@/lib/teamtalk';
 import { generateOpponent } from '@/lib/opponent';
 import { buildVizTimeline } from '@/lib/matchviz';
 import { resolveKits, DEFAULT_KIT } from '@/lib/kits';
@@ -146,6 +149,13 @@ export default function MatchView({
   const [muted, setMutedState] = useState(isMuted);
   const completedRef = useRef(false);
   const tickerRef = useRef<HTMLDivElement>(null);
+  // Mirrors + suspension slot: closing mid-match SUSPENDS it (state kept here)
+  // so reopening the same fixture resumes at the same minute, decisions intact.
+  const liveRef = useRef<LiveMatch | null>(null);
+  const shownRef = useRef(0);
+  const suspendedRef = useRef<{ seed: string; live: LiveMatch; shown: number } | null>(null);
+  liveRef.current = live;
+  shownRef.current = shown;
 
   // Latest inputs in refs so the build effect can read them WITHOUT re-running
   // when their identity changes mid-match. (A resolved round mutates roundMods,
@@ -168,6 +178,12 @@ export default function MatchView({
   // (new seed) — never on an incidental playerTeam re-render.
   useEffect(() => {
     if (!open) {
+      // Suspend an unfinished match so the same fixture can resume; a
+      // finished one is spent (the round resolved on completion).
+      const lm = liveRef.current;
+      if (lm && !lm.result) {
+        suspendedRef.current = { seed: lm.seed, live: lm, shown: shownRef.current };
+      }
       setLive(null);
       completedRef.current = false;
       return;
@@ -175,6 +191,18 @@ export default function MatchView({
     const pt = playerTeamRef.current;
     if (!pt) return;
     const seed = seedProp ?? `M-${Date.now()}`;
+    // Resume a suspended match for the SAME fixture (a new run/round changes
+    // the seed, which discards the suspension).
+    const suspended = suspendedRef.current;
+    if (suspended && suspended.seed === seed) {
+      suspendedRef.current = null;
+      completedRef.current = false;
+      setLive(suspended.live);
+      setShown(suspended.shown);
+      setSpeed(1);
+      return;
+    }
+    suspendedRef.current = null;
     const opponent = opponentRef.current ?? generateOpponent(pt.attack, pt.defense, seed);
     const start: LiveMatch = {
       teamA: pt,
@@ -216,39 +244,56 @@ export default function MatchView({
     if (el) el.scrollTop = el.scrollHeight;
   }, [shown, live?.pause]);
 
-  // Retro sound cue for the event that just appeared (Instant skips to the
-  // final whistle; cues are pure output and never touch game logic).
+  // Retro sound cue for the event that just appeared. Whistle beats key on the
+  // engine's canonical TEXTS (a sub/talk flavour at minute 45 is not half-time)
+  // and fast playback thins the soundscape so 4× doesn't machine-gun blips.
   useEffect(() => {
     if (!live || shown === 0) return;
     const e = live.events[shown - 1];
     if (!e) return;
-    const cue: SoundCue | null =
+    let cue: SoundCue | null =
       e.kind === 'goal' || e.kind === 'chance' || e.kind === 'yellow' ||
       e.kind === 'red' || e.kind === 'injury'
         ? e.kind
-        : e.minute === 0
+        : e.text === KICKOFF
           ? 'kickoff'
-          : e.minute === 45 || e.minute === 90
+          : e.text === HALFTIME || e.text === FULLTIME
             ? 'whistle'
             : null;
+    // Speed gating: 2× drops the chance blips; 4× keeps only the big moments.
+    if (speed >= 2 && cue === 'chance') cue = null;
+    if (speed >= 4 && cue !== 'goal' && cue !== 'red' && cue !== 'whistle') cue = null;
     if (cue) playCue(cue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, shown]);
 
   // Half-time decision: bounded multipliers on side A for the second half.
+  // The OPPONENT responds too — score-derived and deterministic (aiTalkFor),
+  // so chasing teams attack and protecting teams park, readably.
   const decideTalk = (talk: TeamTalk) =>
     setLive((lm) => {
       if (!lm || lm.pause?.type !== 'halftime') return lm;
       const teamA = applyTalk(lm.teamA, talk);
-      const events =
-        talk.id === 'steady'
-          ? lm.events
-          : [...lm.events, {
-              minute: 46,
-              side: 'A' as const,
-              kind: 'flavour' as const,
-              text: `📣 The gaffer's orders: ${talk.name.toLowerCase()}!`,
-            }];
-      return advance({ ...lm, teamA, events, pause: null }, true, tuningRef.current);
+      const aiTalk = aiTalkFor(lm.carry.goalsB, lm.carry.goalsA);
+      const opponent = aiTalk ? applyTalk(lm.opponent, aiTalk) : lm.opponent;
+      const events = [...lm.events];
+      if (talk.id !== 'steady') {
+        events.push({
+          minute: 46,
+          side: 'A' as const,
+          kind: 'flavour' as const,
+          text: `📣 The gaffer's orders: ${talk.name.toLowerCase()}!`,
+        });
+      }
+      if (aiTalk) {
+        events.push({
+          minute: 46,
+          side: 'B' as const,
+          kind: 'flavour' as const,
+          text: `📣 ${lm.opponent.name} respond: ${aiTalk.name.toLowerCase()}!`,
+        });
+      }
+      return advance({ ...lm, teamA, opponent, events, pause: null }, true, tuningRef.current);
     });
 
   // Substitution decision: replace the injured player (no strength penalty,
@@ -453,7 +498,7 @@ export default function MatchView({
             ? // Compact caption feed under the pitch — the last few beats.
               !finished &&
               visible.slice(-3).map((e, i) => (
-                <p key={`${shown}-${i}`} className={`${eventClass(e.kind)} text-sm`}>
+                <p key={Math.max(0, shown - 3) + i} className={`${eventClass(e.kind)} text-sm`}>
                   {e.minute > 0 && e.kind !== 'flavour' && (
                     <span className="text-chrome-muted">{e.minute}' </span>
                   )}
