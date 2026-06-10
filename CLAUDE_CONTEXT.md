@@ -93,6 +93,11 @@ live** unless noted.
   role, A Star (gold+), Cult Hero, and **Hidden Gem (easter_egg)** — the formerly
   unfindable eggs (Ali Dia, Jon Mow) are now scoutable on demand. UI: ScoutPanel in the
   Transfers tab. Casts a wide net (rolls All-Stars). Deterministic (seeded) → Daily-safe.
+- **Featured Free Agent** (`src/lib/featured.ts`) — a deterministic daily-rotating gold/icon
+  player offered at 40% off (`signFeatured` action, `FeaturedBanner` atop Transfers). Same
+  for everyone that day. (A themed rotating *pack* was skipped — the thematic tags are too
+  small for a 3-slot pack; and milestone-gated eggs were skipped since the Scout Network's
+  Hidden Gem brief already makes easter eggs findable on demand.)
 
 **Game modes (Phase 0 + Phase 1 + Phase 2 + Phase 3 shipped):**
 - **Classic** — the standard 12-round climb.

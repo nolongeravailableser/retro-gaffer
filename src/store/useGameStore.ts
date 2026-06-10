@@ -59,6 +59,7 @@ import {
   drawShop,
 } from '@/lib/economy';
 import { getBrief } from '@/lib/scouting';
+import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
 import type { MatchResult } from '@/lib/types';
@@ -242,6 +243,8 @@ interface GameState {
   refreshShop: () => void;
   /** Dispatch a scout (paid): guarantee a brief-matching player in the shop. */
   scoutShop: (briefId: string) => void;
+  /** Sign today's discounted Featured Free Agent. */
+  signFeatured: () => void;
   /** Switch the shop pack; re-rolls from the current seed for free. */
   setPack: (id: string) => void;
   /** Toggle the shop lock (freezes it across the next round). */
@@ -484,6 +487,26 @@ export const useGameStore = create<GameState>()(
           shopSeed: seed,
           freeRefreshUsed: freeRefreshUsed || free,
           notice: null,
+        });
+      },
+
+      // Sign today's Featured Free Agent at a discount (deterministic per date).
+      signFeatured: () => {
+        const { bankroll, owned, collection } = get();
+        const id = featuredPlayerId(dailyKey());
+        const player = getPlayer(id);
+        if (!player || owned.includes(id)) return;
+        const cost = featuredCost(player.cost);
+        const check = checkBuy(bankroll, owned.length, { ...player, cost });
+        if (!check.ok) {
+          set({ notice: check.reason ?? 'Cannot sign' });
+          return;
+        }
+        set({
+          bankroll: bankroll - cost,
+          owned: [...owned, id],
+          collection: addToCollection(collection, id),
+          notice: `Signed ${player.name}!`,
         });
       },
 
