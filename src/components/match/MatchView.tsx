@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft, Volume2, VolumeX } from 'lucide-react';
-import { simulateMatch, DEFAULT_TUNING, type MatchTeam, type EngineTuning } from '@/lib/engine';
+import {
+  X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft, Volume2, VolumeX,
+  Megaphone, ArrowLeftRight,
+} from 'lucide-react';
+import {
+  simulateSegment,
+  finalizeResult,
+  freshCarry,
+  applyInjuryPenalty,
+  kickoffEvent,
+  halfTimeEvent,
+  fullTimeEvent,
+  DEFAULT_TUNING,
+  type MatchTeam,
+  type EngineTuning,
+  type MatchCarry,
+} from '@/lib/engine';
+import { TEAM_TALKS, applyTalk, type TeamTalk } from '@/lib/teamtalk';
 import { generateOpponent } from '@/lib/opponent';
 import { buildVizTimeline } from '@/lib/matchviz';
 import { resolveKits, DEFAULT_KIT } from '@/lib/kits';
@@ -10,7 +26,7 @@ import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
 import CrestBadge from '@/components/ui/CrestBadge';
-import type { MatchResult } from '@/lib/types';
+import type { MatchResult, MatchEvent, Player } from '@/lib/types';
 
 interface MatchViewProps {
   open: boolean;
@@ -22,6 +38,12 @@ interface MatchViewProps {
   tuning?: EngineTuning;
   /** Ladder match → show the resolved round payout (PvP exhibitions don't). */
   ladder?: boolean;
+  /** Interactive matches pause for decisions (half-time talk, substitutions). */
+  interactive?: boolean;
+  /** Fit bench players who could come on after an injury. */
+  benchPlayers?: Player[];
+  /** Recompute side-A strengths for a substituted XI (chemistry + round mods). */
+  rebuildStrength?: (starters: Player[]) => { attack: number; defense: number };
   onComplete: (result: MatchResult) => void;
 }
 
@@ -47,6 +69,59 @@ function eventClass(kind: string): string {
   }
 }
 
+type Pause = { type: 'halftime' } | { type: 'injury'; playerId: string };
+
+/**
+ * A match in flight. Interactive matches are simulated in SEGMENTS that pause
+ * at half-time (team talk) and on side-A injuries (substitution window); the
+ * event list grows as decisions are made. Non-interactive (PvP) runs straight
+ * through the same machinery with no pauses.
+ */
+interface LiveMatch {
+  teamA: MatchTeam;
+  opponent: MatchTeam;
+  seed: string;
+  events: MatchEvent[];
+  carry: MatchCarry;
+  /** First minute not yet simulated (91 = done). */
+  nextMinute: number;
+  talkDone: boolean;
+  xg: { a: number; b: number };
+  pause: Pause | null;
+  /** Set once the 90 minutes are complete. */
+  result: MatchResult | null;
+}
+
+/** Run segments until the next decision point (or full-time). Pure. */
+function advance(lm: LiveMatch, interactive: boolean, tuning: EngineTuning): LiveMatch {
+  let { events, carry, nextMinute, xg, talkDone } = lm;
+  events = [...events];
+  while (nextMinute <= 90) {
+    if (nextMinute === 46 && !talkDone) {
+      events.push(halfTimeEvent());
+      talkDone = true;
+      if (interactive) {
+        return { ...lm, events, carry, nextMinute, xg, talkDone, pause: { type: 'halftime' } };
+      }
+    }
+    const to = nextMinute <= 45 ? 45 : 90;
+    const seg = simulateSegment(lm.teamA, lm.opponent, lm.seed, tuning, nextMinute, to, carry, interactive);
+    events.push(...seg.events);
+    carry = seg.carry;
+    nextMinute = seg.nextMinute;
+    xg = { a: xg.a + seg.xg.a, b: xg.b + seg.xg.b };
+    if (seg.stop === 'injury') {
+      return {
+        ...lm, events, carry, nextMinute, xg, talkDone,
+        pause: { type: 'injury', playerId: carry.injuredId! },
+      };
+    }
+  }
+  events.push(fullTimeEvent());
+  const result = finalizeResult(events, carry, xg);
+  return { ...lm, events, carry, nextMinute, xg, talkDone, pause: null, result };
+}
+
 export default function MatchView({
   open,
   onClose,
@@ -55,16 +130,15 @@ export default function MatchView({
   seed: seedProp = null,
   tuning = DEFAULT_TUNING,
   ladder = false,
+  interactive = false,
+  benchPlayers = [],
+  rebuildStrength,
   onComplete,
 }: MatchViewProps) {
   const lastIncome = useGameStore((s) => s.lastIncome);
   const bankroll = useGameStore((s) => s.bankroll);
   const playerKit = useGameStore((s) => s.kit);
-  const [match, setMatch] = useState<{
-    result: MatchResult;
-    opponent: MatchTeam;
-    seed: string;
-  } | null>(null);
+  const [live, setLive] = useState<LiveMatch | null>(null);
   const [shown, setShown] = useState(0);
   const [speed, setSpeed] = useState<Speed>(1);
   /** 2D pitch view (default) vs. the full text ticker. */
@@ -80,15 +154,21 @@ export default function MatchView({
   const playerTeamRef = useRef(playerTeam);
   const opponentRef = useRef(opponentOverride);
   const tuningRef = useRef(tuning);
+  const interactiveRef = useRef(interactive);
+  const benchRef = useRef(benchPlayers);
+  const rebuildRef = useRef(rebuildStrength);
   playerTeamRef.current = playerTeam;
   opponentRef.current = opponentOverride;
   tuningRef.current = tuning;
+  interactiveRef.current = interactive;
+  benchRef.current = benchPlayers;
+  rebuildRef.current = rebuildStrength;
 
   // Build the match once per open, or when a genuinely new match is requested
   // (new seed) — never on an incidental playerTeam re-render.
   useEffect(() => {
     if (!open) {
-      setMatch(null);
+      setLive(null);
       completedRef.current = false;
       return;
     }
@@ -96,39 +176,51 @@ export default function MatchView({
     if (!pt) return;
     const seed = seedProp ?? `M-${Date.now()}`;
     const opponent = opponentRef.current ?? generateOpponent(pt.attack, pt.defense, seed);
-    const result = simulateMatch(pt, opponent, seed, tuningRef.current);
+    const start: LiveMatch = {
+      teamA: pt,
+      opponent,
+      seed,
+      events: [kickoffEvent()],
+      carry: freshCarry(),
+      nextMinute: 1,
+      talkDone: false,
+      xg: { a: 0, b: 0 },
+      pause: null,
+      result: null,
+    };
     completedRef.current = false;
-    setMatch({ result, opponent, seed });
+    setLive(advance(start, interactiveRef.current, tuningRef.current));
     setShown(1);
     setSpeed(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seedProp]);
 
-  // Drive playback — reruns whenever shown or speed changes.
+  // Drive playback. When the cursor catches up with the known events, either a
+  // decision overlay is showing (pause), or the match is finished (complete).
   useEffect(() => {
-    if (!match) return;
-    if (shown >= match.result.events.length) {
-      if (!completedRef.current) {
+    if (!live) return;
+    if (shown >= live.events.length) {
+      if (live.result && !completedRef.current) {
         completedRef.current = true;
-        onComplete(match.result);
+        onComplete(live.result);
       }
       return;
     }
     const id = setTimeout(() => setShown((c) => c + 1), SPEED_DELAY[speed]);
     return () => clearTimeout(id);
-  }, [match, shown, speed, onComplete]);
+  }, [live, shown, speed, onComplete]);
 
   // Auto-scroll the ticker.
   useEffect(() => {
     const el = tickerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [shown]);
+  }, [shown, live?.pause]);
 
   // Retro sound cue for the event that just appeared (Instant skips to the
   // final whistle; cues are pure output and never touch game logic).
   useEffect(() => {
-    if (!match || shown === 0) return;
-    const e = match.result.events[shown - 1];
+    if (!live || shown === 0) return;
+    const e = live.events[shown - 1];
     if (!e) return;
     const cue: SoundCue | null =
       e.kind === 'goal' || e.kind === 'chance' || e.kind === 'yellow' ||
@@ -140,63 +232,121 @@ export default function MatchView({
             ? 'whistle'
             : null;
     if (cue) playCue(cue);
-  }, [match, shown]);
+  }, [live, shown]);
 
-  // Choreograph the 2D pitch once per match. Deterministic per seed and fully
-  // decoupled from the engine (its own `-viz` RNG stream).
+  // Half-time decision: bounded multipliers on side A for the second half.
+  const decideTalk = (talk: TeamTalk) =>
+    setLive((lm) => {
+      if (!lm || lm.pause?.type !== 'halftime') return lm;
+      const teamA = applyTalk(lm.teamA, talk);
+      const events =
+        talk.id === 'steady'
+          ? lm.events
+          : [...lm.events, {
+              minute: 46,
+              side: 'A' as const,
+              kind: 'flavour' as const,
+              text: `📣 The gaffer's orders: ${talk.name.toLowerCase()}!`,
+            }];
+      return advance({ ...lm, teamA, events, pause: null }, true, tuningRef.current);
+    });
+
+  // Substitution decision: replace the injured player (no strength penalty,
+  // recomputed chemistry) or play on with the knock (penalty applies).
+  const decideSub = (subId: string | null) =>
+    setLive((lm) => {
+      const pause = lm?.pause;
+      if (!lm || pause?.type !== 'injury') return lm;
+      if (!subId) {
+        return advance(
+          { ...lm, carry: applyInjuryPenalty(lm.carry), pause: null },
+          true,
+          tuningRef.current
+        );
+      }
+      const sub = benchRef.current.find((p) => p.id === subId);
+      const injured = lm.teamA.squad.find((p) => p.id === pause.playerId);
+      if (!sub || !injured) return advance({ ...lm, carry: applyInjuryPenalty(lm.carry), pause: null }, true, tuningRef.current);
+      const starters = lm.teamA.squad.map((p) => (p.id === injured.id ? sub : p));
+      const strengths = rebuildRef.current
+        ? rebuildRef.current(starters)
+        : { attack: lm.teamA.attack, defense: lm.teamA.defense };
+      const teamA: MatchTeam = { name: lm.teamA.name, squad: starters, ...strengths };
+      const events = [...lm.events, {
+        minute: Math.max(1, lm.nextMinute - 1),
+        side: 'A' as const,
+        kind: 'flavour' as const,
+        text: `🔁 Substitution: ${sub.name} replaces ${injured.name}.`,
+      }];
+      return advance({ ...lm, teamA, events, pause: null }, true, tuningRef.current);
+    });
+
+  // Choreograph the 2D pitch. Prefix-stable as events stream in (the viz RNG
+  // is consumed per event in order), so already-played scenes never change.
   const timeline = useMemo(
     () =>
-      match
-        ? buildVizTimeline(
-            match.result.events,
-            match.seed,
-            playerTeamRef.current?.squad ?? [],
-            match.opponent.squad,
-            match.result.xg.a / (match.result.xg.a + match.result.xg.b || 1)
-          )
+      live
+        ? buildVizTimeline(live.events, live.seed, live.teamA.squad, live.opponent.squad, 0.5)
         : null,
-    [match]
+    [live]
   );
 
   // What both sides wear — clash-resolved so the teams always read distinctly.
   const kits = useMemo(
-    () => resolveKits(playerKit ?? DEFAULT_KIT, match?.opponent.name ?? ''),
-    [playerKit, match]
+    () => resolveKits(playerKit ?? DEFAULT_KIT, live?.opponent.name ?? ''),
+    [playerKit, live?.opponent.name]
   );
 
-  if (!open || !playerTeam || !match) return null;
+  if (!open || !playerTeam || !live) return null;
 
-  const { result, opponent } = match;
-  const events = result.events;
+  const { opponent, result } = live;
+  const events = live.events;
   const visible = events.slice(0, shown);
+  const caughtUp = shown >= events.length;
 
   const scoreA = visible.filter((e) => e.kind === 'goal' && e.side === 'A').length;
   const scoreB = visible.filter((e) => e.kind === 'goal' && e.side === 'B').length;
   const currentMinute = visible.at(-1)?.minute ?? 0;
   const progressPct = Math.min(100, Math.round((currentMinute / 90) * 100));
 
-  const finished = shown >= events.length;
-  const outcome = OUTCOME_COPY[result.outcome];
+  const finished = !!result && caughtUp;
+  const pauseActive = !result && caughtUp ? live.pause : null;
+  const outcome = result ? OUTCOME_COPY[result.outcome] : null;
+  const xgShown = result ? result.xg : { a: Math.round(live.xg.a * 100) / 100, b: Math.round(live.xg.b * 100) / 100 };
   const payoutNet = lastIncome
     ? lastIncome.reward + lastIncome.income + lastIncome.interest +
       lastIncome.streak - lastIncome.wage + lastIncome.wager
     : 0;
 
-  const hasSuspensions = result.suspensions.length > 0;
-  const hasInjuries = result.injuries.length > 0;
+  const hasSuspensions = !!result && result.suspensions.length > 0;
+  const hasInjuries = !!result && result.injuries.length > 0;
   const hasTeamNews = hasSuspensions || hasInjuries;
 
   // Post-match numbers, straight from the event log.
   const count = (side: 'A' | 'B', kinds: string[]) =>
     events.filter((e) => e.side === side && kinds.includes(e.kind)).length;
-  const matchStats: { label: string; a: number; b: number }[] = [
-    { label: 'Shots', a: count('A', ['goal', 'chance']), b: count('B', ['goal', 'chance']) },
-    { label: 'Goals', a: result.score.a, b: result.score.b },
-    { label: 'Cards', a: count('A', ['yellow', 'red']), b: count('B', ['yellow', 'red']) },
-  ];
+  const matchStats: { label: string; a: number; b: number }[] = result
+    ? [
+        { label: 'Shots', a: count('A', ['goal', 'chance']), b: count('B', ['goal', 'chance']) },
+        { label: 'Goals', a: result.score.a, b: result.score.b },
+        { label: 'Cards', a: count('A', ['yellow', 'red']), b: count('B', ['yellow', 'red']) },
+      ]
+    : [];
 
   const playerName = (id: string) =>
-    playerTeam.squad.find((p) => p.id === id)?.name ?? id;
+    live.teamA.squad.find((p) => p.id === id)?.name ??
+    playerTeam.squad.find((p) => p.id === id)?.name ??
+    id;
+
+  // Substitution candidates: same role, fit, not already on the pitch.
+  const injuredPlayer =
+    pauseActive?.type === 'injury'
+      ? live.teamA.squad.find((p) => p.id === pauseActive.playerId) ?? null
+      : null;
+  const squadIds = new Set(live.teamA.squad.map((p) => p.id));
+  const subCandidates = injuredPlayer
+    ? benchPlayers.filter((p) => p.role === injuredPlayer.role && !squadIds.has(p.id))
+    : [];
 
   const skipToEnd = () => setShown(events.length);
 
@@ -255,10 +405,14 @@ export default function MatchView({
 
           {/* xG row + status */}
           <div className="mt-1 grid grid-cols-3 text-center text-[11px] text-chrome-muted">
-            <span>xG {result.xg.a.toFixed(2)}</span>
+            <span>xG {xgShown.a.toFixed(2)}</span>
             <span className="flex items-center justify-center gap-1.5">
               {finished ? (
                 <span className="font-display uppercase tracking-wide">Full-Time</span>
+              ) : pauseActive ? (
+                <span className="font-display uppercase tracking-wide text-crt-amber">
+                  {pauseActive.type === 'halftime' ? 'Half-Time' : 'Play stopped'}
+                </span>
               ) : (
                 <>
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-400" />
@@ -266,7 +420,7 @@ export default function MatchView({
                 </>
               )}
             </span>
-            <span>xG {result.xg.b.toFixed(2)}</span>
+            <span>xG {xgShown.b.toFixed(2)}</span>
           </div>
 
           {/* Match progress bar */}
@@ -321,8 +475,83 @@ export default function MatchView({
                 </motion.p>
               ))}
 
+          {/* ── Decision windows ── */}
           <AnimatePresence>
-            {finished && (
+            {pauseActive?.type === 'halftime' && (
+              <motion.div
+                key="talk"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-3 rounded-lg border border-crt-amber/40 bg-crt-amber/10 px-4 py-3"
+              >
+                <p className="mb-2 flex items-center gap-2 font-display text-sm uppercase tracking-wide text-crt-amber">
+                  <Megaphone size={15} /> Half-time team talk — {scoreA}:{scoreB}
+                </p>
+                <div className="flex flex-col gap-1.5 sm:flex-row">
+                  {TEAM_TALKS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => decideTalk(t)}
+                      data-testid={`talk-${t.id}`}
+                      className="flex flex-1 flex-col rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-amber/60 hover:bg-crt-amber/10"
+                    >
+                      <span className="font-display text-sm text-chrome">
+                        {t.emoji} {t.name}
+                      </span>
+                      <span className="text-[11px] text-chrome-muted">{t.blurb}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {pauseActive?.type === 'injury' && injuredPlayer && (
+              <motion.div
+                key="sub"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-3 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-3"
+              >
+                <p className="mb-2 flex items-center gap-2 font-display text-sm uppercase tracking-wide text-orange-300">
+                  <ArrowLeftRight size={15} /> {injuredPlayer.name} can't continue
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {subCandidates.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => decideSub(p.id)}
+                      data-testid={`sub-${p.id}`}
+                      className="flex items-center justify-between rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-green/60 hover:bg-crt-green/10"
+                    >
+                      <span className="font-display text-sm text-chrome">
+                        🔁 Bring on {p.name}
+                      </span>
+                      <span className="text-[11px] text-chrome-muted">
+                        {p.role} · ATK {p.stats.attack} · DEF {p.stats.defense}
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => decideSub(null)}
+                    data-testid="sub-none"
+                    className="rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left text-sm text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+                  >
+                    {subCandidates.length
+                      ? 'No substitution — play on with the knock'
+                      : 'No fit cover on the bench — play on with the knock'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {finished && result && outcome && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -449,7 +678,7 @@ export default function MatchView({
               {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
             </button>
             <span className="hidden font-ticker text-[11px] text-chrome-muted sm:inline">
-              seed {match.seed}
+              seed {live.seed}
             </span>
           </span>
 
@@ -487,7 +716,7 @@ export default function MatchView({
                 ))}
               </div>
 
-              {/* Instant result */}
+              {/* Instant: jump to the next decision point (or full-time) */}
               <button
                 type="button"
                 onClick={skipToEnd}

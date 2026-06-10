@@ -199,14 +199,88 @@ function statXgMult(atk: TeamStatProfile, def: TeamStatProfile): number {
   return clamp(attackSide * defenseSide, 0.86, 1.14);
 }
 
-/** Simulate a 90-minute match. Deterministic for a given seed. */
-export function simulateMatch(
+// ── Segmented simulation ─────────────────────────────────────────────────────
+// A match is simulated in SEGMENTS of minutes so play can pause for decisions
+// (half-time team talk, substitution after an injury) and resume with changed
+// team values. Each segment gets its own seeded RNG stream (`{seed}-seg{from}`),
+// so determinism never depends on WHERE the pauses fall — only the choices and
+// team values change outcomes. simulateMatch() composes segments and behaves
+// like the classic one-shot API.
+
+/** Mutable between-segment state (score, discipline, live strength swing). */
+export interface MatchCarry {
+  goalsA: number;
+  goalsB: number;
+  /** Side-A player ids on a yellow. */
+  yellowedA: string[];
+  redPlayerId: string | null;
+  injuredId: string | null;
+  injuryRounds: number;
+  /** Live strength swing from cards/injuries (1 = full strength). */
+  aMult: number;
+  bMult: number;
+  oppRed: boolean;
+  oppInjured: boolean;
+}
+
+export function freshCarry(): MatchCarry {
+  return {
+    goalsA: 0,
+    goalsB: 0,
+    yellowedA: [],
+    redPlayerId: null,
+    injuredId: null,
+    injuryRounds: 0,
+    aMult: 1,
+    bMult: 1,
+    oppRed: false,
+    oppInjured: false,
+  };
+}
+
+/** Apply the strength penalty of an UNTREATED side-A injury (no substitute). */
+export function applyInjuryPenalty(carry: MatchCarry): MatchCarry {
+  return { ...carry, aMult: carry.aMult * INJ_SELF, bMult: carry.bMult * INJ_OPP };
+}
+
+export function kickoffEvent(): MatchEvent {
+  return { minute: 0, side: 'A', kind: 'flavour', text: KICKOFF };
+}
+export function halfTimeEvent(): MatchEvent {
+  return { minute: 45, side: 'A', kind: 'flavour', text: HALFTIME };
+}
+export function fullTimeEvent(): MatchEvent {
+  return { minute: 90, side: 'A', kind: 'flavour', text: FULLTIME };
+}
+
+export interface SegmentResult {
+  events: MatchEvent[];
+  carry: MatchCarry;
+  /** First minute NOT yet simulated (resume point; 91 = match done). */
+  nextMinute: number;
+  /** 'injury' = paused mid-segment for a possible substitution. */
+  stop: 'end' | 'injury';
+  /** xG accrued over the simulated minutes (for reporting). */
+  xg: { a: number; b: number };
+}
+
+/**
+ * Simulate minutes [fromMinute, toMinute] with the CURRENT team values.
+ * When `pauseOnInjury` is set, a side-A injury ends the segment immediately
+ * with stop:'injury' and NO strength penalty applied — the caller decides
+ * (substitute, or applyInjuryPenalty and play on).
+ */
+export function simulateSegment(
   a: MatchTeam,
   b: MatchTeam,
   seed: number | string,
-  tuning: EngineTuning = DEFAULT_TUNING
-): MatchResult {
-  const rng = new Rng(seed);
+  tuning: EngineTuning,
+  fromMinute: number,
+  toMinute: number,
+  carryIn: MatchCarry,
+  pauseOnInjury = false
+): SegmentResult {
+  const rng = new Rng(`${seed}-seg${fromMinute}`);
   const inf = tuning.statInfluence ?? 1;
   const sway = swayBy(inf);
 
@@ -231,36 +305,25 @@ export function simulateMatch(
   const lateMultA = sway(clamp(1 + (profA.composure - profB.composure) * 0.0014, 0.93, 1.07));
   const lateMultB = sway(clamp(1 + (profB.composure - profA.composure) * 0.0014, 0.93, 1.07));
 
-  const events: MatchEvent[] = [
-    { minute: 0, side: 'A', kind: 'flavour', text: KICKOFF },
-  ];
-  let goalsA = 0;
-  let goalsB = 0;
-
-  // Live strength swing from cards/injuries (1 = full strength). Updated as
-  // events fire, so a red in the 5th minute actually matters for the result.
-  let aMult = 1;
-  let bMult = 1;
-
-  // Side A discipline persists to the player's squad (suspensions / injuries).
-  const yellowed = new Set<string>(); // player IDs with one yellow this game
-  let redPlayer: Player | null = null;
-  let injuredPlayer: Player | null = null;
-  let injuryRounds = 0;
-  // Side B discipline is in-match + commentary only (never returned).
-  let oppRed = false;
-  let oppInjured = false;
+  const carry: MatchCarry = { ...carryIn, yellowedA: [...carryIn.yellowedA] };
+  const yellowed = new Set(carry.yellowedA);
+  const events: MatchEvent[] = [];
+  let stop: SegmentResult['stop'] = 'end';
+  let minute = fromMinute;
+  let simulated = 0;
 
   const sides: ('A' | 'B')[] = ['A', 'B'];
-  for (let minute = 1; minute <= 90; minute++) {
+  outer: for (; minute <= toMinute; minute++) {
+    simulated++;
     for (const side of sides) {
       const team = side === 'A' ? a : b;
       const late = minute > 75 ? (side === 'A' ? lateMultA : lateMultB) : 1;
-      const perMinute = (side === 'A' ? perMinuteA * aMult : perMinuteB * bMult) * late;
+      const perMinute =
+        (side === 'A' ? perMinuteA * carry.aMult : perMinuteB * carry.bMult) * late;
       if (rng.chance(perMinute)) {
         const scorer = pickScorer(rng, team.squad, inf);
-        if (side === 'A') goalsA++;
-        else goalsB++;
+        if (side === 'A') carry.goalsA++;
+        else carry.goalsB++;
         events.push({
           minute,
           side,
@@ -280,10 +343,6 @@ export function simulateMatch(
       }
     }
 
-    if (minute === 45) {
-      events.push({ minute: 45, side: 'A', kind: 'flavour', text: HALFTIME });
-    }
-
     // Discipline and injury rolls — always consume the same RNG values per minute
     // for determinism, then conditional player-pick calls only when a roll fires.
     const yellowRoll = rng.next();
@@ -292,11 +351,11 @@ export function simulateMatch(
 
     if (yellowRoll < tuning.pYellow && a.squad.length > 0) {
       const player = weightedPick(rng, a.squad, cardWeight(inf));
-      if (yellowed.has(player.id) && !redPlayer) {
+      if (yellowed.has(player.id) && !carry.redPlayerId) {
         // Second yellow → red
-        redPlayer = player;
-        aMult *= RED_SELF;
-        bMult *= RED_OPP;
+        carry.redPlayerId = player.id;
+        carry.aMult *= RED_SELF;
+        carry.bMult *= RED_OPP;
         const line = SECOND_YELLOW_LINES[rng.int(0, SECOND_YELLOW_LINES.length - 1)];
         events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
       } else if (!yellowed.has(player.id)) {
@@ -306,26 +365,32 @@ export function simulateMatch(
       }
     }
 
-    if (redRoll < tuning.pStraightRed && !redPlayer && a.squad.length > 0) {
+    if (redRoll < tuning.pStraightRed && !carry.redPlayerId && a.squad.length > 0) {
       const player = weightedPick(rng, a.squad, cardWeight(inf));
       if (!yellowed.has(player.id)) {
-        redPlayer = player;
-        aMult *= RED_SELF;
-        bMult *= RED_OPP;
+        carry.redPlayerId = player.id;
+        carry.aMult *= RED_SELF;
+        carry.bMult *= RED_OPP;
         const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
         events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
       }
     }
 
-    if (injuryRoll < tuning.pInjury && !injuredPlayer && a.squad.length > 0) {
+    if (injuryRoll < tuning.pInjury && !carry.injuredId && a.squad.length > 0) {
       const player = weightedPick(rng, a.squad, injuryWeight(inf));
       const r = rng.next();
-      injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
-      injuredPlayer = player;
-      aMult *= INJ_SELF;
-      bMult *= INJ_OPP;
+      carry.injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
+      carry.injuredId = player.id;
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
       events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name), playerName: player.name });
+      if (pauseOnInjury) {
+        // The caller decides: substitute (no penalty) or play on (penalty).
+        minute++;
+        stop = 'injury';
+        break outer;
+      }
+      carry.aMult *= INJ_SELF;
+      carry.bMult *= INJ_OPP;
     }
 
     // Opponent (side B) discipline — they can go down to ten men too. These
@@ -334,41 +399,77 @@ export function simulateMatch(
     const oppRedRoll = rng.next();
     const oppInjuryRoll = rng.next();
 
-    if (oppRedRoll < tuning.pStraightRed && !oppRed && b.squad.length > 0) {
-      oppRed = true;
-      bMult *= RED_SELF;
-      aMult *= RED_OPP;
+    if (oppRedRoll < tuning.pStraightRed && !carry.oppRed && b.squad.length > 0) {
+      carry.oppRed = true;
+      carry.bMult *= RED_SELF;
+      carry.aMult *= RED_OPP;
       const player = weightedPick(rng, b.squad, cardWeight(inf));
       const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
       events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
     }
 
-    if (oppInjuryRoll < tuning.pInjury && !oppInjured && b.squad.length > 0) {
-      oppInjured = true;
-      bMult *= INJ_SELF;
-      aMult *= INJ_OPP;
+    if (oppInjuryRoll < tuning.pInjury && !carry.oppInjured && b.squad.length > 0) {
+      carry.oppInjured = true;
+      carry.bMult *= INJ_SELF;
+      carry.aMult *= INJ_OPP;
       const player = weightedPick(rng, b.squad, injuryWeight(inf));
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
       events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
     }
   }
 
-  events.push({ minute: 90, side: 'A', kind: 'flavour', text: FULLTIME });
-
-  const outcome =
-    goalsA > goalsB ? 'win' : goalsA < goalsB ? 'loss' : 'draw';
-
-  const suspensions = redPlayer ? [redPlayer.id] : [];
-  const injuries = injuredPlayer
-    ? [{ playerId: injuredPlayer.id, rounds: injuryRounds }]
-    : [];
-
+  carry.yellowedA = [...yellowed];
   return {
     events,
-    score: { a: goalsA, b: goalsB },
-    xg: { a: Math.round(xgA * 100) / 100, b: Math.round(xgB * 100) / 100 },
-    outcome,
-    suspensions,
-    injuries,
+    carry,
+    nextMinute: stop === 'injury' ? minute : toMinute + 1,
+    stop,
+    xg: { a: (xgA * simulated) / 90, b: (xgB * simulated) / 90 },
   };
+}
+
+/** Assemble the final MatchResult from accumulated events/carry/xG. */
+export function finalizeResult(
+  events: MatchEvent[],
+  carry: MatchCarry,
+  xg: { a: number; b: number }
+): MatchResult {
+  const outcome =
+    carry.goalsA > carry.goalsB ? 'win' : carry.goalsA < carry.goalsB ? 'loss' : 'draw';
+  return {
+    events,
+    score: { a: carry.goalsA, b: carry.goalsB },
+    xg: { a: Math.round(xg.a * 100) / 100, b: Math.round(xg.b * 100) / 100 },
+    outcome,
+    suspensions: carry.redPlayerId ? [carry.redPlayerId] : [],
+    injuries: carry.injuredId
+      ? [{ playerId: carry.injuredId, rounds: carry.injuryRounds }]
+      : [],
+  };
+}
+
+/**
+ * Simulate a full 90-minute match in one call (no pauses). Deterministic for a
+ * given seed. Composes two half segments — the interactive flow uses the same
+ * machinery with decision points in between.
+ */
+export function simulateMatch(
+  a: MatchTeam,
+  b: MatchTeam,
+  seed: number | string,
+  tuning: EngineTuning = DEFAULT_TUNING
+): MatchResult {
+  const first = simulateSegment(a, b, seed, tuning, 1, 45, freshCarry());
+  const second = simulateSegment(a, b, seed, tuning, 46, 90, first.carry);
+  const events = [
+    kickoffEvent(),
+    ...first.events,
+    halfTimeEvent(),
+    ...second.events,
+    fullTimeEvent(),
+  ];
+  return finalizeResult(events, second.carry, {
+    a: first.xg.a + second.xg.a,
+    b: first.xg.b + second.xg.b,
+  });
 }

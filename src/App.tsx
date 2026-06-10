@@ -66,6 +66,7 @@ export default function App() {
 
   const suspensions = useGameStore((s) => s.suspensions);
   const injuries = useGameStore((s) => s.injuries);
+  const bench = useGameStore((s) => s.bench);
   const owned = useGameStore((s) => s.owned);
   const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
@@ -166,6 +167,26 @@ export default function App() {
       else awardMatch(result);
     },
     [matchMode, resolveRound, awardMatch]
+  );
+
+  // Substitution support: fit bench players who could come on mid-match, and a
+  // strength recompute (chemistry + active modifiers) for the substituted XI.
+  const benchPlayers = useMemo(
+    () =>
+      bench
+        .map(getPlayer)
+        .filter(
+          (p): p is Player => !!p && !suspensions.includes(p.id) && !injuries[p.id]
+        ),
+    [bench, suspensions, injuries]
+  );
+  const rebuildStrength = useCallback(
+    (starters: Player[]) => {
+      const chem = computeChemistry(starters);
+      const mods = mergeModifiers(roundMods, relicModifiers(relics));
+      return effectiveStrength(chem.perPlayer, mods);
+    },
+    [roundMods, relics]
   );
 
   const dismissChallenge = () => {
@@ -350,6 +371,9 @@ export default function App() {
         seed={matchSeed}
         tuning={config.engine}
         ladder={matchMode === 'ladder'}
+        interactive={matchMode === 'ladder'}
+        benchPlayers={benchPlayers}
+        rebuildStrength={rebuildStrength}
         onComplete={onMatchComplete}
       />
 
