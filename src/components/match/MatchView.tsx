@@ -58,19 +58,36 @@ export default function MatchView({
   const completedRef = useRef(false);
   const tickerRef = useRef<HTMLDivElement>(null);
 
-  // Build & start the match when the modal opens.
+  // Latest inputs in refs so the build effect can read them WITHOUT re-running
+  // when their identity changes mid-match. (A resolved round mutates roundMods,
+  // which gives playerTeam a new reference; depending on it here used to restart
+  // the sim and re-fire onComplete in a loop that auto-advanced the whole run.)
+  const playerTeamRef = useRef(playerTeam);
+  const opponentRef = useRef(opponentOverride);
+  const tuningRef = useRef(tuning);
+  playerTeamRef.current = playerTeam;
+  opponentRef.current = opponentOverride;
+  tuningRef.current = tuning;
+
+  // Build the match once per open, or when a genuinely new match is requested
+  // (new seed) — never on an incidental playerTeam re-render.
   useEffect(() => {
-    if (!open || !playerTeam) return;
+    if (!open) {
+      setMatch(null);
+      completedRef.current = false;
+      return;
+    }
+    const pt = playerTeamRef.current;
+    if (!pt) return;
     const seed = seedProp ?? `M-${Date.now()}`;
-    const opponent =
-      opponentOverride ??
-      generateOpponent(playerTeam.attack, playerTeam.defense, seed);
-    const result = simulateMatch(playerTeam, opponent, seed, tuning);
+    const opponent = opponentRef.current ?? generateOpponent(pt.attack, pt.defense, seed);
+    const result = simulateMatch(pt, opponent, seed, tuningRef.current);
     completedRef.current = false;
     setMatch({ result, opponent, seed });
     setShown(1);
     setSpeed(1);
-  }, [open, playerTeam, opponentOverride, seedProp, tuning]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, seedProp]);
 
   // Drive playback — reruns whenever shown or speed changes.
   useEffect(() => {
