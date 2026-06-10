@@ -368,41 +368,33 @@ generator; a **choreographer** turns its event timeline into 2D scenes.
 
 ---
 
-## 3. Active Work
+## 3. Active Work & Next Directions
 
-**Game-mode foundation — Phase 0 DONE & deployed (commit `4f8a14d`).**
+**Nothing in flight.** All planned phases (0–3) and the 2026-06-10 mega-session
+(sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
+extended stats, 2D pitch view, team kits) are shipped and deployed. No active
+bugs outstanding. Persistence is at **v17**; tests at **203/203**.
 
-Introduced `src/lib/modes.ts`: a single `ModeConfig` that parameterizes the rules that were
-previously hardcoded (maxRounds, startingLives, startingBankroll, roundIncome, roundTarget
-curve, boss schedule, engine tuning, event rates). The `CLASSIC` preset is assembled FROM
-the existing constants (one source of truth, no drift). Pure lib functions
-(`engine.simulateMatch`/`expectedGoals`, `events.drawEvent`, `bosses.getBoss/bossTeam`,
-`ladder.buildRoundOpponent/roundTargetStrength`) gained an optional trailing config arg
-defaulting to classic, so all existing callers/tests are byte-identical. Store carries
-`mode` in run state (persistence **v9**, migration defaults `mode:'classic'`; save codes
-round-trip it). App/MatchView/SeasonPanel/Hud read the active mode. New `tests/modes.test.ts`
-(6 tests) locks "Classic == defaults". **No gameplay change — pure refactor keystone.**
+**Candidate next steps (proposed 2026-06-10, awaiting a pick):**
+1. **Interactive match pass** (top recommendation) — half-time team-talk
+   decisions (seeded choice between two pre-rolled second halves; Daily-safe via
+   the existing `MatchModifiers` layer) + **substitutions** on injury/red (makes
+   the bench and wage-bill depth real decisions; pairs with the Carnage mutator).
+2. **Feel**: retro sound (mute toggle), post-match shots/xG stats + scorer-name
+   flash on the 2D pitch, seeded club crest generator (sequel to kits).
+3. **Retention**: Daily leaderboard (NOTE: first backend component — deliberate
+   architecture decision), local achievements/trophy cabinet, more scenarios
+   (pure data, ~30 lines each).
+4. **Health**: top-level React error boundary with save-code recovery UI,
+   a Playwright smoke test for the core loop (onboard → auto-sign → kick off →
+   FT), PWA/offline install (perfect fit: 100% client-side localStorage game).
+5. **Open design call from the QA audit**: G5 — the round-4 "gift" boss stays
+   deliberately easy (comic relief); revisit only if a twist is wanted.
 
-**Roadmap (agreed direction):** the game-modes plan is phased —
-- **Phase 0** ✅ ModeConfig foundation (done, commit `4f8a14d`).
-- **Phase 1** ✅ run **mutators** + **Endless** + scored **Daily Gauntlet** (done — see §2).
-  Files: `src/lib/mutators.ts`, `src/lib/score.ts`, `ENDLESS` in `modes.ts`,
-  `NewRunModal.tsx`, `startRun` store action, persistence v10 (adds `mutator`).
-- **Phase 2** ✅ **Scenarios / Challenges** (done — see §2). Files: `src/lib/scenarios.ts`,
-  `ScenariosPanel.tsx`, `Stars.tsx`, `startScenario` action, `finalMustWin` on ModeConfig,
-  persistence v11 (adds `scenario` + `scenarioStars`).
-- **Phase 3** ✅ **Career / Dynasty** (done — see §2). Files: `src/lib/career.ts`,
-  `CareerReview.tsx`, pool overlay in `src/data/pool.ts`, `startCareer`/`advanceCareerSeason`
-  actions, `career`/`careerReview`/`careerBest` state, persistence v12.
-  **Deferred for a future pass:** youth scouting (narrow potential), transfer negotiations,
-  multiple simultaneous board demands.
-- **Phase 3:** Career / Dynasty (multi-season persistence, youth academy + scouting,
-  aging/regens, board objectives).
-- **Cross-cutting:** evolve one-shot events into branching tactical dilemmas.
-
-No active bugs outstanding. Recent UI bug fixes (all committed): New Game/Daily inline
-confirm popover (replaced `window.confirm`), squad click-to-assign reliability (drag moved
-to a grip handle), squad-list-first-on-mobile.
+Historical note: the original game-modes roadmap (Phases 0–3, commit `4f8a14d`
+onward) is fully delivered — details in §2. The one surviving roadmap item,
+"evolve one-shot events into branching tactical dilemmas", is folded into
+candidate #1 above.
 
 ---
 
