@@ -5,6 +5,8 @@ import { bestLabel } from '@/lib/ladder';
 import { formatScore } from '@/lib/score';
 import { SCENARIOS } from '@/lib/scenarios';
 import { ACHIEVEMENTS } from '@/lib/achievements';
+import { dailyKey } from '@/lib/daily';
+import DailyLeaderboard from './DailyLeaderboard';
 import { RARITIES, type Rarity } from '@/lib/types';
 
 const RARITY_COLORS: Record<Rarity, { text: string; bar: string }> = {
@@ -62,6 +64,11 @@ export default function RecordsPanel() {
             <p className="mt-0.5 font-display text-chrome">{t.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Today's world standings (renders only when the backend is reachable) */}
+      <div className="mt-4">
+        <DailyLeaderboard day={dailyKey()} />
       </div>
 
       {/* Trophy cabinet */}

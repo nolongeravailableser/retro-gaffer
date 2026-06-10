@@ -10,6 +10,8 @@ import { runConfig, getScenario } from '@/lib/scenarios';
 import { boardWantsTitle } from '@/lib/career';
 import { runScore, formatScore } from '@/lib/score';
 import { formatRunResult } from '@/lib/daily';
+import { submitDailyScore } from '@/lib/leaderboard';
+import DailyLeaderboard from '@/components/records/DailyLeaderboard';
 import Stars from '@/components/ui/Stars';
 
 interface RunOverModalProps {
@@ -51,6 +53,18 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   useEffect(() => {
     if (runStatus === 'playing') setDismissed(false);
   }, [runStatus]);
+
+  // A finished Daily posts its score to the world board (deduped per day,
+  // fire-and-forget, silently skipped when the backend is unavailable).
+  useEffect(() => {
+    if (runStatus === 'playing' || !daily) return;
+    const cfg = runConfig({ scenario: scenarioId, mode, mutator: mutatorId });
+    const sc = runScore({
+      round, runStatus, peakBankroll, bestStreak, record, maxRounds: cfg.maxRounds,
+    });
+    void submitDailyScore({ day: daily, score: sc, club: clubName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runStatus, daily]);
 
   if (runStatus === 'playing' || dismissed) return null;
 
@@ -204,19 +218,23 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
           </div>
 
           {/* Stats */}
-          <motion.dl
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.25 }}
-            className="grid grid-cols-2 gap-2 overflow-y-auto px-5 py-4 text-sm"
+            className="flex flex-col gap-3 overflow-y-auto px-5 py-4"
           >
-            {stats.map(([k, v]) => (
-              <div key={k} className="rounded-lg border border-white/10 bg-pitch-900/50 px-3 py-2">
-                <dt className="text-[11px] uppercase tracking-wide text-chrome-muted">{k}</dt>
-                <dd className="font-display text-chrome">{v}</dd>
-              </div>
-            ))}
-          </motion.dl>
+            <dl className="grid grid-cols-2 gap-2 text-sm">
+              {stats.map(([k, v]) => (
+                <div key={k} className="rounded-lg border border-white/10 bg-pitch-900/50 px-3 py-2">
+                  <dt className="text-[11px] uppercase tracking-wide text-chrome-muted">{k}</dt>
+                  <dd className="font-display text-chrome">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {/* World standings for a finished Daily (hidden when offline). */}
+            {daily && <DailyLeaderboard day={daily} compact />}
+          </motion.div>
 
           {/* Actions */}
           <div className="flex flex-col gap-2 border-t border-crt-dim bg-pitch-900/80 px-5 py-3">
