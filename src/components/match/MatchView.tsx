@@ -4,6 +4,7 @@ import { X, ChevronsRight, Trophy, Ban, HeartCrack } from 'lucide-react';
 import { simulateMatch, DEFAULT_TUNING, type MatchTeam, type EngineTuning } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { MATCH_REWARD } from '@/lib/economy';
+import { useGameStore } from '@/store/useGameStore';
 import type { MatchResult } from '@/lib/types';
 
 interface MatchViewProps {
@@ -14,6 +15,8 @@ interface MatchViewProps {
   seed?: string | null;
   /** Match-engine tuning for the active mode (defaults to classic). */
   tuning?: EngineTuning;
+  /** Ladder match → show the resolved round payout (PvP exhibitions don't). */
+  ladder?: boolean;
   onComplete: (result: MatchResult) => void;
 }
 
@@ -46,8 +49,11 @@ export default function MatchView({
   opponent: opponentOverride = null,
   seed: seedProp = null,
   tuning = DEFAULT_TUNING,
+  ladder = false,
   onComplete,
 }: MatchViewProps) {
+  const lastIncome = useGameStore((s) => s.lastIncome);
+  const bankroll = useGameStore((s) => s.bankroll);
   const [match, setMatch] = useState<{
     result: MatchResult;
     opponent: MatchTeam;
@@ -122,6 +128,10 @@ export default function MatchView({
 
   const finished = shown >= events.length;
   const outcome = OUTCOME_COPY[result.outcome];
+  const payoutNet = lastIncome
+    ? lastIncome.reward + lastIncome.income + lastIncome.interest +
+      lastIncome.streak - lastIncome.wage + lastIncome.wager
+    : 0;
 
   const hasSuspensions = result.suspensions.length > 0;
   const hasInjuries = result.injuries.length > 0;
@@ -242,6 +252,36 @@ export default function MatchView({
                     +£{MATCH_REWARD[result.outcome]}M
                   </span>
                 </div>
+
+                {/* Round payout — the full economic outcome, not just the reward */}
+                {ladder && lastIncome && (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-pitch-900/60 px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-sm uppercase tracking-wide text-chrome-muted">
+                        Round payout
+                      </span>
+                      <span
+                        className={`font-display text-xl ${
+                          payoutNet >= 0 ? 'text-crt-green' : 'text-rose-300'
+                        }`}
+                      >
+                        {payoutNet >= 0 ? '+' : '−'}£{Math.abs(payoutNet)}M
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-chrome-muted">
+                      £{lastIncome.reward} result · £{lastIncome.income} round · £
+                      {lastIncome.interest} interest
+                      {lastIncome.streak ? ` · £${lastIncome.streak} streak` : ''}
+                      {lastIncome.wage ? ` · −£${lastIncome.wage} wages` : ''}
+                      {lastIncome.wager
+                        ? ` · ${lastIncome.wager > 0 ? '+' : '−'}£${Math.abs(lastIncome.wager)} bet`
+                        : ''}
+                    </p>
+                    <p className="mt-1 text-right text-xs text-crt-amber">
+                      Bankroll: £{bankroll}M
+                    </p>
+                  </div>
+                )}
 
                 {/* Team news */}
                 {hasTeamNews && (

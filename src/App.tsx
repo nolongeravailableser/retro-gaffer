@@ -33,6 +33,7 @@ import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
+import RunOverModal from '@/components/run/RunOverModal';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
@@ -269,6 +270,10 @@ export default function App() {
         open={matchOpen}
         onClose={() => {
           setMatchOpen(false);
+          // A finished run is handled by the RunOverModal overlay (shown over any
+          // tab). Otherwise, if players need attention (bans/injuries), jump to the
+          // squad so the manager can re-pick before the next round.
+          if (runStatus !== 'playing') return;
           const hasPending =
             suspensions.length > 0 || Object.keys(injuries).length > 0;
           if (hasPending) setActiveTab('formation');
@@ -277,12 +282,14 @@ export default function App() {
         opponent={opponent}
         seed={matchSeed}
         tuning={config.engine}
+        ladder={matchMode === 'ladder'}
         onComplete={onMatchComplete}
       />
 
       <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
 
       <CareerReview />
+      <RunOverModal onNewRun={() => setNewRunOpen(true)} />
     </div>
   );
 }

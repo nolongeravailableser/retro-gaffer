@@ -62,8 +62,28 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
   const careerBest = useGameStore((s) => s.careerBest);
-  const newGame = useGameStore((s) => s.newGame);
+  const startRun = useGameStore((s) => s.startRun);
+  const startScenario = useGameStore((s) => s.startScenario);
+  const startCareer = useGameStore((s) => s.startCareer);
+  const newDailyRun = useGameStore((s) => s.newDailyRun);
   const [shared, setShared] = useState(false);
+
+  // Mode-aware "play it again": restart the same thing that just ended.
+  const replay = () => {
+    if (scenarioId) startScenario(scenarioId);
+    else if (career) startCareer();
+    else if (daily) newDailyRun();
+    else startRun(mode, mutatorId);
+  };
+  const replayLabel = scenarioId
+    ? 'Retry Challenge'
+    : career
+      ? 'New Career'
+      : daily
+        ? 'Replay Daily'
+        : mode === 'endless'
+          ? 'New Endless Run'
+          : 'New Run';
 
   if (runStatus !== 'playing') {
     const won = runStatus === 'won';
@@ -163,11 +183,11 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
           </button>
           <button
             type="button"
-            onClick={() => confirm('Start a new season? Squad & bankroll reset.') && newGame()}
+            onClick={replay}
             data-testid="new-season"
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 px-4 py-2 font-display text-sm hover:bg-white/5"
           >
-            <RotateCcw size={14} /> New Season
+            <RotateCcw size={14} /> {replayLabel}
           </button>
         </div>
       </div>
@@ -223,6 +243,27 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
               {career.targetRound}). Go out before that and you're sacked.</>
             )}
           </span>
+        </div>
+      )}
+      {/* Active ruleset — readable without hovering a HUD chip */}
+      {!scenario && !career && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="rounded border border-white/10 px-1.5 py-0.5 font-display text-chrome">
+            {config.name}
+          </span>
+          {daily && (
+            <span className="rounded border border-fuchsia-400/30 px-1.5 py-0.5 text-fuchsia-200">
+              Daily {daily}
+            </span>
+          )}
+          {mutator && (
+            <span
+              className="rounded border border-amber-400/30 px-1.5 py-0.5 text-amber-200"
+              title={mutator.blurb}
+            >
+              {mutator.emoji} {mutator.name}
+            </span>
+          )}
         </div>
       )}
       <div className="mb-3 flex items-center justify-between">
@@ -378,6 +419,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         type="button"
         onClick={onPlay}
         disabled={!canPlay}
+        title={canPlay ? undefined : `Fill all ${XI_SIZE} starting slots before kickoff (${filled}/${XI_SIZE})`}
         whileTap={canPlay ? { scale: 0.98 } : undefined}
         data-testid="play-round"
         className={[
