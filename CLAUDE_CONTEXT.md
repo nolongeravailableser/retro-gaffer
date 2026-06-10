@@ -117,6 +117,11 @@ live** unless noted.
   most seasons survived (persisted). Generated/aged players resolve via a **pool overlay**
   (`registerPlayers`/`clearOverlay` in `src/data/pool.ts`), re-registered on rehydrate.
   Started from the New Run modal's Career card.
+  - **Youth scouting**: prospects carry a hidden `potential` (Player.potential) shown as a
+    fuzzy ★ range; pay `SCOUT_YOUTH_COST` (£4M) in the review to reveal the exact rating
+    (`scoutYouth` action + `careerReview.scouted`). Aging growth ramps stats toward potential.
+  - **Board variety**: demands escalate to "win the title" once the target reaches the top
+    division (`boardWantsTitle`/`boardMet`) — late seasons need a trophy, not just survival.
 
 ---
 

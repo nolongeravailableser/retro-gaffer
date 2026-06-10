@@ -36,7 +36,12 @@ export interface ReviewState {
   bonus: number; // retention bonus £m
   /** Academy prospects on offer this window. */
   youth: Player[];
+  /** Youth ids whose exact potential has been scouted (revealed). */
+  scouted: string[];
 }
+
+/** Cost to fully scout a prospect's potential. */
+export const SCOUT_YOUTH_COST = 4;
 
 /** Career-best record, persisted across careers. */
 export const CAREER_BONUS = 12; // £m board reward for meeting expectations
@@ -53,6 +58,22 @@ const MAX_STAT = 99;
 /** The board's demand escalates each season, capped at the title. */
 export function boardTarget(season: number): number {
   return Math.min(12, 4 + season * 2); // S1:6 S2:8 S3:10 S4+:12
+}
+
+/** Once the demand reaches the top division, the board wants the trophy itself. */
+export function boardWantsTitle(season: number): boolean {
+  return boardTarget(season) >= 12;
+}
+
+/** Did the season meet the board's demand? */
+export function boardMet(season: number, reached: number, triumph: boolean): boolean {
+  if (boardWantsTitle(season)) return triumph;
+  return reached >= boardTarget(season) || triumph;
+}
+
+/** A 1–5 potential rating from a ceiling stat value. */
+export function potentialStars(potential: number): number {
+  return Math.max(1, Math.min(5, Math.round((potential - 45) / 11)));
 }
 
 const clamp = (v: number) => Math.max(MIN_STAT, Math.min(MAX_STAT, Math.round(v)));
@@ -82,12 +103,13 @@ export function generateYouth(seed: string | number, n: number): Player[] {
     const first = YOUTH_FIRST[rng.int(0, YOUTH_FIRST.length - 1)];
     const last = YOUTH_LAST[rng.int(0, YOUTH_LAST.length - 1)];
     // Current ability is raw; potential = current + full growth ramp.
-    const primary = rng.int(48, 64); // their stronger side
-    const secondary = rng.int(30, 50);
+    const primary = rng.int(44, 60); // their stronger side, raw
+    const secondary = rng.int(28, 46);
     const attackLed = role === 'FWD' || role === 'MID';
     const attack = attackLed ? primary : secondary;
     const defense = attackLed ? secondary : primary;
-    const potential = primary + GROWTH_STEP * YOUTH_GROWTH_SEASONS;
+    // Hidden ceiling with real variance — the thing scouting reveals.
+    const potential = clamp(primary + rng.int(10, 34));
     out.push({
       id: `youth-${seed}-${i}`,
       name: `${first} ${last}`,
@@ -95,10 +117,11 @@ export function generateYouth(seed: string | number, n: number): Player[] {
       stats: { attack: clamp(attack), defense: clamp(defense) },
       tags: ['academy'],
       role,
-      rarity: potential >= 80 ? 'gold' : 'silver',
+      rarity: potential >= 82 ? 'gold' : 'silver',
       position: undefined,
       synergyTags: ['academy'],
       era: 'Academy',
+      potential,
     });
   }
   return out;
@@ -135,8 +158,17 @@ export function ageRoster(
     let { attack, defense } = cur.stats;
 
     if (growthLeft > 0) {
-      attack += GROWTH_STEP;
-      defense += GROWTH_STEP;
+      // Youth ramp toward their hidden potential (stronger side leads).
+      const primary = Math.max(attack, defense);
+      const ceiling = cur.potential ?? primary + GROWTH_STEP;
+      const gain = Math.max(1, Math.round((ceiling - primary) / growthLeft));
+      if (attack >= defense) {
+        attack += gain;
+        defense += Math.round(gain * 0.6);
+      } else {
+        defense += gain;
+        attack += Math.round(gain * 0.6);
+      }
       growthLeft -= 1;
     } else {
       age += 1;

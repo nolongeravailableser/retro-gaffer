@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   boardTarget,
+  boardWantsTitle,
+  boardMet,
+  potentialStars,
   generateYouth,
   ageRoster,
   newMeta,
@@ -23,6 +26,31 @@ describe('boardTarget', () => {
   });
   it('never demands more than 12', () => {
     for (let s = 1; s <= 20; s++) expect(boardTarget(s)).toBeLessThanOrEqual(12);
+  });
+});
+
+describe('board demands', () => {
+  it('early seasons want a division; late seasons want the title', () => {
+    expect(boardWantsTitle(1)).toBe(false);
+    expect(boardWantsTitle(4)).toBe(true);
+  });
+  it('boardMet honours reach vs title', () => {
+    // S1 (reach round 6): reaching 6 is enough, win or not.
+    expect(boardMet(1, 6, false)).toBe(true);
+    expect(boardMet(1, 5, false)).toBe(false);
+    expect(boardMet(1, 5, true)).toBe(true); // a triumph always satisfies
+    // S4 (title): only a triumph counts.
+    expect(boardMet(4, 12, false)).toBe(false);
+    expect(boardMet(4, 12, true)).toBe(true);
+  });
+});
+
+describe('potentialStars', () => {
+  it('maps ceilings to 1–5', () => {
+    expect(potentialStars(45)).toBeGreaterThanOrEqual(1);
+    expect(potentialStars(99)).toBe(5);
+    expect(potentialStars(10)).toBe(1);
+    expect(potentialStars(70)).toBeGreaterThan(potentialStars(55));
   });
 });
 
@@ -58,13 +86,16 @@ describe('ageRoster', () => {
     rarity: 'silver',
   });
 
-  it('youth grow while growthLeft remains', () => {
+  it('youth ramp toward their potential while growthLeft remains', () => {
     clearOverlay();
-    registerPlayers([base('y', 50, 40)]);
+    registerPlayers([{ ...base('y', 50, 40), potential: 65 }]);
     const { meta, roster } = ageRoster(['y'], { y: youthMeta() }, getPlayer);
-    expect(roster.y.stats.attack).toBe(55); // +GROWTH_STEP
+    // gain = round((65 - 50) / 3) = 5 on the stronger side.
+    expect(roster.y.stats.attack).toBe(55);
+    expect(roster.y.stats.defense).toBe(43); // +round(5 * 0.6)
     expect(meta.y.growthLeft).toBe(2);
     expect(meta.y.age).toBe(0);
+    clearOverlay();
   });
 
   it('veterans hold their level through the peak, then decline', () => {

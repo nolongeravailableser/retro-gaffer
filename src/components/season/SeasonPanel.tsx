@@ -16,6 +16,7 @@ import {
 } from '@/lib/ladder';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
+import { boardWantsTitle } from '@/lib/career';
 import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
 import Stars from '@/components/ui/Stars';
@@ -214,9 +215,13 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, onPlay }: 
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2 text-xs text-crt-green">
           <Briefcase size={13} className="shrink-0" />
           <span className="flex-1">
-            <span className="font-display">Season {career.season}</span> — the board demand you
-            reach <span className="font-display">{ladderTier(career.targetRound)}</span> (round{' '}
-            {career.targetRound}). Go out before that and you're sacked.
+            <span className="font-display">Season {career.season}</span> — the board demand you{' '}
+            {boardWantsTitle(career.season) ? (
+              <><span className="font-display">win the title</span>. Anything less and you're sacked.</>
+            ) : (
+              <>reach <span className="font-display">{ladderTier(career.targetRound)}</span> (round{' '}
+              {career.targetRound}). Go out before that and you're sacked.</>
+            )}
           </span>
         </div>
       )}

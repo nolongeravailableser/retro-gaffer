@@ -8,6 +8,7 @@ import { bestLabel, ladderTier } from '@/lib/ladder';
 import { Briefcase } from 'lucide-react';
 import { getMutator, dailyMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
+import { boardWantsTitle } from '@/lib/career';
 import { dailyKey } from '@/lib/daily';
 import { runScore, formatScore } from '@/lib/score';
 
@@ -134,7 +135,9 @@ export default function Hud({ onNewRun }: HudProps) {
           <span className="font-display text-sm text-crt-green">
             Season {career.season}
           </span>
-          <span className="text-xs text-chrome-muted">→ {ladderTier(career.targetRound)}</span>
+          <span className="text-xs text-chrome-muted">
+            → {boardWantsTitle(career.season) ? 'Title' : ladderTier(career.targetRound)}
+          </span>
         </div>
       )}
 

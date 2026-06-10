@@ -78,6 +78,8 @@ export interface Player {
   synergyTags?: string[];
   /** Legacy display label; loader sets this to peak_season. */
   era?: string;
+  /** Career youth only: hidden stat ceiling they grow toward (scout to reveal). */
+  potential?: number;
 }
 
 export interface PlayerStats {

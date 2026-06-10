@@ -34,11 +34,13 @@ import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import {
   boardTarget,
+  boardMet,
   generateYouth,
   ageRoster,
   youthMeta,
   CAREER_BONUS,
   TRIUMPH_BONUS,
+  SCOUT_YOUTH_COST,
   type CareerState,
   type ReviewState,
 } from '@/lib/career';
@@ -277,6 +279,8 @@ interface GameState {
   startScenario: (id: string) => void;
   /** Begin a new Career: multiple seasons, persistent squad, board objectives. */
   startCareer: () => void;
+  /** Pay to reveal an academy prospect's exact potential during the review. */
+  scoutYouth: (youthId: string) => void;
   /** Resolve the between-seasons review and begin the next season. */
   advanceCareerSeason: (youthId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
@@ -630,7 +634,7 @@ export const useGameStore = create<GameState>()(
             if (seasonOver) {
               const triumph = !sacked && outcome === 'win';
               const reached = sacked ? s.round : config.maxRounds;
-              const met = reached >= career.targetRound || triumph;
+              const met = boardMet(career.season, reached, triumph);
               if (!met) {
                 // Fired before meeting expectations — the career ends here.
                 return {
@@ -648,6 +652,7 @@ export const useGameStore = create<GameState>()(
                 triumph,
                 bonus: triumph ? TRIUMPH_BONUS : CAREER_BONUS,
                 youth: generateYouth(`${s.runSeed}-youth-${career.season}`, 2),
+                scouted: [],
               };
               return {
                 ...base,
@@ -918,6 +923,20 @@ export const useGameStore = create<GameState>()(
           career: { season: 1, targetRound: boardTarget(1), meta: {}, roster: {} },
           careerReview: null,
         })),
+
+      // Pay to scout a prospect — reveals their exact potential in the review.
+      scoutYouth: (youthId) =>
+        set((s) => {
+          const review = s.careerReview;
+          if (!review || review.scouted.includes(youthId)) return {};
+          if (!review.youth.some((y) => y.id === youthId)) return {};
+          if (s.bankroll < SCOUT_YOUTH_COST) return { notice: 'Not enough funds' };
+          return {
+            bankroll: s.bankroll - SCOUT_YOUTH_COST,
+            careerReview: { ...review, scouted: [...review.scouted, youthId] },
+            notice: null,
+          };
+        }),
 
       // Close the review and roll into the next season: age the squad, fold in the
       // chosen academy youth, pay the board bonus, reset the climb, keep the squad.
