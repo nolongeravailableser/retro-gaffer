@@ -60,8 +60,12 @@ live** unless noted.
 - **Save/load** — persistence + corrupted-save recovery; portable `GAFFER-SAVE-…` codes.
 
 **UI structure (Football Manager-style)**
-- **Tabbed nav** (`src/components/nav/TabNav.tsx`): **Tactics / Transfers / Season / More**.
-  Desktop sticky top bar; mobile fixed bottom nav. (Squad was merged into Tactics.)
+- **Tabbed nav** (`src/components/nav/TabNav.tsx`): **Tactics / Transfers / Season /
+  Challenges / PvP / Records / Club** — flat, no nesting (the old "More" tab was split
+  out 2026-06-10; **Club** = ClubSettings + SavePanel, the one deliberate merge).
+  Desktop sticky top bar (`overflow-x-auto` for narrow widths); mobile fixed bottom nav
+  (7 icon-led items with micro labels, ~53px each at 375px). (Squad was merged into
+  Tactics.)
 - **Tactics tab** = combined squad + formation: pitch/bench/chemistry on one side, a
   compact FM-style squad list (`SquadList.tsx`) on the other. On mobile the squad list
   renders first (above the pitch) so newly-signed players are immediately visible.

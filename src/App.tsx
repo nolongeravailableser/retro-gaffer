@@ -307,11 +307,18 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'more' && (
+        {activeTab === 'challenges' && (
+          <ScenariosPanel onStart={() => setActiveTab('formation')} />
+        )}
+
+        {activeTab === 'pvp' && (
+          <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
+        )}
+
+        {activeTab === 'records' && <RecordsPanel />}
+
+        {activeTab === 'club' && (
           <div className="flex flex-col gap-4">
-            <RecordsPanel />
-            <ScenariosPanel onStart={() => setActiveTab('formation')} />
-            <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
             <ClubSettings onReplayTutorial={() => setTutorialOpen(true)} />
             <SavePanel />
           </div>
