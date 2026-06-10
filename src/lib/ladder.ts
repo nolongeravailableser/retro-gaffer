@@ -47,6 +47,10 @@ export function bestLabel(round: number): string {
  * player must out-build, NOT a rubber-band scaled to the player. This is the
  * core fix for flatness: you can fall behind, and you can pull ahead.
  */
+// NOTE: rounds 4, 8 and 12 are BOSS rounds — their entries here (index 3/7/11)
+// are overridden by the fixed boss strength in buildRoundOpponent and never
+// read for a normal opponent. They're kept only so the array stays 1:1 with the
+// round number; don't read non-monotonicity at those indices as a balance bug.
 export const ROUND_TARGET = [
   380, 500, 620, 720, 900, 1010, 1120, 1320, 1300, 1390, 1480, 1600,
 ];

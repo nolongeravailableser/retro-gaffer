@@ -113,13 +113,22 @@ const KICKOFF = 'And we are underway at the Theatre of Nostalgia!';
 const HALFTIME = 'The referee blows for half-time.';
 const FULLTIME = "That's full-time!";
 
-/** Weight scorers toward the front of the pitch. */
+// A sending-off / injury reshapes the rest of the match: the offending side
+// creates less and concedes more for the remaining minutes. Reds bite harder
+// than injuries. (Determinism is unaffected — these only scale seeded chances.)
+const RED_SELF = 0.8; // your scoring rate after a red
+const RED_OPP = 1.12; // the opponent's scoring rate after your red
+const INJ_SELF = 0.95;
+const INJ_OPP = 1.05;
+
+/** Weight scorers toward the front of the pitch. Keepers never score. */
 function pickScorer(rng: Rng, squad: Player[]): string {
   if (squad.length === 0) return 'a trialist';
-  const weights = squad.map((p) =>
-    p.role === 'FWD' ? 4 : p.role === 'MID' ? 3 : p.role === 'DEF' ? 1 : 0.2
+  const weights: number[] = squad.map((p) =>
+    p.role === 'FWD' ? 4 : p.role === 'MID' ? 3 : p.role === 'DEF' ? 1 : 0
   );
   const total = weights.reduce((s, w) => s + w, 0);
+  if (total <= 0) return squad[squad.length - 1].name; // all-keeper edge case
   let r = rng.next() * total;
   for (let i = 0; i < squad.length; i++) {
     r -= weights[i];
@@ -147,17 +156,25 @@ export function simulateMatch(
   let goalsA = 0;
   let goalsB = 0;
 
-  // Discipline tracking for side A (only player's team has gameplay impact).
+  // Live strength swing from cards/injuries (1 = full strength). Updated as
+  // events fire, so a red in the 5th minute actually matters for the result.
+  let aMult = 1;
+  let bMult = 1;
+
+  // Side A discipline persists to the player's squad (suspensions / injuries).
   const yellowed = new Set<string>(); // player IDs with one yellow this game
   let redPlayer: Player | null = null;
   let injuredPlayer: Player | null = null;
   let injuryRounds = 0;
+  // Side B discipline is in-match + commentary only (never returned).
+  let oppRed = false;
+  let oppInjured = false;
 
   const sides: ('A' | 'B')[] = ['A', 'B'];
   for (let minute = 1; minute <= 90; minute++) {
     for (const side of sides) {
       const team = side === 'A' ? a : b;
-      const perMinute = side === 'A' ? perMinuteA : perMinuteB;
+      const perMinute = (side === 'A' ? perMinuteA * aMult : perMinuteB * bMult);
       if (rng.chance(perMinute)) {
         const scorer = pickScorer(rng, team.squad);
         if (side === 'A') goalsA++;
@@ -183,8 +200,8 @@ export function simulateMatch(
       events.push({ minute: 45, side: 'A', kind: 'flavour', text: HALFTIME });
     }
 
-    // Discipline and injury rolls — always consume 3 RNG values per minute for
-    // determinism, then conditional player-pick calls only when a roll fires.
+    // Discipline and injury rolls — always consume the same RNG values per minute
+    // for determinism, then conditional player-pick calls only when a roll fires.
     const yellowRoll = rng.next();
     const redRoll = rng.next();
     const injuryRoll = rng.next();
@@ -194,6 +211,8 @@ export function simulateMatch(
       if (yellowed.has(player.id) && !redPlayer) {
         // Second yellow → red
         redPlayer = player;
+        aMult *= RED_SELF;
+        bMult *= RED_OPP;
         const line = SECOND_YELLOW_LINES[rng.int(0, SECOND_YELLOW_LINES.length - 1)];
         events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
       } else if (!yellowed.has(player.id)) {
@@ -207,6 +226,8 @@ export function simulateMatch(
       const player = rng.pick(a.squad);
       if (!yellowed.has(player.id)) {
         redPlayer = player;
+        aMult *= RED_SELF;
+        bMult *= RED_OPP;
         const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
         events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name) });
       }
@@ -217,8 +238,34 @@ export function simulateMatch(
       const r = rng.next();
       injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
       injuredPlayer = player;
+      aMult *= INJ_SELF;
+      bMult *= INJ_OPP;
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
       events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name) });
+    }
+
+    // Opponent (side B) discipline — they can go down to ten men too. These
+    // never persist (the player only manages their own squad), but they swing
+    // the live match and give the world some reciprocity.
+    const oppRedRoll = rng.next();
+    const oppInjuryRoll = rng.next();
+
+    if (oppRedRoll < tuning.pStraightRed && !oppRed && b.squad.length > 0) {
+      oppRed = true;
+      bMult *= RED_SELF;
+      aMult *= RED_OPP;
+      const player = rng.pick(b.squad);
+      const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
+      events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}` });
+    }
+
+    if (oppInjuryRoll < tuning.pInjury && !oppInjured && b.squad.length > 0) {
+      oppInjured = true;
+      bMult *= INJ_SELF;
+      aMult *= INJ_OPP;
+      const player = rng.pick(b.squad);
+      const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
+      events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}` });
     }
   }
 

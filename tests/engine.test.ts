@@ -126,6 +126,21 @@ describe('simulateMatch invariants', () => {
     }
   });
 
+  it('opponents (side B) can also pick up reds/injuries, but they never persist', () => {
+    let sideBDiscipline = 0;
+    const aIds = new Set(teamA.squad.map((p) => p.id));
+    for (let s = 0; s < 200; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      sideBDiscipline += r.events.filter(
+        (e) => e.side === 'B' && (e.kind === 'red' || e.kind === 'injury')
+      ).length;
+      // Returned suspensions/injuries are still the player's (side A) only.
+      for (const id of r.suspensions) expect(aIds.has(id)).toBe(true);
+      for (const inj of r.injuries) expect(aIds.has(inj.playerId)).toBe(true);
+    }
+    expect(sideBDiscipline).toBeGreaterThan(0);
+  });
+
   it('discipline/injury events occur at a realistic frequency over many games', () => {
     let reds = 0;
     let yellows = 0;
