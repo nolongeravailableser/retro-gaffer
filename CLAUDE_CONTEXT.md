@@ -74,7 +74,7 @@ live** unless noted.
 **Quality gates (current):**
 - `npm run build` — green (tsc -b + vite build). Bundle is code-split via
   `manualChunks` (app / vendor-react / vendor-motion / players-data / dnd) — no >500KB chunk.
-- `npm test` — **146/146 passing** across 15 files.
+- `npm test` — **152/152 passing** across 16 files.
 
 **Records & collection:**
 - `collection` (all-time signed player ids) + `bestScore` ({endless, daily}) persisted across
