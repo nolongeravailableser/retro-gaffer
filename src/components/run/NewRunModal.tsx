@@ -8,6 +8,8 @@ import { useGameStore } from '@/store/useGameStore';
 interface NewRunModalProps {
   open: boolean;
   onClose: () => void;
+  /** Called after a run/career is started (so the app can show the squad screen). */
+  onStarted?: () => void;
 }
 
 /** UI-only selection: a real mode id, or 'career' (a meta-mode of many seasons). */
@@ -22,7 +24,7 @@ const MODE_ICONS: Record<ModeId, React.ElementType> = {
 type MutatorChoice = 'none' | 'random' | string;
 
 /** Run setup: pick a mode + optional run mutator, then start (resets the run). */
-export default function NewRunModal({ open, onClose }: NewRunModalProps) {
+export default function NewRunModal({ open, onClose, onStarted }: NewRunModalProps) {
   const startRun = useGameStore((s) => s.startRun);
   const startCareer = useGameStore((s) => s.startCareer);
   const runStatus = useGameStore((s) => s.runStatus);
@@ -45,6 +47,7 @@ export default function NewRunModal({ open, onClose }: NewRunModalProps) {
   const start = () => {
     if (mode === 'career') {
       startCareer();
+      onStarted?.();
       onClose();
       return;
     }
@@ -56,6 +59,7 @@ export default function NewRunModal({ open, onClose }: NewRunModalProps) {
       mutatorId = choice;
     }
     startRun(mode, mutatorId);
+    onStarted?.();
     onClose();
   };
 

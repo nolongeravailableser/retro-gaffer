@@ -200,6 +200,30 @@ A brand-new visitor now gets onboarding; players can name their club.
 
 ---
 
+## 2d. Career progression flow — the "how do I start?" fix (uncommitted)
+
+The kick-off action used to live only at the bottom of the Season tab, so after
+building a squad (on Tactics/Transfers) players — especially in Career, and
+especially on mobile where it sat below the fold — had no clear path to start.
+
+- **Always-visible kick-off CTA** ([App.tsx](src/App.tsx)) — a sticky bar rendered
+  under the TabNav whenever `runStatus === 'playing'` and no match is open. It's the
+  single primary action: not ready → "Fill your XI to kick off · X/11" (routes to
+  Tactics); ready → "Start Season N" (Career R1) / "Play Round N" — routes to the
+  **Season** tab from elsewhere (so stakes/wager stay accessible), and **plays
+  directly** when already on Season. Sticky `top-0` (mobile) / `top-[3.25rem]`
+  (desktop), so it's above the fold everywhere and clears the fixed bottom nav.
+- **Season-tab readiness dot** ([TabNav.tsx](src/components/nav/TabNav.tsx)) — a
+  pulsing green dot on the Season tab (desktop + mobile) when ready & not already
+  there, via a new optional `seasonReady` prop.
+- **Land on the squad screen when a run starts** — `NewRunModal` gained an optional
+  `onStarted` callback; App routes to the Tactics tab so Career/runs always begin on
+  squad-building, where the CTA then guides kick-off.
+- No engine/store/persistence changes; purely flow/affordance. Verified live at
+  375px and desktop (sticky, no nav overlap, no console errors); 155 tests + build green.
+
+---
+
 ## 3. Active Work
 
 **Game-mode foundation — Phase 0 DONE & deployed (commit `4f8a14d`).**

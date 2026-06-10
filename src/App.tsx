@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Sparkles, Play, Swords, X } from 'lucide-react';
+import { Trophy, Sparkles, Play, Swords, X, Users, ChevronRight } from 'lucide-react';
 import {
   DndContext,
   PointerSensor,
@@ -62,6 +62,7 @@ export default function App() {
 
   const suspensions = useGameStore((s) => s.suspensions);
   const injuries = useGameStore((s) => s.injuries);
+  const career = useGameStore((s) => s.career);
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
   const onboarded = useGameStore((s) => s.onboarded);
@@ -165,6 +166,27 @@ export default function App() {
     window.history.replaceState({}, '', window.location.pathname);
   };
 
+  // The one always-visible "how do I start?" call-to-action. It routes squad-
+  // building to the right tab, then kicks the match off — so the player is never
+  // stranded after picking their XI (the core Career-flow friction).
+  const showKickoff = runStatus === 'playing' && !matchOpen;
+  const seasonReady = showKickoff && ready && activeTab !== 'season';
+  const kickoffLabel = !ready
+    ? `Fill your XI to kick off · ${filled}/${XI_SIZE}`
+    : career && round === 1
+      ? `Start Season ${career.season}`
+      : activeTab === 'season'
+        ? `Kick off — Play Round ${round}`
+        : `Ready! Play Round ${round}`;
+  const onKickoff = () => {
+    if (!ready) {
+      setActiveTab('formation');
+      return;
+    }
+    if (activeTab === 'season') playRound();
+    else setActiveTab('season');
+  };
+
   return (
     // pb-20 on mobile to clear the fixed bottom nav; sm:pb-0 on desktop
     <div className="mx-auto min-h-full max-w-5xl px-4 pb-20 sm:pb-8">
@@ -185,7 +207,28 @@ export default function App() {
         <Hud onNewRun={() => setNewRunOpen(true)} />
       </header>
 
-      <TabNav active={activeTab} onChange={setActiveTab} />
+      <TabNav active={activeTab} onChange={setActiveTab} seasonReady={seasonReady} />
+
+      {/* Always-visible kick-off CTA — the clear path to start/continue a season */}
+      {showKickoff && (
+        <div className="sticky top-0 sm:top-[3.25rem] z-10 -mx-4 mb-4 bg-pitch-950/85 px-4 py-2 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={onKickoff}
+            data-testid="kickoff-cta"
+            className={[
+              'flex w-full items-center justify-center gap-2 rounded-xl border py-3 font-display text-base shadow-glow transition',
+              ready
+                ? 'border-crt-green/60 bg-crt-green/20 text-crt-green hover:bg-crt-green/30'
+                : 'border-crt-amber/40 bg-crt-amber/10 text-crt-amber hover:bg-crt-amber/20',
+            ].join(' ')}
+          >
+            {ready ? <Play size={18} /> : <Users size={18} />}
+            {kickoffLabel}
+            {ready && activeTab !== 'season' && <ChevronRight size={18} className="opacity-80" />}
+          </button>
+        </div>
+      )}
 
       {challenge && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/10 px-4 py-3">
@@ -299,7 +342,11 @@ export default function App() {
         onComplete={onMatchComplete}
       />
 
-      <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
+      <NewRunModal
+        open={newRunOpen}
+        onClose={() => setNewRunOpen(false)}
+        onStarted={() => setActiveTab('formation')}
+      />
 
       <CareerReview />
       <RunOverModal onNewRun={() => setNewRunOpen(true)} />
