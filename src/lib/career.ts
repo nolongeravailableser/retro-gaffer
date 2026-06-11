@@ -7,6 +7,7 @@
 
 import { Rng } from './rng';
 import type { SeasonOutcome } from './league';
+import type { Facilities } from './stadium';
 import type { Player, Role } from './types';
 
 /** Per-player career bookkeeping that aging reads/writes. */
@@ -26,6 +27,8 @@ export interface CareerState {
   meta: Record<string, CareerMeta>;
   /** Career roster snapshots (youth + aged players) for the pool overlay. */
   roster: Record<string, Player>;
+  /** Club facility levels (stadium / academy / medical), carried across seasons. */
+  facilities: Facilities;
 }
 
 /**

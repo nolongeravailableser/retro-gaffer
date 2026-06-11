@@ -24,6 +24,7 @@ import {
   PROMOTION_SPOTS,
   RELEGATION_SPOTS,
 } from '@/lib/league';
+import { FACILITIES, FACILITY_IDS, MAX_LEVEL } from '@/lib/stadium';
 import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
 import Stars from '@/components/ui/Stars';
@@ -248,20 +249,31 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
         </div>
       )}
       {career && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2 text-xs text-crt-green">
-          <Briefcase size={13} className="shrink-0" />
-          <span className="flex-1">
-            <span className="font-display">Season {career.season}</span> ·{' '}
-            <span className="font-display">{division(career.tier).name}</span> —{' '}
-            {career.tier === TOP_TIER ? (
-              <>win it to be <span className="font-display">champions of England</span>; finish bottom{' '}
-              {RELEGATION_SPOTS} and you'll be relegated.</>
-            ) : career.tier === BOTTOM_TIER ? (
-              <>top {PROMOTION_SPOTS} promote; finish bottom {RELEGATION_SPOTS} and you're sacked.</>
-            ) : (
-              <>top {PROMOTION_SPOTS} promote, bottom {RELEGATION_SPOTS} relegate.</>
-            )}
-          </span>
+        <div className="mb-3 rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-2 text-xs text-crt-green">
+          <div className="flex items-center gap-2">
+            <Briefcase size={13} className="shrink-0" />
+            <span className="flex-1">
+              <span className="font-display">Season {career.season}</span> ·{' '}
+              <span className="font-display">{division(career.tier).name}</span> —{' '}
+              {career.tier === TOP_TIER ? (
+                <>win it to be <span className="font-display">champions of England</span>; finish bottom{' '}
+                {RELEGATION_SPOTS} and you'll be relegated.</>
+              ) : career.tier === BOTTOM_TIER ? (
+                <>top {PROMOTION_SPOTS} promote; finish bottom {RELEGATION_SPOTS} and you're sacked.</>
+              ) : (
+                <>top {PROMOTION_SPOTS} promote, bottom {RELEGATION_SPOTS} relegate.</>
+              )}
+            </span>
+          </div>
+          {/* Facilities readout — levels are managed in the between-seasons review */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-5 text-[10px] text-chrome-muted">
+            {FACILITY_IDS.map((id) => (
+              <span key={id} className="inline-flex items-center gap-1">
+                {FACILITIES[id].name}
+                <span className="font-display text-crt-green">{career.facilities[id]}/{MAX_LEVEL}</span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {/* Active ruleset — readable without hovering a HUD chip */}

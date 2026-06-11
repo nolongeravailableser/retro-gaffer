@@ -114,6 +114,8 @@ describe('migrations', () => {
     expect(career.tier).toBe(5); // dropped into the bottom tier
     expect(career.season).toBe(3); // existing data preserved
     expect('targetRound' in career).toBe(false); // obsolete field removed
+    // v22 also gives it starter (level-0) facilities.
+    expect(career.facilities).toEqual({ stadium: 0, academy: 0, medical: 0 });
   });
 
   it('leaves a careerless save untouched at v21', () => {

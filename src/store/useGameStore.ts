@@ -60,6 +60,15 @@ import {
   type CareerState,
   type ReviewState,
 } from '@/lib/career';
+import {
+  newFacilities,
+  upgradeCost,
+  isMaxed,
+  matchdayIncome,
+  youthBonus,
+  injuryReduction,
+  type FacilityId,
+} from '@/lib/stadium';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
@@ -331,6 +340,8 @@ interface GameState {
   startCareer: () => void;
   /** Pay to reveal an academy prospect's exact potential during the review. */
   scoutYouth: (youthId: string) => void;
+  /** Spend bankroll to upgrade a club facility one level (career only). */
+  upgradeFacility: (id: FacilityId) => void;
   /** Resolve the between-seasons review and begin the next season. */
   advanceCareerSeason: (youthId?: string | null) => void;
   /** Start today's deterministic Daily Challenge. */
@@ -505,7 +516,10 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const weeks = leagueTotalWeeks(league);
   const dm = tierMult(s.career ? s.career.tier : LEAGUE_NEUTRAL_TIER);
   const reward = Math.round(MATCH_REWARD[outcome] * dm);
-  const roundIncome = Math.round(config.roundIncome * dm);
+  // Career-only facilities: the stadium adds flat matchday income (folded into
+  // the round income figure the UI already shows).
+  const matchday = s.career ? matchdayIncome(s.career.facilities.stadium) : 0;
+  const roundIncome = Math.round(config.roundIncome * dm) + matchday;
   const intr = interest(s.bankroll);
   const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
   const wage = Math.round(
@@ -514,12 +528,16 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
   const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage + wagerDelta);
 
-  // Discipline & fitness (same rules as the ladder).
+  // Discipline & fitness (same rules as the ladder). The medical centre shaves
+  // rounds off new injuries (career only) — a bad enough knock can heal at once.
   const suspensions = result.suspensions ?? [];
+  const med = s.career ? injuryReduction(s.career.facilities.medical) : 0;
   const newInjuries: Record<string, number> = {};
   for (const [id, r] of Object.entries(s.injuries)) if (r > 1) newInjuries[id] = r - 1;
-  for (const inj of result.injuries ?? [])
-    newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
+  for (const inj of result.injuries ?? []) {
+    const rounds = inj.rounds - med;
+    if (rounds > 0) newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, rounds);
+  }
 
   const key = outcome === 'win' ? 'w' : outcome === 'loss' ? 'l' : 'd';
   const record = { ...s.record, [key]: s.record[key] + 1 };
@@ -571,7 +589,10 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         toTier: nextTier(career.tier, outcomeSeason),
         outcome: outcomeSeason,
         bonus: reviewBonus(outcomeSeason),
-        youth: generateYouth(`${s.runSeed}-youth-${career.season}`, YOUTH_INTAKE),
+        youth: generateYouth(
+          `${s.runSeed}-youth-${career.season}`,
+          YOUTH_INTAKE + youthBonus(career.facilities.academy)
+        ),
         scouted: [],
       };
     }
@@ -1329,7 +1350,7 @@ export const useGameStore = create<GameState>()(
           return {
             ...fresh,
             league,
-            career: { season: 1, tier, meta: {}, roster: {} },
+            career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities() },
             careerReview: null,
             best: s.best,
             scenarioStars: s.scenarioStars,
@@ -1347,6 +1368,25 @@ export const useGameStore = create<GameState>()(
           return {
             bankroll: s.bankroll - SCOUT_YOUTH_COST,
             careerReview: { ...review, scouted: [...review.scouted, youthId] },
+            notice: null,
+          };
+        }),
+
+      // Reinvest in the club: upgrade a facility one level (career only). Levels
+      // persist across seasons; typically done from the between-seasons review.
+      upgradeFacility: (id) =>
+        set((s) => {
+          if (!s.career) return {};
+          const level = s.career.facilities[id];
+          if (isMaxed(level)) return { notice: 'Facility already at max level', noticeKind: 'error' };
+          const cost = upgradeCost(id, level);
+          if (s.bankroll < cost) return { notice: 'Not enough funds', noticeKind: 'error' };
+          return {
+            bankroll: s.bankroll - cost,
+            career: {
+              ...s.career,
+              facilities: { ...s.career.facilities, [id]: level + 1 },
+            },
             notice: null,
           };
         }),
@@ -1392,7 +1432,7 @@ export const useGameStore = create<GameState>()(
                 : `Another season in the ${divName}.`;
 
           return {
-            career: { season: nextSeason, tier, meta, roster },
+            career: { season: nextSeason, tier, meta, roster, facilities: prev.facilities },
             careerReview: null,
             league,
             owned,

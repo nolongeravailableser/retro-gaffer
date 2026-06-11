@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 21;
+export const CURRENT_VERSION = 22;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -132,6 +132,14 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
     if (!s.career || typeof s.career !== 'object') return s;
     const { targetRound: _drop, ...rest } = s.career as Record<string, unknown>;
     return { ...s, career: { tier: V21_BOTTOM_TIER, ...rest } };
+  },
+  // Stadium development: existing careers start with no facilities.
+  22: (s) => {
+    if (!s.career || typeof s.career !== 'object') return s;
+    return {
+      ...s,
+      career: { facilities: { stadium: 0, academy: 0, medical: 0 }, ...(s.career as object) },
+    };
   },
 };
 

@@ -83,6 +83,53 @@ describe('career pyramid', () => {
     expect(s.career!.tier).toBe(BOTTOM_TIER);
   });
 
+  it('upgrading a facility spends bankroll, bumps the level, and caps out', () => {
+    useGameStore.setState({ bankroll: 500 }); // fund all three levels
+    const before = useGameStore.getState().bankroll;
+    useGameStore.getState().upgradeFacility('stadium');
+    const after = useGameStore.getState();
+    expect(after.career!.facilities.stadium).toBe(1);
+    expect(after.bankroll).toBeLessThan(before);
+
+    // Drive it to the cap, then a further upgrade is refused.
+    useGameStore.getState().upgradeFacility('stadium');
+    useGameStore.getState().upgradeFacility('stadium');
+    expect(useGameStore.getState().career!.facilities.stadium).toBe(3);
+    const atCap = useGameStore.getState().bankroll;
+    useGameStore.getState().upgradeFacility('stadium');
+    expect(useGameStore.getState().career!.facilities.stadium).toBe(3);
+    expect(useGameStore.getState().bankroll).toBe(atCap); // no spend at max
+  });
+
+  it('the stadium adds flat matchday income each matchweek', () => {
+    // Baseline income with no stadium.
+    useGameStore.getState().resolveRound(res('win', 1, 0));
+    const baseIncome = useGameStore.getState().lastIncome!.income;
+
+    // A fresh career with a level-1 stadium earns more in the same fixture.
+    useGameStore.getState().startCareer();
+    useGameStore.getState().upgradeFacility('stadium');
+    useGameStore.getState().resolveRound(res('win', 1, 0));
+    const boosted = useGameStore.getState().lastIncome!.income;
+    expect(boosted).toBe(baseIncome + 3); // matchdayIncome(1)
+  });
+
+  it('the medical centre shaves rounds off new injuries', () => {
+    const injured: MatchResult = {
+      ...res('win', 1, 0),
+      injuries: [{ playerId: 'p1', rounds: 2 }],
+    };
+    // No medical: a 2-round knock lasts 2.
+    useGameStore.getState().resolveRound(injured);
+    expect(useGameStore.getState().injuries.p1).toBe(2);
+
+    // Level-1 medical: the same knock is reduced to 1 round.
+    useGameStore.getState().startCareer();
+    useGameStore.getState().upgradeFacility('medical');
+    useGameStore.getState().resolveRound(injured);
+    expect(useGameStore.getState().injuries.p1).toBe(1);
+  });
+
   it('prize money scales with the division (a higher tier pays more)', () => {
     // Win one matchweek in the bottom tier and note the reward.
     useGameStore.getState().resolveRound(res('win', 2, 0));
