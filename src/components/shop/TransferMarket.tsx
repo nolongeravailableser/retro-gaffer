@@ -9,6 +9,7 @@ import { computeChemistry } from '@/lib/chemistry';
 import { ROSTER_CAP } from '@/lib/economy';
 import type { Player, Role } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
+import NegotiationModal from './NegotiationModal';
 
 type RoleFilter = 'ALL' | Role;
 const ROLE_FILTERS: RoleFilter[] = ['ALL', 'GK', 'DEF', 'MID', 'FWD'];
@@ -27,12 +28,12 @@ export default function TransferMarket() {
   const bankroll = useGameStore((s) => s.bankroll);
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
-  const signPlayer = useGameStore((s) => s.signPlayer);
   const autoFillSquad = useGameStore((s) => s.autoFillSquad);
 
   const [role, setRole] = useState<RoleFilter>('ALL');
   const [avail, setAvail] = useState<Avail>('all');
   const [query, setQuery] = useState('');
+  const [negotiating, setNegotiating] = useState<Player | null>(null);
 
   const tier = career?.tier ?? LEAGUE_NEUTRAL_TIER;
   const divName = career ? division(career.tier).name : 'League';
@@ -180,14 +181,14 @@ export default function TransferMarket() {
               </div>
               <button
                 type="button"
-                onClick={() => signPlayer(p.id)}
+                onClick={() => setNegotiating(p)}
                 disabled={!affordable}
                 data-testid={`sign-${p.id}`}
                 title={
                   full
                     ? 'Squad full'
                     : affordable
-                      ? atClub ? `Poach for £${fee}M` : `Sign for ${free ? 'free' : `£${fee}M`}`
+                      ? atClub ? `Negotiate a poach (~£${fee}M)` : free ? 'Agree terms (free)' : `Open negotiations (~£${fee}M)`
                       : `Need £${fee}M`
                 }
                 className={[
@@ -215,6 +216,14 @@ export default function TransferMarket() {
         Showing {rows.length} of {total} · Squad {owned.length}/{ROSTER_CAP} · free agents (under 64 OVR)
         are free; <span className="text-fuchsia-300">poaching</span> a rival weakens them.
       </p>
+
+      {negotiating && (
+        <NegotiationModal
+          key={negotiating.id}
+          player={negotiating}
+          onClose={() => setNegotiating(null)}
+        />
+      )}
     </div>
   );
 }

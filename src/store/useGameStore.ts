@@ -322,7 +322,7 @@ interface GameState {
   buy: (shopIndex: number) => void;
   sell: (id: string) => void;
   /** Sign any available player from the Career/League transfer market at their fee. */
-  signPlayer: (id: string) => void;
+  signPlayer: (id: string, agreedFee?: number) => void;
   /** Fill empty XI slots with the best free agents (Career/League market). */
   autoFillSquad: () => void;
   refreshShop: () => void;
@@ -790,14 +790,17 @@ export const useGameStore = create<GameState>()(
       // their transfer fee (free agents — sub-64 overall — are free); a player at
       // a rival club is POACHED for a premium, which removes him from that club
       // and weakens them in the table. Auto-assigns into the XI. No-op elsewhere.
-      signPlayer: (id) => {
+      signPlayer: (id, agreedFee) => {
         const s = get();
         const mt = marketTierOf(s);
         if (mt === null) return;
         const player = getPlayer(id);
         if (!player || s.owned.includes(id)) return;
         const club = s.league ? clubOf(s.league, id) : null;
-        const fee = club ? poachFee(player, mt) : transferFee(player, mt);
+        // The fee is the negotiated figure when one was agreed (the modal's commit
+        // step), else the headline asking price. Never below 0.
+        const baseFee = club ? poachFee(player, mt) : transferFee(player, mt);
+        const fee = agreedFee != null ? Math.max(0, Math.round(agreedFee)) : baseFee;
         const check = checkBuy(s.bankroll, s.owned.length, { ...player, cost: fee });
         if (!check.ok) {
           set({ notice: check.reason ?? 'Cannot sign', noticeKind: 'error' });
