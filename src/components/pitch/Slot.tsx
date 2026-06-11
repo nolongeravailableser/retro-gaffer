@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { X, Plus, Sparkles } from 'lucide-react';
+import { X, Plus, Sparkles, Ban, HeartCrack } from 'lucide-react';
 import type { Player, Role } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 
@@ -12,6 +12,10 @@ interface SlotProps {
   eligibleTarget: boolean;
   /** A player is picked up but this slot's role doesn't match. */
   blockedTarget: boolean;
+  /** The fielded player is suspended — can't play this round. */
+  suspended?: boolean;
+  /** Rounds the fielded player is injured for (0/undefined = fit). */
+  injuredRounds?: number;
   onClick: () => void;
   onRemove: () => void;
   slotIndex: number;
@@ -25,6 +29,8 @@ export default function Slot({
   multiplier,
   eligibleTarget,
   blockedTarget,
+  suspended,
+  injuredRounds,
   onClick,
   onRemove,
   slotIndex,
@@ -32,6 +38,7 @@ export default function Slot({
   const style = ROLE_STYLES[role];
   const boosted = multiplier > 1;
   const boostPct = Math.round((multiplier - 1) * 100);
+  const unavailable = !!player && (suspended || !!injuredRounds);
 
   return (
     <div className="relative">
@@ -49,6 +56,7 @@ export default function Slot({
           selected ? 'ring-2 ring-crt-green shadow-glow' : '',
           eligibleTarget ? 'border-crt-green/70 bg-crt-green/10' : '',
           blockedTarget ? 'opacity-30' : '',
+          unavailable ? 'ring-2 ring-rose-500/70' : '',
         ].join(' ')}
       >
         {player ? (
@@ -93,6 +101,17 @@ export default function Slot({
           <X size={12} />
         </button>
       )}
+
+      {/* Unavailable badge — this starter can't actually take the field. */}
+      {suspended ? (
+        <span className="absolute -left-1.5 -top-1.5 flex items-center gap-0.5 rounded-full border border-rose-400/60 bg-pitch-950 px-1 py-0.5 text-[8px] font-display text-rose-300">
+          <Ban size={8} /> BAN
+        </span>
+      ) : injuredRounds ? (
+        <span className="absolute -left-1.5 -top-1.5 flex items-center gap-0.5 rounded-full border border-orange-400/60 bg-pitch-950 px-1 py-0.5 text-[8px] font-display text-orange-300">
+          <HeartCrack size={8} /> {injuredRounds}R
+        </span>
+      ) : null}
     </div>
   );
 }

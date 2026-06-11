@@ -386,7 +386,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           <Dice5 size={14} />
           {wager > 0 ? `Staking £${wager}M` : "Gaffer's Gamble"}
         </span>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
           {[
             { label: 'None', amt: 0 },
             { label: '¼', amt: Math.floor(bankroll / 4) },
@@ -407,6 +407,18 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
               {b.label}
             </button>
           ))}
+          {/* Exact stake: type any amount up to the max (half the bankroll). */}
+          <input
+            type="number"
+            min={0}
+            max={maxWager(bankroll)}
+            value={wager || ''}
+            onChange={(e) => setWager(Number(e.target.value))}
+            placeholder="£M"
+            aria-label="Custom gamble stake (£M)"
+            data-testid="wager-input"
+            className="w-14 rounded border border-white/15 bg-pitch-950 px-1.5 py-0.5 text-right text-[11px] text-crt-amber tabular-nums placeholder:text-chrome-muted/50 focus:border-crt-amber/60 focus:outline-none"
+          />
         </div>
       </div>
 

@@ -928,7 +928,15 @@ export const useGameStore = create<GameState>()(
         const player = getPlayer(id);
         const state = get();
         if (!player || !state.owned.includes(id)) return;
-        if (slotRole(state.formation, slotIndex) !== player.role) return; // eligibility
+        const wantRole = slotRole(state.formation, slotIndex);
+        if (wantRole !== player.role) {
+          // Tell the manager WHY the drop/assign bounced (was a silent no-op).
+          set({
+            notice: `${player.name} is a ${player.role} — drop them on a ${wantRole} slot`,
+            noticeKind: 'error',
+          });
+          return;
+        }
         // Suspended or injured players can't take the field.
         if (state.suspensions.includes(id)) {
           set({ notice: `${player.name} is suspended`, noticeKind: 'error' });

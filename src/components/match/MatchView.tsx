@@ -50,10 +50,12 @@ interface MatchViewProps {
   onComplete: (result: MatchResult) => void;
 }
 
-const SPEEDS = [1, 2, 4] as const;
+const SPEEDS = [0.5, 1, 2, 4] as const;
 type Speed = (typeof SPEEDS)[number];
 
-const SPEED_DELAY: Record<Speed, number> = { 1: 500, 2: 200, 4: 60 };
+// ms between events. 0.5× is the "immersive" pace; 1× is the calm default
+// (a touch slower than before, per playtester feedback that matches felt rushed).
+const SPEED_DELAY: Record<Speed, number> = { 0.5: 1000, 1: 650, 2: 280, 4: 80 };
 
 const OUTCOME_COPY = {
   win:  { label: 'VICTORY', cls: 'text-crt-green  border-crt-green/50'  },

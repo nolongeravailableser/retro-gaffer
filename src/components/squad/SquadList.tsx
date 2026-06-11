@@ -1,4 +1,5 @@
-import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
@@ -25,6 +26,20 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const sell = useGameStore((s) => s.sell);
   const clubName = useGameStore((s) => s.clubName);
   const autoPickXI = useGameStore((s) => s.autoPickXI);
+  const benchAll = useGameStore((s) => s.benchAll);
+
+  // Selling is irreversible, so the first tap arms a confirm and the second
+  // commits. Tapping a different player (or elsewhere) cancels.
+  const [confirmSellId, setConfirmSellId] = useState<string | null>(null);
+  const onSellClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirmSellId === id) {
+      sell(id);
+      setConfirmSellId(null);
+    } else {
+      setConfirmSellId(id);
+    }
+  };
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
@@ -58,7 +73,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
         <span className="truncate font-display text-sm uppercase tracking-wide text-chrome">
           {clubName ?? 'Your Squad'}
         </span>
-        <span className="flex shrink-0 items-center gap-2">
+        <span className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={autoPickXI}
@@ -68,6 +83,16 @@ export default function SquadList({ multipliers }: SquadListProps) {
             className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Wand2 size={12} /> Auto-Pick
+          </button>
+          <button
+            type="button"
+            onClick={benchAll}
+            disabled={onPitch.size === 0}
+            data-testid="clear-squad"
+            title="Clear the pitch — send every starter back to the squad"
+            className="flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 font-display text-[11px] text-chrome-muted transition hover:bg-white/5 hover:text-chrome disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Eraser size={12} /> Clear
           </button>
           <span className="font-ticker text-xs text-chrome-muted">
             {onPitch.size}/11 · {owned.length} owned
@@ -89,7 +114,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
               <MousePointerClick size={11} />
               <span>
                 <span className="font-display">{selected.name}</span> — tap a{' '}
-                {selected.role} slot on the pitch
+                {selected.role} slot to place (or tap a filled slot to swap)
               </span>
             </div>
           </motion.div>
@@ -114,7 +139,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
         <span className="w-8" />
         <span>Name</span>
         <span className="w-[5.5rem] text-center">Ratings</span>
-        <span className="w-12 text-right">Value</span>
+        <span className="w-16 text-right">Sell</span>
       </div>
 
       {/* Empty squad — point new managers at the journey's first step */}
@@ -154,7 +179,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
                 return (
                   <div
                     key={id}
-                    onClick={() => selectPlayer(id)}
+                    onClick={() => { selectPlayer(id); setConfirmSellId(null); }}
                     className={[
                       'grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-x-2 px-2 py-1.5 cursor-pointer transition-colors select-none',
                       isSelected
@@ -210,15 +235,26 @@ export default function SquadList({ multipliers }: SquadListProps) {
                         <StatBar label="DEF" value={p.stats.defense} labelClass="text-sky-300/70" compact />
                       </div>
 
-                      {/* Sell */}
+                      {/* Sell — first tap arms, second tap confirms */}
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); sell(id); }}
-                        aria-label={`Sell ${p.name}`}
-                        className="w-12 flex items-center justify-end gap-0.5 text-[10px] text-chrome-muted hover:text-crt-amber transition-colors"
+                        onClick={(e) => onSellClick(e, id)}
+                        aria-label={confirmSellId === id ? `Confirm selling ${p.name}` : `Sell ${p.name} for ${sellValue(p)}M`}
+                        title={confirmSellId === id ? 'Tap again to confirm' : `Sell for £${sellValue(p)}M`}
+                        className={[
+                          'w-16 flex items-center justify-end gap-0.5 rounded px-1 py-0.5 text-[10px] font-display transition-colors',
+                          confirmSellId === id
+                            ? 'bg-rose-500/20 text-rose-200'
+                            : 'text-chrome-muted hover:text-crt-amber',
+                        ].join(' ')}
                       >
-                        <Coins size={9} />
-                        {sellValue(p)}M
+                        {confirmSellId === id ? (
+                          'Sure?'
+                        ) : (
+                          <>
+                            <Coins size={9} /> Sell {sellValue(p)}M
+                          </>
+                        )}
                       </button>
                   </div>
                 );
