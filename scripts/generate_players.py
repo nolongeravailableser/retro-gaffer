@@ -230,7 +230,46 @@ def main() -> int:
     ap.add_argument("--check", metavar="JSON", help="validate an existing players.json")
     ap.add_argument("--from", dest="shards", nargs="+", help="CSV shards to compile")
     ap.add_argument("--out", help="output players.json path")
+    ap.add_argument(
+        "--add",
+        metavar="JSON",
+        help="append --from shards to an existing players.json, keeping every "
+        "existing entry (and id) intact; skips any player already present",
+    )
     args = ap.parse_args()
+
+    # Additive mode: extend an existing pool with a new shard WITHOUT regenerating
+    # (so committed ids — which saves reference — never change).
+    if args.add and args.shards:
+        with open(args.add, encoding="utf-8") as f:
+            existing = json.load(f)
+        existing_keys = {player_key(p["name"], p["nationality"]) for p in existing}
+        existing_ids = {p["id"] for p in existing}
+        added: list[dict] = []
+        for p in compile_shards(args.shards):
+            key = player_key(p["name"], p["nationality"])
+            if key in existing_keys:
+                print(f"  · skip (already in pool): {p['name']}", file=sys.stderr)
+                continue
+            if p["id"] in existing_ids:
+                print(f"  · skip (id clash): {p['id']} {p['name']}", file=sys.stderr)
+                continue
+            existing_keys.add(key)
+            existing_ids.add(p["id"])
+            added.append(p)
+        combined = existing + added
+        errors = validate(combined)
+        if errors:
+            print(f"✗ refusing to write — {len(errors)} error(s):", file=sys.stderr)
+            print("\n".join(f"  - {e}" for e in errors), file=sys.stderr)
+            return 1
+        out = args.out or args.add
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("[\n")
+            f.write(",\n".join("  " + json.dumps(p, ensure_ascii=False) for p in combined))
+            f.write("\n]\n")
+        print(f"✓ added {len(added)} players ({len(combined)} total) → {out}")
+        return 0
 
     if args.check:
         with open(args.check, encoding="utf-8") as f:

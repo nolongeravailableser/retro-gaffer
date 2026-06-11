@@ -81,7 +81,7 @@ export function injuryReduction(medicalLevel: number): number {
 }
 
 /** £m/matchweek running cost per facility level, before division scaling. */
-export const UPKEEP_PER_LEVEL = 1.0;
+export const UPKEEP_PER_LEVEL = 0.75;
 
 /**
  * Recurring facility running cost (£m/matchweek). A big, well-appointed club is

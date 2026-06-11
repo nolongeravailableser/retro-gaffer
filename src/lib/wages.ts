@@ -78,8 +78,9 @@ export function tierMult(tier: number): number {
 export const LEAGUE_NEUTRAL_TIER = Math.round((TOP_TIER + BOTTOM_TIER) / 2);
 
 /** How steeply the wage bill rises per division climbed in a Career. Tuned
- *  alongside facility upkeep (the two share the money-sink load). */
-export const WAGE_TIER_K = 1.5;
+ *  alongside facility upkeep AND the transfer market (which is now the primary
+ *  money sink) — eased once market pricing took over the heavy lifting. */
+export const WAGE_TIER_K = 1.3;
 
 /**
  * Career wage multiplier by pyramid tier — the Premier League demands Premier

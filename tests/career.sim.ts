@@ -27,7 +27,8 @@ import {
   division, totalWeeks, playerFixture, fixtureKey, BOTTOM_TIER, TOP_TIER, YOU,
   type LeagueState, type LeagueResult,
 } from '@/lib/league';
-import { drawShop, MATCH_REWARD, sellValue, STARTING_BANKROLL } from '@/lib/economy';
+import { drawShop, MATCH_REWARD } from '@/lib/economy';
+import { transferFee, marketSellValue, CAREER_STARTING_BANKROLL } from '@/lib/market';
 import { Rng } from '@/lib/rng';
 import type { Player, Role } from '@/lib/types';
 
@@ -83,21 +84,29 @@ function draft(c: Career) {
     // Spend freely while still assembling a legal XI; only hold a reserve once
     // the team is complete (mirrors the shipped balance.sim's drafting AI).
     const reserve = c.owned.length >= 11 ? RESERVE : 0;
+    // Budget pacing while building: don't blow the bank on one slot — leave
+    // enough to fill the remaining XI slots (a real manager buys an affordable
+    // XI first, then upgrades). Generous slack so a star can still be the centrepiece.
+    const slotsLeft = Math.max(1, 11 - c.owned.length);
+    const perSlot = c.owned.length >= 11 ? Infinity : ((c.bankroll - reserve) / slotsLeft) * 1.15;
     let best: { p: Player; gain: number; sellId?: string } | null = null;
     for (const p of shop) {
       if (c.owned.includes(p.id)) continue;
       const have = roleCount(c, p.role);
+      const price = transferFee(p, c.tier); // free agents (sub-64 overall) cost nothing
       if (have < NEED[p.role]) {
-        if (p.cost <= c.bankroll - reserve) {
+        if (price <= c.bankroll - reserve && price <= perSlot) {
           const gain = fitScore(c, p) + 200;
           if (!best || gain > best.gain) best = { p, gain };
         }
-      } else {
+      } else if (c.owned.length >= 11) {
+        // Only upgrade once a legal XI is complete — never spend on upgrades
+        // while roles are still unfilled (that's how a budget gets blown).
         const sameRole = c.owned.map((id) => cur(c, id)).filter((q) => q.role === p.role)
           .sort((a, b) => (a.stats.attack + a.stats.defense) - (b.stats.attack + b.stats.defense));
         const weakest = sameRole[0];
         if (weakest && fitScore(c, p) > value(c, weakest.id) + 6) {
-          const net = p.cost - sellValue(cur(c, weakest.id));
+          const net = price - marketSellValue(cur(c, weakest.id), c.tier);
           if (net <= c.bankroll - reserve) {
             const gain = fitScore(c, p) - value(c, weakest.id);
             if (!best || gain > best.gain) best = { p, gain, sellId: weakest.id };
@@ -107,12 +116,12 @@ function draft(c: Career) {
     }
     if (best) {
       if (best.sellId) {
-        c.bankroll += sellValue(cur(c, best.sellId));
+        c.bankroll += marketSellValue(cur(c, best.sellId), c.tier);
         c.owned = c.owned.filter((id) => id !== best!.sellId);
         c.roster.delete(best.sellId);
         delete c.meta[best.sellId];
       }
-      c.bankroll -= best.p.cost;
+      c.bankroll -= transferFee(best.p, c.tier);
       c.owned.push(best.p.id);
       c.roster.set(best.p.id, byId.get(best.p.id)!);
       c.meta[best.p.id] = newMeta();
@@ -208,13 +217,13 @@ interface CareerResult {
 
 function simulateCareer(seed: number): CareerResult {
   const c: Career = {
-    bankroll: STARTING_BANKROLL, owned: [], roster: new Map(), meta: {},
+    bankroll: CAREER_STARTING_BANKROLL, owned: [], roster: new Map(), meta: {},
     facilities: { stadium: 0, academy: 0, medical: 0 },
     tier: BOTTOM_TIER, season: 1, streak: 0, seed,
   };
   const bankrollByTier: CareerResult['bankrollByTier'] = {};
   const promoBy: CareerResult['promoBy'] = {};
-  let maxBankroll = STARTING_BANKROLL;
+  let maxBankroll = CAREER_STARTING_BANKROLL;
   let highestTier = BOTTOM_TIER;
   let seasonsToPL: number | null = null;
 
@@ -319,15 +328,16 @@ describe('career balance — wage-scaling sweep', () => {
 describe('career balance — facility-upkeep sweep', () => {
   it('compares facility running costs (with shipped wage-scaling) as a money sink', () => {
     const N = 250;
-    const lines = ['\n=== CAREER WAGE×UPKEEP COMBO SWEEP ===',
-      'wageK  upkeep  champ%  PL%   avgS  medT3    medT2     medT1     maxBank'];
+    const lines = ['\n=== CAREER WAGE×UPKEEP COMBO SWEEP (market pricing ON) ===',
+      'wageK  upkeep  champ%  sack%  PL%   avgS  medT3    medT2     medT1     maxBank'];
     const combos: [number, number][] = [
-      [1.8, 0], [1.6, 0.5], [1.6, 0.75], [1.5, 0.75], [1.5, 1.0], [1.4, 1.0],
+      [1.0, 0], [1.0, 0.5], [1.2, 0.5], [1.3, 0.75], [1.5, 1.0],
     ];
     for (const [k, u] of combos) {
       const r = runSweep(N, k, u);
       lines.push(
         `${k.toFixed(1).padStart(4)}  ${u.toFixed(2).padStart(6)}  ${((100 * r.champions) / r.N).toFixed(0).padStart(5)}%  ` +
+        `${((100 * r.sacked) / r.N).toFixed(0).padStart(4)}%  ` +
         `${((100 * r.reachedPL) / r.N).toFixed(0).padStart(3)}%  ${r.avgSeasons.toFixed(1).padStart(4)}  ` +
         `£${String(r.medT3 ?? 0).padStart(5)}M  £${String(r.medT2 ?? 0).padStart(6)}M  ` +
         `£${String(r.medT1).padStart(6)}M  £${String(r.maxBank).padStart(6)}M`
