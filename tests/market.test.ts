@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseValue, marketValue, marketSellValue, marketTierMult, MARKET_SELL_RATE,
   transferFee, isFreeAgent, FREE_AGENT_MAX_OVERALL,
+  rivalBids, OFFER_MIN_OVERALL, MAX_OFFERS_PER_WEEK, type BidderClub,
 } from '@/lib/market';
 import { overall } from '@/lib/wages';
 import { TOP_TIER, BOTTOM_TIER } from '@/lib/league';
@@ -48,5 +49,50 @@ describe('market valuations', () => {
     const star = mk('FWD', 92, 55);
     expect(isFreeAgent(star)).toBe(false);
     expect(transferFee(star, 1)).toBe(marketValue(star, 1)); // quality costs full value
+  });
+});
+
+describe('rivalBids — incoming offers for your players', () => {
+  const clubs: BidderClub[] = [
+    { id: 'ai0', name: 'Strong FC', strength: 1600, needsRoles: ['FWD'] },
+    { id: 'ai1', name: 'Weak FC', strength: 400, needsRoles: ['DEF'] },
+  ];
+
+  it('only bids for your better players (≥ OFFER_MIN_OVERALL), never journeymen', () => {
+    const star = mk('FWD', 95, 60); // well above the floor
+    const journeyman = mk('MID', 50, 50);
+    expect(overall(star)).toBeGreaterThanOrEqual(OFFER_MIN_OVERALL);
+    const bids = rivalBids([star, journeyman], clubs, 3, 'seed-x');
+    for (const b of bids) expect(b.playerId).toBe(star.id);
+  });
+
+  it('is deterministic and capped per week', () => {
+    const squad = Array.from({ length: 6 }, (_, i) => mk('FWD', 90 + (i % 5), 55));
+    const a = rivalBids(squad, clubs, 3, 'seed-y');
+    const b = rivalBids(squad, clubs, 3, 'seed-y');
+    expect(a).toEqual(b); // same seed → same bids
+    expect(a.length).toBeLessThanOrEqual(MAX_OFFERS_PER_WEEK);
+  });
+
+  it('skips players who already have an open bid (exclude set)', () => {
+    const star = mk('FWD', 95, 60);
+    const bids = rivalBids([star], clubs, 3, 'seed-z', new Set([star.id]));
+    expect(bids).toEqual([]);
+  });
+
+  it('biases the buyer toward a club needing that role', () => {
+    // A defender: only Weak FC needs DEF, so it should win despite being weaker.
+    const cb = mk('DEF', 90, 95);
+    // Force a bid by trying many seeds; assert that whenever a bid lands, the
+    // role-needing club is chosen (Strong FC doesn't need DEF here).
+    let sawBid = false;
+    for (let i = 0; i < 30; i++) {
+      const bids = rivalBids([cb], clubs, 3, `role-${i}`);
+      for (const b of bids) {
+        sawBid = true;
+        expect(b.clubId).toBe('ai1'); // Weak FC needs DEF
+      }
+    }
+    expect(sawBid).toBe(true);
   });
 });

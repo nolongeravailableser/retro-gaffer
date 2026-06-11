@@ -47,6 +47,7 @@ import {
   seasonOutcome,
   nextTier,
   division,
+  CLUB_SQUAD_NEED,
   BOTTOM_TIER,
   YOU,
   type LeagueState,
@@ -78,7 +79,9 @@ import {
   marketSellValue,
   poachFee,
   isFreeAgent,
+  rivalBids,
   CAREER_STARTING_BANKROLL,
+  type BidderClub,
 } from '@/lib/market';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import {
@@ -86,6 +89,7 @@ import {
   resultMessage,
   injuryMessage,
   boardMessage,
+  offerMessage,
   type InboxMessage,
 } from '@/lib/inbox';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
@@ -713,6 +717,33 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   }
   newMsgs.push(...injuryMsgs);
   if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
+
+  // Incoming bids: each matchweek (not at season end), rival clubs may bid for
+  // your better players — seeded on a SEPARATE stream so match/AI determinism is
+  // untouched. Buyers are biased toward clubs short in that role. Players who
+  // already have an open (unresolved) bid are skipped.
+  if (!done) {
+    const ownedPlayers = s.owned.map(getPlayer).filter((p): p is Player => !!p);
+    const openOffers = new Set(
+      s.inbox.filter((m) => m.kind === 'offer' && !m.resolved && m.offer).map((m) => m.offer!.playerId)
+    );
+    const bidders: BidderClub[] = league.clubs
+      .filter((c) => c.id !== YOU)
+      .map((c) => {
+        const counts: Record<string, number> = {};
+        for (const id of c.squad ?? []) {
+          const role = getPlayer(id)?.role;
+          if (role) counts[role] = (counts[role] ?? 0) + 1;
+        }
+        const needsRoles = (Object.keys(CLUB_SQUAD_NEED) as Player['role'][]).filter(
+          (r) => (counts[r] ?? 0) < CLUB_SQUAD_NEED[r]
+        );
+        return { id: c.id, name: c.name, strength: c.strength, needsRoles };
+      });
+    const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${mw}`, openOffers);
+    for (const b of bids) newMsgs.push(offerMessage(mw, b));
+  }
+
   const inbox = pushMessages(s.inbox, newMsgs);
 
   return {

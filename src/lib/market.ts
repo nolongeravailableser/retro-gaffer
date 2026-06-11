@@ -13,7 +13,8 @@
 
 import { overall } from './wages';
 import { BOTTOM_TIER } from './league';
-import type { Player } from './types';
+import { Rng } from './rng';
+import type { Player, Role } from './types';
 
 /** Convexity of the value curve — stars cost disproportionately more.
  *  Tuned so a starting £50M comfortably fields a lower-league XI (overall ~62 ≈
@@ -89,4 +90,73 @@ export const POACH_PREMIUM = 1.4;
  */
 export function poachFee(p: Player, tier: number): number {
   return Math.max(1, Math.round(marketValue(p, tier) * POACH_PREMIUM));
+}
+
+// --- Incoming offers for YOUR players -------------------------------------
+
+/** Only your better players attract rival interest (journeymen don't). */
+export const OFFER_MIN_OVERALL = 70;
+/** Per-eligible-player chance of a bid in a given matchweek (then capped). */
+export const OFFER_CHANCE = 0.45;
+/** At most this many incoming bids land in one matchweek (no spam). */
+export const MAX_OFFERS_PER_WEEK = 2;
+
+/** A rival club bidding for a player you own. */
+export interface RivalBid {
+  playerId: string;
+  playerName: string;
+  clubId: string;
+  clubName: string;
+  /** Fee offered (£M). */
+  fee: number;
+}
+
+/** A bidding club, with the roles its squad is still short of (need-bias). */
+export interface BidderClub {
+  id: string;
+  name: string;
+  strength: number;
+  needsRoles: Role[];
+}
+
+/**
+ * Generate this matchweek's incoming bids for your squad — pure & deterministic
+ * (seeded). Your best players draw interest; a bidder is chosen with a bias
+ * toward clubs short in that role, then weighted by strength (big clubs chase
+ * stars). The fee sits around market value with seeded noise. Capped per week,
+ * and players already fielding an open bid are skipped (`exclude`).
+ */
+export function rivalBids(
+  owned: readonly Player[],
+  bidders: readonly BidderClub[],
+  tier: number,
+  seed: string | number,
+  exclude: ReadonlySet<string> = new Set()
+): RivalBid[] {
+  if (bidders.length === 0) return [];
+  const rng = new Rng(`${seed}`);
+  // Stars first — they're the ones rivals come calling for.
+  const eligible = owned
+    .filter((p) => overall(p) >= OFFER_MIN_OVERALL && !isFreeAgent(p) && !exclude.has(p.id))
+    .sort((a, b) => overall(b) - overall(a));
+
+  const out: RivalBid[] = [];
+  for (const p of eligible) {
+    if (out.length >= MAX_OFFERS_PER_WEEK) break;
+    if (!rng.chance(OFFER_CHANCE)) continue;
+    // Prefer clubs that need this role; fall back to the whole field.
+    const needers = bidders.filter((c) => c.needsRoles.includes(p.role));
+    const pool = needers.length ? needers : bidders;
+    // Weight the pick by strength (stronger clubs are likelier suitors).
+    const total = pool.reduce((s, c) => s + Math.max(1, c.strength), 0);
+    let r = rng.next() * total;
+    let buyer = pool[pool.length - 1];
+    for (const c of pool) {
+      r -= Math.max(1, c.strength);
+      if (r <= 0) { buyer = c; break; }
+    }
+    const fee = Math.max(1, Math.round(marketValue(p, tier) * (0.9 + rng.next() * 0.4)));
+    out.push({ playerId: p.id, playerName: p.name, clubId: buyer.id, clubName: buyer.name, fee });
+  }
+  return out;
 }

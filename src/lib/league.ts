@@ -91,7 +91,7 @@ interface RatedPlayer {
 }
 
 /** Role targets for a generated AI club squad (14 — a full XI + cover). */
-const CLUB_SQUAD_NEED: Record<string, number> = { GK: 1, DEF: 5, MID: 5, FWD: 3 };
+export const CLUB_SQUAD_NEED: Record<string, number> = { GK: 1, DEF: 5, MID: 5, FWD: 3 };
 
 /**
  * Give each AI club a real, seeded squad drafted from `pool`: clubs draft in
