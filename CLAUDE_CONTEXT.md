@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Career Hub + polish pass SHIPPED — economy rebalance (tier-scaled wages), promotion celebration, pitch-view polish; persistence v23, 270 tests. Phases 1–4.6 PUSHED to prod through commit `b3f453c`; 4.6 commits local & unpushed. See §3 "START HERE")
+> **Last updated:** 2026-06-11 (4.7 SHIPPED locally — facility-upkeep money sink + champions-of-England flourish, with a wage×upkeep economy re-tune; persistence v23, 270 tests. Phases 1–4.6 PUSHED to prod (commit `112995c`); 4.7 commits local & unpushed. See §3 "START HERE")
 
 ---
 
@@ -635,6 +635,19 @@ programmatically** from existing single position (confirm before building).
     - **Pitch-view polish** (MatchPitchView, determinism-safe): persistent dot
       smoothing (glides scene boundaries + carrier hand-off), off-ball forward
       runs, dribble-vs-pass ball pacing.
+  - **4.7 Money sink + title flourish (SHIPPED locally, commit `faec112`):**
+    - **Facility upkeep** (`facilityUpkeep` in stadium.ts, `UPKEEP_PER_LEVEL`=1.0):
+      a recurring £/matchweek running cost = totalLevels × per-level × tierMult,
+      career-only, applied in `resolveLeagueRound`. `lastIncome` gained an
+      `upkeep` field (SeasonPanel + MatchView banners + FacilitiesPanel "Running
+      costs" surface it). **Re-tuned both sinks together** via the sim:
+      `WAGE_TIER_K` 1.8 → **1.5**, upkeep **1.0**. The economy now has a shape —
+      build a war chest climbing (T3/T2 median ~£190M) then spend it surviving at
+      the top (**PL median £65M**, max £1.4B, was £2.6B/£4.9B). Champ 57%, climb
+      intact; **Classic untouched (sim 37.2%)**. `career.sim.ts` gained
+      wage×upkeep combo sweeps.
+    - **Champions-of-England flourish**: winning the PL bursts confetti over the
+      RunOverModal header (reduced-motion safe) + the honours chips.
 - **Phase 4 is feature-complete.** All forks from §2l preamble are resolved.
 
 ---
@@ -649,17 +662,17 @@ pyramid, 4.4c facilities, 4.5 Career Hub, **4.6 polish pass** (economy
 rebalance, promotion celebration, pitch-view polish). Gates: **tsc clean · 270
 tests · build green · persistence v23.**
 
-**Push state:** everything **through commit `b3f453c` is PUSHED to `origin/main`
-and live** (prod page + `/api/daily` both 200). The **4.6 commits
-(`45da828`…`28c9780` + the docs commit) are LOCAL and unpushed** — push when the
-user asks (`origin/main` auto-deploys to Vercel). The 4.6 batch is self-contained
-and verified; recommended to push as one coherent release.
+**Push state:** everything **through commit `112995c` (4.6) is PUSHED to
+`origin/main` and live** (prod page + `/api/daily` both 200). The **4.7 commits
+(`faec112` + this docs commit) are LOCAL and unpushed** — push when the user asks
+(`origin/main` auto-deploys to Vercel). 4.7 is self-contained and verified;
+recommended to push as one release.
 
-**No task is queued — all candidate directions are done.** The career experience
-is comprehensive end-to-end. Possible future ideas (none requested): a money
-SINK to make wealth matter even more at the top (recurring facility upkeep, a
-transfer market with inflation), an honours/animation flourish on winning the
-title (champion currently goes straight to RunOverModal), or fresh requests.
+**No task is queued — all candidate directions (incl. the money sink + title
+flourish) are done.** The career economy now has a satisfying shape and wealth
+matters at the top. Possible future ideas (none requested): a transfer market
+with price inflation (a deeper sink + more agency), cup competitions alongside
+the league, or fresh requests.
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
