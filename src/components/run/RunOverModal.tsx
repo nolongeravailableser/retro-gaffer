@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { ladderTier, bestLabel } from '@/lib/ladder';
+import { table as leagueTable, position as leaguePosition, YOU } from '@/lib/league';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
 import { boardWantsTitle } from '@/lib/career';
@@ -40,8 +41,10 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const career = useGameStore((s) => s.career);
   const careerBest = useGameStore((s) => s.careerBest);
   const clubName = useGameStore((s) => s.clubName);
+  const league = useGameStore((s) => s.league);
 
   const startRun = useGameStore((s) => s.startRun);
+  const startLeague = useGameStore((s) => s.startLeague);
   const startScenario = useGameStore((s) => s.startScenario);
   const startCareer = useGameStore((s) => s.startCareer);
   const newDailyRun = useGameStore((s) => s.newDailyRun);
@@ -69,6 +72,13 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   if (runStatus === 'playing' || dismissed) return null;
 
   const won = runStatus === 'won';
+  // League finishing position + table record (when this was a League Season).
+  const leaguePos = league ? leaguePosition(league, YOU) : 0;
+  const leagueRow = league ? leagueTable(league).find((r) => r.teamId === YOU) ?? null : null;
+  const ord = (n: number) => {
+    const v = n % 100;
+    return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][v] ?? 'th');
+  };
   const config = runConfig({ scenario: scenarioId, mode, mutator: mutatorId });
   const { maxRounds } = config;
   const scenario = getScenario(scenarioId);
@@ -84,8 +94,15 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
     ...(career
       ? ([['Seasons survived', `${Math.max(careerBest, career.season - 1)}`]] as [string, string][])
       : []),
-    ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
-    ['Record', `${record.w}W · ${record.d}D · ${record.l}L`],
+    league
+      ? ['Finished', won ? 'Champions 🏆' : `${ord(leaguePos)} of ${league.clubs.length}`]
+      : ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
+    [
+      'Record',
+      leagueRow
+        ? `${leagueRow.won}W · ${leagueRow.drawn}D · ${leagueRow.lost}L`
+        : `${record.w}W · ${record.d}D · ${record.l}L`,
+    ],
     ['Best streak', `${bestStreak} wins`],
     ['Peak bankroll', `£${peakBankroll}M`],
     ...(mutator
@@ -102,18 +119,21 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const accent = won ? 'text-crt-green' : config.scored ? 'text-crt-amber' : 'text-rose-300';
   const heading = career
     ? 'SACKED — CAREER OVER'
-    : scenario
-      ? won ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED'
-      : won
-        ? 'CHAMPIONS OF EUROPE!'
-        : config.scored
-          ? 'RUN OVER'
-          : 'SACKED BY THE BOARD';
+    : league
+      ? won ? 'LEAGUE CHAMPIONS!' : 'SEASON OVER'
+      : scenario
+        ? won ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED'
+        : won
+          ? 'CHAMPIONS OF EUROPE!'
+          : config.scored
+            ? 'RUN OVER'
+            : 'SACKED BY THE BOARD';
 
   // Mode-aware replay: "run it back" should restart the SAME thing you played.
   const replay = () => {
     if (scenarioId) startScenario(scenarioId);
     else if (career) startCareer();
+    else if (league) startLeague();
     else if (daily) newDailyRun();
     else startRun(mode, mutatorId);
   };
@@ -121,11 +141,13 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
     ? 'Retry Challenge'
     : career
       ? 'New Career'
-      : daily
-        ? "Replay Daily"
-        : mode === 'endless'
-          ? 'New Endless Run'
-          : 'New Run';
+      : league
+        ? 'New League Season'
+        : daily
+          ? "Replay Daily"
+          : mode === 'endless'
+            ? 'New Endless Run'
+            : 'New Run';
 
   const share = async () => {
     const text = formatRunResult({
