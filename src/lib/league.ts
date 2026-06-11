@@ -17,6 +17,62 @@ import { expectedGoals } from './engine';
 /** The player's fixed team id in the table. */
 export const YOU = 'YOU';
 
+/**
+ * The English football pyramid (Career mode). Tier 1 = the summit; climbing a
+ * tier raises the AI strength base, so each promotion is a real step up. Win the
+ * top tier to be champions of the land.
+ */
+export interface Division {
+  /** 1 (top) … N (bottom). */
+  tier: number;
+  name: string;
+  /** AI strength base (ATK+DEF) for clubs in this division. */
+  baseStrength: number;
+}
+
+export const DIVISIONS: Division[] = [
+  { tier: 5, name: 'National League', baseStrength: 900 },
+  { tier: 4, name: 'League Two', baseStrength: 1080 },
+  { tier: 3, name: 'League One', baseStrength: 1260 },
+  { tier: 2, name: 'Championship', baseStrength: 1450 },
+  { tier: 1, name: 'Premier League', baseStrength: 1650 },
+];
+
+export const BOTTOM_TIER = Math.max(...DIVISIONS.map((d) => d.tier)); // 5
+export const TOP_TIER = Math.min(...DIVISIONS.map((d) => d.tier)); // 1
+/** Top N promoted, bottom N relegated (out of 12). */
+export const PROMOTION_SPOTS = 3;
+export const RELEGATION_SPOTS = 3;
+
+export function division(tier: number): Division {
+  return DIVISIONS.find((d) => d.tier === tier) ?? DIVISIONS[0];
+}
+
+export type SeasonOutcome = 'champion' | 'promoted' | 'stay' | 'relegated' | 'sacked';
+
+/**
+ * What a finishing position in a tier means. Top tier: 1st = champion (the
+ * goal), top spots otherwise just "stay". Bottom tier: the drop zone gets you
+ * sacked (nowhere lower). Elsewhere: top spots promote, bottom spots relegate.
+ */
+export function seasonOutcome(tier: number, finishPos: number, clubs: number): SeasonOutcome {
+  const relegated = finishPos > clubs - RELEGATION_SPOTS;
+  if (tier === TOP_TIER) {
+    if (finishPos === 1) return 'champion';
+    return relegated ? 'relegated' : 'stay';
+  }
+  if (finishPos <= PROMOTION_SPOTS) return 'promoted';
+  if (relegated) return tier === BOTTOM_TIER ? 'sacked' : 'relegated';
+  return 'stay';
+}
+
+/** The tier you start the next season in, given this season's outcome. */
+export function nextTier(tier: number, outcome: SeasonOutcome): number {
+  if (outcome === 'promoted' || outcome === 'champion') return Math.max(TOP_TIER, tier - 1);
+  if (outcome === 'relegated') return Math.min(BOTTOM_TIER, tier + 1);
+  return tier; // stay / sacked (run over)
+}
+
 export interface LeagueClub {
   id: string;
   name: string;

@@ -10,6 +10,10 @@ import {
   totalWeeks,
   fixtureKey,
   YOU,
+  seasonOutcome,
+  nextTier,
+  TOP_TIER,
+  BOTTOM_TIER,
   type LeagueState,
 } from '@/lib/league';
 
@@ -63,6 +67,34 @@ describe('simAiResult / simAiWeek', () => {
     expect(got[fixtureKey(pf)]).toBeUndefined(); // player's own fixture not auto-resolved
     // 6 fixtures/week, minus the player's one = 5 AI results
     expect(Object.keys(got)).toHaveLength(5);
+  });
+});
+
+describe('pyramid (Career divisions)', () => {
+  const N = 12;
+  it('top tier: 1st = champion, drop zone relegated, else stay', () => {
+    expect(seasonOutcome(TOP_TIER, 1, N)).toBe('champion');
+    expect(seasonOutcome(TOP_TIER, 5, N)).toBe('stay');
+    expect(seasonOutcome(TOP_TIER, 12, N)).toBe('relegated'); // bottom 3 (10,11,12)
+    expect(nextTier(TOP_TIER, 'champion')).toBe(TOP_TIER); // can't go higher
+    expect(nextTier(TOP_TIER, 'relegated')).toBe(TOP_TIER + 1);
+  });
+
+  it('mid tier: top 3 promoted, bottom 3 relegated, else stay', () => {
+    const mid = 3;
+    expect(seasonOutcome(mid, 1, N)).toBe('promoted');
+    expect(seasonOutcome(mid, 3, N)).toBe('promoted');
+    expect(seasonOutcome(mid, 4, N)).toBe('stay');
+    expect(seasonOutcome(mid, 12, N)).toBe('relegated');
+    expect(nextTier(mid, 'promoted')).toBe(mid - 1);
+    expect(nextTier(mid, 'relegated')).toBe(mid + 1);
+    expect(nextTier(mid, 'stay')).toBe(mid);
+  });
+
+  it('bottom tier: the drop zone means the sack (nowhere lower)', () => {
+    expect(seasonOutcome(BOTTOM_TIER, 12, N)).toBe('sacked');
+    expect(seasonOutcome(BOTTOM_TIER, 2, N)).toBe('promoted');
+    expect(seasonOutcome(BOTTOM_TIER, 6, N)).toBe('stay');
   });
 });
 
