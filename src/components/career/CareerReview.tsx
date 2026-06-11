@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
-  Trophy, ThumbsUp, ArrowUpCircle, ArrowDownCircle, Coins,
+  Trophy, ThumbsUp, ArrowUpCircle, ArrowDownCircle, ArrowUp, Coins,
   GraduationCap, ArrowRight, Check, Search, Hammer,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
@@ -17,6 +17,15 @@ const ord = (n: number) => {
   return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][v] ?? 'th');
 };
 
+// Deterministic confetti spread for the promotion flourish (no RNG needed).
+const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
+  left: (i * 53) % 100,
+  delay: (i % 9) * 0.04,
+  drift: ((i * 37) % 40) - 20,
+  rot: (i * 67) % 360,
+  color: ['#39ff14', '#ffcc00', '#ff4d4d', '#4da6ff'][i % 4],
+}));
+
 /** Between-seasons promotion/relegation summary + academy intake + facilities. */
 export default function CareerReview() {
   const review = useGameStore((s) => s.careerReview);
@@ -25,6 +34,7 @@ export default function CareerReview() {
   const facilities = useGameStore((s) => s.career?.facilities ?? null);
   const bankroll = useGameStore((s) => s.bankroll);
   const [picked, setPicked] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   if (!review) return null;
 
@@ -44,23 +54,77 @@ export default function CareerReview() {
         animate={{ scale: 1, opacity: 1 }}
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border-2 border-crt-dim bg-pitch-950 shadow-glow"
       >
-        {/* Header — promotion/relegation verdict */}
-        <div className="border-b border-crt-dim bg-pitch-900/80 px-5 py-4 text-center">
-          <div className={`mx-auto mb-1 flex items-center justify-center gap-2 ${accent}`}>
+        {/* Header — promotion/relegation verdict (promotions get a flourish) */}
+        <div className="relative overflow-hidden border-b border-crt-dim bg-pitch-900/80 px-5 py-4 text-center">
+          {/* Confetti burst — only when promoted, and never under reduced motion */}
+          {promoted && !reduceMotion && (
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+              {CONFETTI.map((c, i) => (
+                <motion.span
+                  key={i}
+                  className="absolute top-0 h-1.5 w-1.5 rounded-[1px]"
+                  style={{ left: `${c.left}%`, backgroundColor: c.color }}
+                  initial={{ y: -12, opacity: 0, rotate: 0 }}
+                  animate={{ y: 130, x: c.drift, opacity: [0, 1, 1, 0], rotate: c.rot + 360 }}
+                  transition={{ duration: 1.3, delay: c.delay, ease: 'easeIn' }}
+                />
+              ))}
+            </div>
+          )}
+
+          <motion.div
+            className={`relative mx-auto mb-1 flex items-center justify-center gap-2 ${accent}`}
+            initial={reduceMotion ? false : { scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 14 }}
+          >
             {promoted ? <Trophy size={24} /> : <VerdictIcon size={22} />}
             <h2 className="font-display text-xl">{verdict}</h2>
-          </div>
-          <p className="text-xs text-chrome-muted">
-            Season {review.season} — finished{' '}
-            <span className="font-display">{ord(review.finishPos)}</span> of {review.clubs} in the{' '}
-            <span className="font-display">{fromDiv}</span>
-            {promoted
-              ? <> — up to the <span className="font-display">{toDiv}</span>.</>
-              : relegated
-                ? <> — down to the <span className="font-display">{toDiv}</span>.</>
-                : <>.</>}
-          </p>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-crt-amber/40 bg-crt-amber/15 px-3 py-1 font-display text-sm text-crt-amber">
+          </motion.div>
+
+          {/* Promotion: an animated rise up the pyramid (fromDiv → toDiv) */}
+          {promoted ? (
+            <motion.div
+              className="relative mt-1 flex items-center justify-center gap-2 text-sm"
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15 }}
+            >
+              <span className="font-display text-chrome-muted/70 line-through decoration-chrome-muted/40">
+                {fromDiv}
+              </span>
+              <motion.span
+                className="text-crt-green"
+                animate={reduceMotion ? undefined : { y: [2, -3, 2] }}
+                transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
+              >
+                <ArrowUp size={16} />
+              </motion.span>
+              <motion.span
+                className="font-display text-crt-green"
+                initial={reduceMotion ? false : { y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.25, type: 'spring', stiffness: 300, damping: 16 }}
+              >
+                {toDiv}
+              </motion.span>
+            </motion.div>
+          ) : (
+            <p className="relative text-xs text-chrome-muted">
+              Season {review.season} — finished{' '}
+              <span className="font-display">{ord(review.finishPos)}</span> of {review.clubs} in the{' '}
+              <span className="font-display">{fromDiv}</span>
+              {relegated ? <> — down to the <span className="font-display">{toDiv}</span>.</> : <>.</>}
+            </p>
+          )}
+
+          {promoted && (
+            <p className="relative mt-0.5 text-[11px] text-chrome-muted">
+              Finished <span className="font-display">{ord(review.finishPos)}</span> of {review.clubs}.
+            </p>
+          )}
+
+          <p className="relative mt-2 inline-flex items-center gap-1.5 rounded-full border border-crt-amber/40 bg-crt-amber/15 px-3 py-1 font-display text-sm text-crt-amber">
             <Coins size={14} /> +£{review.bonus}M end-of-season reward
           </p>
         </div>
