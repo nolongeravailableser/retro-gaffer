@@ -5,19 +5,8 @@
  */
 
 import raw from './players.json';
-import type { Player, Position, Rarity, RawPlayer, Role } from '@/lib/types';
-
-/** Granular authored position → the four pitch buckets. */
-const POSITION_TO_ROLE: Record<Position, Role> = {
-  Goalkeeper: 'GK',
-  CenterBack: 'DEF',
-  Fullback: 'DEF',
-  Anchor: 'MID',
-  BoxToBox: 'MID',
-  Playmaker: 'MID',
-  Winger: 'FWD',
-  Striker: 'FWD',
-};
+import type { Player, Rarity, RawPlayer } from '@/lib/types';
+import { POSITION_TO_ROLE } from '@/lib/positions';
 
 /** Peak-impact cost (1–5) → card tier. */
 function rarityFromCost(cost: number): Rarity {
