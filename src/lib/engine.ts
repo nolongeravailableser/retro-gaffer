@@ -142,10 +142,11 @@ function swayBy(inf: number): (m: number) => number {
 /**
  * Weight scorers toward the front of the pitch AND toward sharp shooters —
  * your 95-SHO striker leads the charts. Keepers never score. Consumes exactly
- * one rng value (same as a uniform pick).
+ * one rng value (same as a uniform pick), so match RNG structure is unchanged.
+ * Returns the Player (so we can credit ids), or null for an empty squad.
  */
-function pickScorer(rng: Rng, squad: Player[], inf: number): string {
-  if (squad.length === 0) return 'a trialist';
+function pickScorerPlayer(rng: Rng, squad: Player[], inf: number): Player | null {
+  if (squad.length === 0) return null;
   const sway = swayBy(inf);
   const weights: number[] = squad.map((p) => {
     const roleW = p.role === 'FWD' ? 4 : p.role === 'MID' ? 3 : p.role === 'DEF' ? 1 : 0;
@@ -153,13 +154,38 @@ function pickScorer(rng: Rng, squad: Player[], inf: number): string {
     return roleW * sway(0.45 + deriveStats(p).shooting / 90);
   });
   const total = weights.reduce((s, w) => s + w, 0);
-  if (total <= 0) return squad[squad.length - 1].name; // all-keeper edge case
+  if (total <= 0) return squad[squad.length - 1]; // all-keeper edge case
   let r = rng.next() * total;
   for (let i = 0; i < squad.length; i++) {
     r -= weights[i];
-    if (r <= 0) return squad[i].name;
+    if (r <= 0) return squad[i];
   }
-  return squad[squad.length - 1].name;
+  return squad[squad.length - 1];
+}
+
+/**
+ * Who teed up the goal. Picked from a SEPARATE seeded stream so the core match
+ * RNG (and therefore every score) is byte-identical to before this feature —
+ * assists are pure decoration on an already-decided goal. Weighted toward
+ * creative midfielders; excludes the scorer and keepers; ~25% of goals are solo.
+ */
+function pickAssister(
+  seed: number | string,
+  minute: number,
+  side: 'A' | 'B',
+  squad: Player[],
+  scorerId: string | undefined,
+  inf: number
+): Player | null {
+  const candidates = squad.filter((p) => p.id !== scorerId && p.role !== 'GK');
+  if (candidates.length === 0) return null;
+  const ar = new Rng(`${seed}-assist-${minute}-${side}`);
+  if (ar.next() < 0.25) return null; // solo goal
+  const sway = swayBy(inf);
+  return weightedPick(ar, candidates, (p) => {
+    const roleW = p.role === 'MID' ? 1.6 : p.role === 'FWD' ? 1.1 : 0.6;
+    return roleW * sway(0.5 + deriveStats(p).passing / 90);
+  });
 }
 
 /** Weighted pick consuming exactly ONE rng value (like rng.pick). */
@@ -324,24 +350,33 @@ export function simulateSegment(
       const perMinute =
         (side === 'A' ? perMinuteA * carry.aMult : perMinuteB * carry.bMult) * late;
       if (rng.chance(perMinute)) {
-        const scorer = pickScorer(rng, team.squad, inf);
+        const scorer = pickScorerPlayer(rng, team.squad, inf);
+        const scorerName = scorer?.name ?? 'a trialist';
+        const assister = pickAssister(seed, minute, side, team.squad, scorer?.id, inf);
         if (side === 'A') carry.goalsA++;
         else carry.goalsB++;
         events.push({
           minute,
           side,
           kind: 'goal',
-          text: `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorer)}`,
-          playerName: scorer,
+          text:
+            `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorerName)}` +
+            (assister ? ` Teed up by ${assister.name}.` : ''),
+          playerName: scorerName,
+          playerId: scorer?.id,
+          assist: assister?.name,
+          assistId: assister?.id,
         });
       } else if (rng.chance(perMinute * tuning.chanceFactor)) {
-        const p = pickScorer(rng, team.squad, inf);
+        const p = pickScorerPlayer(rng, team.squad, inf);
+        const pName = p?.name ?? 'a trialist';
         events.push({
           minute,
           side,
           kind: 'chance',
-          text: `${team.name}: ${CHANCE_LINES[rng.int(0, CHANCE_LINES.length - 1)].replace('{p}', p)}`,
-          playerName: p,
+          text: `${team.name}: ${CHANCE_LINES[rng.int(0, CHANCE_LINES.length - 1)].replace('{p}', pName)}`,
+          playerName: pName,
+          playerId: p?.id,
         });
       }
     }
@@ -360,11 +395,11 @@ export function simulateSegment(
         carry.aMult *= RED_SELF;
         carry.bMult *= RED_OPP;
         const line = SECOND_YELLOW_LINES[rng.int(0, SECOND_YELLOW_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name, playerId: player.id });
       } else if (!yellowed.has(player.id)) {
         yellowed.add(player.id);
         const line = YELLOW_LINES[rng.int(0, YELLOW_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'yellow', text: line.replace('{p}', player.name), playerName: player.name });
+        events.push({ minute, side: 'A', kind: 'yellow', text: line.replace('{p}', player.name), playerName: player.name, playerId: player.id });
       }
     }
 
@@ -375,7 +410,7 @@ export function simulateSegment(
         carry.aMult *= RED_SELF;
         carry.bMult *= RED_OPP;
         const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
-        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name });
+        events.push({ minute, side: 'A', kind: 'red', text: line.replace('{p}', player.name), playerName: player.name, playerId: player.id });
       }
     }
 
@@ -385,7 +420,7 @@ export function simulateSegment(
       carry.injuryRounds = r < 0.6 ? 1 : r < 0.9 ? 2 : 3;
       carry.injuredId = player.id;
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
-      events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name), playerName: player.name });
+      events.push({ minute, side: 'A', kind: 'injury', text: line.replace('{p}', player.name), playerName: player.name, playerId: player.id });
       if (pauseOnInjury) {
         // The caller decides: substitute (no penalty) or play on (penalty).
         minute++;
@@ -408,7 +443,7 @@ export function simulateSegment(
       carry.aMult *= RED_OPP;
       const player = weightedPick(rng, b.squad, cardWeight(inf));
       const line = RED_LINES[rng.int(0, RED_LINES.length - 1)];
-      events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
+      events.push({ minute, side: 'B', kind: 'red', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name, playerId: player.id });
     }
 
     if (oppInjuryRoll < tuning.pInjury && !carry.oppInjured && b.squad.length > 0) {
@@ -417,7 +452,7 @@ export function simulateSegment(
       carry.aMult *= INJ_OPP;
       const player = weightedPick(rng, b.squad, injuryWeight(inf));
       const line = INJURY_LINES[rng.int(0, INJURY_LINES.length - 1)];
-      events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name });
+      events.push({ minute, side: 'B', kind: 'injury', text: `${b.name}: ${line.replace('{p}', player.name)}`, playerName: player.name, playerId: player.id });
     }
   }
 

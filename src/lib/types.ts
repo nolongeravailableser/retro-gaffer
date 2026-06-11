@@ -103,6 +103,12 @@ export interface MatchEvent {
   text: string;
   /** Name of the player at the centre of the event (scorer, carded, injured). */
   playerName?: string;
+  /** Id of that player (for per-player ratings/history). Both sides. */
+  playerId?: string;
+  /** Goals only: the assist provider's name (omitted for solo goals). */
+  assist?: string;
+  /** Goals only: the assist provider's id. */
+  assistId?: string;
 }
 
 export interface MatchResult {

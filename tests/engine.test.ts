@@ -141,6 +141,36 @@ describe('simulateMatch invariants', () => {
     expect(sideBDiscipline).toBeGreaterThan(0);
   });
 
+  it('goals carry a scorer id; some goals are assisted, never by the scorer', () => {
+    const aIds = new Set(teamA.squad.map((p) => p.id));
+    let assisted = 0;
+    let goals = 0;
+    for (let s = 0; s < 200; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      for (const e of r.events.filter((e) => e.kind === 'goal' && e.side === 'A')) {
+        goals++;
+        expect(e.playerId && aIds.has(e.playerId)).toBe(true);
+        if (e.assistId) {
+          assisted++;
+          expect(aIds.has(e.assistId)).toBe(true);
+          expect(e.assistId).not.toBe(e.playerId); // can't assist your own goal
+        }
+      }
+    }
+    expect(goals).toBeGreaterThan(0);
+    expect(assisted).toBeGreaterThan(0); // assists do happen
+    expect(assisted).toBeLessThan(goals); // but not every goal (some are solo)
+  });
+
+  it('cards and injuries carry the involved player id', () => {
+    for (let s = 0; s < 80; s++) {
+      const r = simulateMatch(teamA, teamB, s);
+      for (const e of r.events.filter((e) => ['yellow', 'red', 'injury'].includes(e.kind))) {
+        expect(typeof e.playerId).toBe('string');
+      }
+    }
+  });
+
   it('discipline/injury events occur at a realistic frequency over many games', () => {
     let reds = 0;
     let yellows = 0;
