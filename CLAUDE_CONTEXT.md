@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-feel enhancements: **task 1 bidding/personal terms + task 2 incoming offers + a club Inbox** built, verified & committed LOCALLY (unpushed). persistence **v24**, **291 tests**, build green, sim unmoved. Tasks 3 (windows) + 4 (contracts/Bosman) still TODO. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-feel enhancements **COMPLETE** — tasks 1–4 (bidding/personal terms + marquee wage gate, incoming offers, transfer windows, contracts/Bosman) + a club **Inbox** all built, verified live, gated, and **PUSHED to prod**. persistence **v25**, **299 tests**, build green, sim unmoved (Classic 36.8% · career champ 53%/sacked 4%/PL 94%). See §3 "START HERE")
 
 ---
 
@@ -694,11 +694,14 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-12):** the entire user-feedback roadmap (§2l) is delivered AND
-the **FM transfer market (4.8 Phase A + Phase B) is shipped and PUSHED to prod.**
-Gates: **tsc clean · 275 tests · build green · persistence v23.** Everything
-through commit `8ad840b` is on `origin/main` and live (prod page + `/api/daily`
-both 200). Working tree clean. **Nothing is unpushed.**
+**Status (2026-06-12):** the user-feedback roadmap (§2l), the FM transfer market
+(4.8 A+B) AND the **FM-feel enhancements (tasks 1–4 + a club Inbox)** are all
+shipped and **PUSHED to prod**. Gates: **tsc clean · 299 tests · build green ·
+persistence v25.** Sim unmoved (Classic 36.8% · career champ 53%/sacked 4%/PL
+94%). Working tree clean. **Nothing is unpushed.** The FM transfer system now has:
+negotiated bidding + personal terms (marquee wage gate), incoming offers, transfer
+windows, contracts/Bosman, and an Inbox tying results/injuries/board/bids/
+departures together. Next candidates are the **Parked** list under ⭐ below.
 
 **The current transfer system (Career/League):** browsable market
 (`components/shop/TransferMarket.tsx`) with three tiers — **free agents**
@@ -718,39 +721,43 @@ swept values; THESE are what's shipped):**
   champion ~53% over 20 seasons, sacked ~4%; **Classic completion 36.8%** (the
   Classic balance harness `tests/balance.sim.ts` shares the run).
 
-**⭐ NEXT TASK — make the transfer market feel more like Football Manager
-(user-requested; Career/League only, Classic untouched). Tasks 1 & 2 + a club
-Inbox are DONE (local, unpushed). Tasks 3 & 4 remain. Sim-gate each; push as one
-release after the user OKs.**
+**⭐ FM-FEEL ENHANCEMENTS — COMPLETE & PUSHED (tasks 1–4 + Inbox).** All
+Career/League only; Classic untouched. Commits `439b3ec`…`d28306c` (see git log).
 
-1. **Bidding & personal terms — ✅ DONE (commit `439b3ec`).** `lib/negotiation.ts`
-   (pure, 7 tests): `wageDemand` (rating+division scaled), `evaluateBid`
-   (accept/counter/reject vs asking price), `termsAffordable` (wage-budget gate).
-   `NegotiationModal.tsx`: bid the selling club (skipped for free agents) → agree
-   personal terms (refuses if over the wage budget). `signPlayer(id, agreedFee?)`
-   is the commit step. No persistence change (transient pre-commit gate; the wage
-   bill is still derived). Verified live (counter at £26M on a £27M ask paid £26M).
-2. **Incoming offers for YOUR players — ✅ DONE (commit `26b4d61`), delivered via
-   the Inbox.** `lib/market.ts` `rivalBids` (pure, seeded, 4 tests): only players
-   ≥`OFFER_MIN_OVERALL` (70) draw bids; buyer biased toward clubs short in that
-   role then weighted by strength; fee ≈ marketValue ± noise; capped 2/wk; players
-   with an open bid skipped. Generated in `resolveLeagueRound` on a SEPARATE seed
-   stream (`{runSeed}-offer-{mw}`) → match/AI determinism intact. Accept banks the
-   fee + player leaves + buyer squad/strength rise; reject keeps him.
-   - **Club Inbox (the connective tissue, commit `f08a9e2`):** `lib/inbox.ts`
-     (pure, 4 tests) + top-level persisted `inbox: InboxMessage[]` (**v24** +
-     migration). `resolveLeagueRound` posts result recaps, injury notes (with
-     duration), board verdicts + the bids. Conditional **Inbox tab** (Career/League
-     only — Classic keeps 7 tabs) with an unread badge; `InboxPanel.tsx` with
-     inline Accept/Reject. Opening the tab marks all read. Store actions
-     `markInboxRead`/`acceptOffer`/`rejectOffer`.
-3. **Transfer windows — TODO.** Restrict signings/sales to a pre-season window (and
-   maybe a mid-season one, e.g. matchweek 6). Gate `signPlayer`/market UI on an
-   `isWindowOpen(matchweek)` check; show "window closed" state. (Incoming offers
-   could also be window-gated.)
-4. **Contracts & Bosman — TODO.** Per-player contract length + wage on `CareerMeta`;
-   expiring players become genuine free agents; renew/release in the review.
-   Biggest data change (persistence + aging interplay) — do last.
+1. **Bidding & personal terms — ✅ (commits `439b3ec`, `becc78b`).**
+   `lib/negotiation.ts` (pure, 8 tests): `wageDemand`, `evaluateBid`
+   (accept/counter/reject vs asking price), `maxWageOffer` — a **per-player wage
+   ceiling** scaling with division + bankroll (the marquee gate: a galáctico balks
+   in a low division even when you can afford the fee; debugging found the old
+   squad-budget gate never fired). `NegotiationModal.tsx` is the flow;
+   `signPlayer(id, agreedFee?)` commits. Modal-only gate → no economy impact.
+2. **Incoming offers for YOUR players — ✅ (commit `26b4d61`), via the Inbox.**
+   `lib/market.ts` `rivalBids` (pure, seeded): players ≥`OFFER_MIN_OVERALL` (70)
+   draw bids; buyer biased to clubs short in that role then by strength; capped
+   2/wk. Generated in `resolveLeagueRound` on a SEPARATE seed stream → determinism
+   intact. Accept banks the fee + player leaves + buyer strengthens; reject keeps.
+   - **Club Inbox (connective tissue, commit `f08a9e2`):** `lib/inbox.ts` + a
+     top-level persisted `inbox: InboxMessage[]`. `resolveLeagueRound` posts result
+     recaps, injury notes (with duration), board verdicts + bids; Bosman departures
+     too. Conditional **Inbox tab** (Career/League only) with unread badge;
+     `InboxPanel.tsx` inline Accept/Reject. `markInboxRead`/`acceptOffer`/`rejectOffer`.
+3. **Transfer windows — ✅ (commit `cb4873f`).** `lib/league.ts`
+   `isWindowOpen(mw, weeks)` — summer window (`SUMMER_WINDOW_WEEKS`=3) + one winter
+   week (`winterWindowWeek`); `nextWindowOpensAt` for UI. `signPlayer`/`sell`/
+   `autoFillSquad`/`acceptOffer` + offer generation all window-gated (market modes
+   only). TransferMarket shows an open/closed banner; signing disabled when closed.
+4. **Contracts & Bosman — ✅ (commit `d28306c`).** `CareerMeta.contractYears`
+   (`DEFAULT_CONTRACT`=3, `YOUTH_CONTRACT`=4); `resolveContracts` (pure) runs deals
+   down each season — renewed reset, expiring+unrenewed leave on a free.
+   `advanceCareerSeason` drops departed from owned/xi/bench (they stay registered →
+   reappear in the market) + posts a Bosman inbox note. CareerReview gained an
+   **Expiring Contracts** renew-toggle section. Persistence **v25** + migration.
+
+**Parked after FM transfers** (next candidates): cup competitions
+([[future-feature-ideas]]); transfer polish (sell-to-clubs flavour, rivals
+re-signing after a poach/Bosman, AI clubs bidding against each other); contract
+WAGES were kept derived (the wage *bill* still uses `wage(p)`, not a stored agreed
+wage) to avoid an economy re-tune — revisit if per-player negotiated wages are wanted.
 
 **Implementation anchors:** market logic in `lib/market.ts`; league/club state
 + squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);
