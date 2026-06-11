@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Career → league pyramid SHIPPED — promotion/relegation across the English tiers, keeping aging/youth; persistence v21, 260 tests. NEXT: 4.4 stadium development — see §3 "START HERE")
+> **Last updated:** 2026-06-11 (Career league pyramid + stadium development SHIPPED; persistence v22, 267 tests. Phase 4 is feature-complete — see §3 "START HERE" for candidate next directions)
 
 ---
 
@@ -590,7 +590,19 @@ programmatically** from existing single position (confirm before building).
       tier-appropriate AI strength, division shown everywhere, table renders,
       floor-economy stakes. Existing R7 Classic save migrated + rehydrated clean
       (backed up to `gaffer-run-BACKUP` and restored).
-- **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
+  - **4.4c stadium development (SHIPPED, commit `70be944`):** career-only club
+    facilities — `lib/stadium.ts` (pure, 4 tests): `Facilities {stadium,
+    academy, medical}`, levels 0–3, `upgradeCost` (rises per level),
+    `matchdayIncome`/`youthBonus`/`injuryReduction`. `CareerState.facilities`
+    carries across seasons (persist **v22**; existing careers → level 0). Store:
+    `startCareer` seeds them, new `upgradeFacility(id)` action (spend bankroll,
+    cap at MAX_LEVEL=3), `advanceCareerSeason` carries them; `resolveLeagueRound`
+    applies the effects (career only) — stadium → flat matchday income (folded
+    into round income), medical → shaves rounds off new injuries, academy →
+    more prospects per intake. UI: `CareerReview` "Club Development" upgrade
+    panel + `SeasonPanel` live readout. Tests: stadium(4) + careerLeague(+3) +
+    savecode v22 → **267**. Classic sim untouched (career-only economy).
+- **Phase 4 is feature-complete.** All forks from §2l preamble are resolved.
 
 ---
 
@@ -598,27 +610,32 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-11):** the user-feedback roadmap (§2l) is delivered through
-**Phase 4.4b — Career = league pyramid** (promotion/relegation across the
-English tiers, keeping aging/youth). Phases 1, 2, 3, 4.1, 4.2, 4.3, 4.4a, 4.4b
-are all shipped AND verified. Everything is **committed locally on `main` but
-NOT pushed to `origin`** (push when the user asks). Gates: **tsc clean · 260
-tests · build green · persistence v21**.
+**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered.
+**Phase 4 is feature-complete** through **4.4c — stadium development**: dynamic
+positions/formations (4.1), FM finances (4.2), standalone League (4.3), the
+Career league pyramid (4.4b), and career club facilities (4.4c). Everything is
+**committed locally on `main` but NOT pushed to `origin`** (push when the user
+asks). Gates: **tsc clean · 267 tests · build green · persistence v22**.
 
-**THE NEXT TASK: 4.4 stadium development** (career-only facilities). Idea
-(NOT yet designed in detail): capacity → matchday income, training → faster
-youth growth, medical → fewer/shorter injuries; upgraded with the end-of-season
-bonus. It's career-only, so it threads through `CareerState` (persist bump +
-migration) and the `advanceCareerSeason` / `resolveLeagueRound` economy. Confirm
-the design with the user before building (how many facilities, cost curve,
-whether it touches `npm run sim`).
+**No task is queued.** Candidate next directions (none designed/committed —
+confirm with the user before building):
+- **Push to production** — the pyramid + stadium work is unpushed; `origin/main`
+  auto-deploys to Vercel. The user must ask.
+- **Polish the career UI** — a dedicated Stadium/club screen (facilities are
+  currently only in the between-seasons review + a SeasonPanel readout); a
+  career-history/honours timeline; richer promotion/relegation moments.
+- **Balance pass on the new economy** — `tierMult` + facility income are only
+  unit-tested, not playtested across a long career; watch for runaway bankroll
+  at high tiers with a maxed stadium.
+- Pitch-view polish (§2l Phase 3 notes), or anything fresh the user raises.
 
-**Career pyramid recap (just shipped — see §2l 4.4b):** Career reuses the
-top-level `s.league`; `CareerState.tier` drives the division; `resolveLeagueRound`
-runs `seasonOutcome` at season end (champion = win the run, sacked = relegated
-from the bottom tier, else a promotion/relegation review that keeps the academy
-intake); `tierMult` scales prize money by tier. Store-integration coverage lives
-in `tests/careerLeague.test.ts`.
+**Career pyramid + stadium recap (just shipped — §2l 4.4b/4.4c):** Career reuses
+the top-level `s.league`; `CareerState.tier` drives the division and
+`.facilities` the club upgrades; `resolveLeagueRound` runs `seasonOutcome` at
+season end (champion = win the run, sacked = relegated from the bottom tier, else
+a promotion/relegation review that keeps the academy intake) and applies facility
+effects; `tierMult` scales prize money by tier. Store-integration coverage lives
+in `tests/careerLeague.test.ts` (+ `tests/stadium.test.ts`).
 
 **Operational gotchas learned this session (IMPORTANT for browser testing):**
 - BEFORE any destructive browser test (New Game / startLeague / playing a
