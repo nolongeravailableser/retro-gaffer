@@ -9,8 +9,23 @@
  * goals conceded for the back line, and the team result. Clamped to 3.0–10.0.
  */
 
-import type { MatchEvent, Player, Role } from './types';
+import type { MatchEvent, Player, Role, PlayerHistory } from './types';
 import { Rng } from './rng';
+
+export const EMPTY_HISTORY: PlayerHistory = {
+  apps: 0,
+  goals: 0,
+  assists: 0,
+  yellows: 0,
+  reds: 0,
+  motm: 0,
+  ratingSum: 0,
+};
+
+/** Average match rating, or null with no appearances. */
+export function avgRating(h: PlayerHistory): number | null {
+  return h.apps > 0 ? Math.round((h.ratingSum / h.apps) * 10) / 10 : null;
+}
 
 export interface PlayerRating {
   playerId: string;
@@ -102,4 +117,31 @@ export function matchRatings(
   }
 
   return ratings;
+}
+
+/**
+ * Fold one match's ratings into the cumulative per-player history. Pure: returns
+ * a new map. `squad` is the XI that started; each gets an appearance plus their
+ * goals/assists/cards/rating from this match.
+ */
+export function accrueHistory(
+  history: Record<string, PlayerHistory>,
+  events: MatchEvent[],
+  squad: Player[],
+  ctx: RatingContext
+): Record<string, PlayerHistory> {
+  const next = { ...history };
+  for (const r of matchRatings(events, squad, ctx)) {
+    const h = next[r.playerId] ?? EMPTY_HISTORY;
+    next[r.playerId] = {
+      apps: h.apps + 1,
+      goals: h.goals + r.goals,
+      assists: h.assists + r.assists,
+      yellows: h.yellows + r.yellows,
+      reds: h.reds + (r.red ? 1 : 0),
+      motm: h.motm + (r.motm ? 1 : 0),
+      ratingSum: Math.round((h.ratingSum + r.rating) * 10) / 10,
+    };
+  }
+  return next;
 }

@@ -3,6 +3,7 @@ import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
+import { avgRating } from '@/lib/ratings';
 import { Draggable } from '@/components/dnd/dnd';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { positionLabel } from '@/lib/playerMeta';
@@ -21,6 +22,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const bench = useGameStore((s) => s.bench);
   const suspensions = useGameStore((s) => s.suspensions);
   const injuries = useGameStore((s) => s.injuries);
+  const playerHistory = useGameStore((s) => s.playerHistory);
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const sell = useGameStore((s) => s.sell);
@@ -227,6 +229,20 @@ export default function SquadList({ multipliers }: SquadListProps) {
                             </span>
                           )}
                         </div>
+                        {(() => {
+                          const h = playerHistory[id];
+                          if (!h || h.apps === 0) return null;
+                          const avg = avgRating(h);
+                          return (
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-ticker text-[9px] text-chrome-muted/80">
+                              <span>{h.apps} app{h.apps !== 1 ? 's' : ''}</span>
+                              {avg !== null && <span className="text-crt-amber/80">★{avg.toFixed(1)}</span>}
+                              {h.goals > 0 && <span className="text-crt-green/80">{h.goals}⚽</span>}
+                              {h.assists > 0 && <span className="text-sky-300/80">{h.assists}🅰</span>}
+                              {h.motm > 0 && <span className="text-crt-amber/80">{h.motm}×MOTM</span>}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Rated stats */}

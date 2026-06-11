@@ -66,7 +66,8 @@ import { newlyUnlocked, getAchievement } from '@/lib/achievements';
 import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
-import type { MatchResult } from '@/lib/types';
+import type { MatchResult, PlayerHistory } from '@/lib/types';
+import { accrueHistory } from '@/lib/ratings';
 
 export { getPlayer };
 
@@ -247,6 +248,8 @@ interface GameState {
   suspensions: string[];
   /** playerId → rounds remaining injured. Decremented after each resolved round. */
   injuries: Record<string, number>;
+  /** Cumulative per-player stats for this run (apps/goals/assists/rating/cards). */
+  playerHistory: Record<string, PlayerHistory>;
 
   // --- events & relics (Pillar 4) ---
   /** Owned persistent relics. */
@@ -376,6 +379,7 @@ function freshRun(
     shield: false,
     suspensions: [] as string[],
     injuries: {} as Record<string, number>,
+    playerHistory: {} as Record<string, PlayerHistory>,
     relics: [] as string[],
     roundMods: NO_MODIFIERS,
     event: null as GameEvent | null,
@@ -430,6 +434,7 @@ function saveSlice(s: GameState) {
     shield: s.shield,
     suspensions: s.suspensions,
     injuries: s.injuries,
+    playerHistory: s.playerHistory,
   };
 }
 
@@ -701,6 +706,18 @@ export const useGameStore = create<GameState>()(
             ? `🏆 Unlocked: ${unlocked.map((id) => getAchievement(id)?.name ?? id).join(' · ')}`
             : null;
 
+          // Player histories: credit this match to the XI that started it
+          // (goals/assists/cards/rating). Seed mirrors App's match seed so the
+          // recorded ratings match what the report showed.
+          const xiPlayers = s.xi
+            .map((id) => (id ? getPlayer(id) : null))
+            .filter((p): p is Player => !!p);
+          const playerHistory = accrueHistory(s.playerHistory, result.events, xiPlayers, {
+            goalsConceded: result.score.b,
+            outcome: result.outcome,
+            seed: `M-${s.runSeed}-${s.round}`,
+          });
+
           const base = {
             bankroll,
             record,
@@ -723,6 +740,7 @@ export const useGameStore = create<GameState>()(
             noticeKind: 'success' as NoticeKind,
             suspensions,
             injuries: newInjuries,
+            playerHistory,
           };
 
           // Run over? Record the career-best DIVISION — but only for the finite

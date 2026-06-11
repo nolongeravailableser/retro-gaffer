@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchRatings, type RatingContext } from '@/lib/ratings';
+import { matchRatings, accrueHistory, avgRating, type RatingContext } from '@/lib/ratings';
 import type { MatchEvent, Player, Role } from '@/lib/types';
 
 function p(id: string, role: Role): Player {
@@ -71,6 +71,26 @@ describe('matchRatings', () => {
     const gkSwing = get(clean, 'gk').rating - get(leaky, 'gk').rating;
     const mfSwing = get(clean, 'mf1').rating - get(leaky, 'mf1').rating;
     expect(gkSwing).toBeGreaterThan(mfSwing);
+  });
+
+  it('accrues history across matches (apps, goals, assists, avg rating)', () => {
+    let hist: Record<string, ReturnType<typeof accrueHistory>[string]> = {};
+    // Match 1: fw1 scores, mf1 assists.
+    hist = accrueHistory(hist, [goalBy('fw1', 'mf1')], squad, baseCtx);
+    // Match 2: fw1 scores again.
+    hist = accrueHistory(hist, [goalBy('fw1')], squad, { ...baseCtx, seed: 'seed-2' });
+
+    expect(hist['fw1'].apps).toBe(2);
+    expect(hist['fw1'].goals).toBe(2);
+    expect(hist['mf1'].apps).toBe(2);
+    expect(hist['mf1'].assists).toBe(1);
+    expect(hist['gk'].apps).toBe(2);
+    expect(hist['gk'].goals).toBe(0);
+    // Average is the running mean of the two match ratings.
+    const fwAvg = avgRating(hist['fw1']);
+    expect(fwAvg).not.toBeNull();
+    expect(fwAvg!).toBeGreaterThan(6);
+    expect(avgRating({ apps: 0, goals: 0, assists: 0, yellows: 0, reds: 0, motm: 0, ratingSum: 0 })).toBeNull();
   });
 
   it('clamps to 3.0–10.0 and names exactly one MOTM', () => {

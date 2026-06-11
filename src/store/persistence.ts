@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 18;
+export const CURRENT_VERSION = 19;
 
 type Save = Record<string, unknown>;
 
@@ -109,6 +109,11 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   }),
   18: (s) => ({
     achievements: [],
+    ...s,
+  }),
+  // Player histories start empty; they accrue from the next match played.
+  19: (s) => ({
+    playerHistory: {},
     ...s,
   }),
 };

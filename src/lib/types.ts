@@ -93,6 +93,20 @@ export interface PlayerStats {
 export const XI_SIZE = 11;
 export const BENCH_SIZE = 5;
 
+/** Cumulative per-player record across a run (keyed by player id in the store). */
+export interface PlayerHistory {
+  /** Matches started. */
+  apps: number;
+  goals: number;
+  assists: number;
+  yellows: number;
+  reds: number;
+  /** Man-of-the-match awards. */
+  motm: number;
+  /** Sum of match ratings (avg = ratingSum / apps). */
+  ratingSum: number;
+}
+
 /** A single line of match commentary produced by the engine. */
 export interface MatchEvent {
   /** Match minute, 1–90. */
