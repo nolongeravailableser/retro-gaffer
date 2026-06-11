@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 252 tests — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v20, 252 tests — see §2l)
 
 ---
 
@@ -548,10 +548,27 @@ programmatically** from existing single position (confirm before building).
     "League Season" card; SeasonPanel loss note = "no points" in a league.
     Verified live end-to-end (won MW1 → table updated, you 2nd; MW advanced).
     Win = champion (1st).
-  - **NEXT (user's expanded vision): Career = a league PYRAMID mirroring
-    English football** — promotion/relegation across tiers (National League →
-    … → Premier League), climbing seasons. This restructures the current
-    board-target Career to use the league engine + division tiers. Not started.
+  - **4.3c league-aware end screen (SHIPPED, commit `1ae0fc6`):** RunOverModal
+    shows LEAGUE CHAMPIONS! / SEASON OVER, "Finished: Champions/Nth of 12",
+    the league-table record, and a "New League Season" replay. Found+fixed in
+    the League debug pass (a full season played to the title; champion screen
+    verified). League mode debug pass otherwise clean.
+  - **4.4a pyramid foundation (SHIPPED, commit `cffbee2`):** `lib/league.ts`
+    DIVISIONS (National League→Premier League, rising AI base), TOP/BOTTOM_TIER,
+    PROMOTION/RELEGATION_SPOTS (top/bottom 3), `seasonOutcome` (champion/
+    promoted/stay/relegated/sacked) + `nextTier`. Tests +3.
+  - **NEXT — Career = league pyramid (the big restructure, NOT started):** make
+    each Career season a league in the club's current `tier`; end of season →
+    `seasonOutcome` → promotion/relegation/sacked/champion → `nextTier` → new
+    league next season. PLAN: extend `CareerState` with `tier` + the season's
+    `LeagueState`; the career branch of `resolveRound` resolves matchweeks (no
+    lives) and, at season end, runs promotion/relegation + KEEP the existing
+    aging/youth intake (CareerReview becomes a promotion/relegation summary);
+    `startCareer` begins in the BOTTOM tier (National League); App career
+    opponent = the league fixture; win = win the Premier League; sacked = the
+    drop zone in the bottom tier. Persistence migration (CareerState shape).
+    DESIGN FORK to confirm: keep aging/youth + replace board-target with
+    promotion/relegation (recommended), vs a leaner league-only career.
 - **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
 
 ---
