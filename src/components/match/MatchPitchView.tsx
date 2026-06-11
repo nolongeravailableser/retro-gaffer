@@ -141,28 +141,80 @@ export default function MatchPitchView({ timeline, shown, speedDelay, finished, 
       ctx.strokeRect(px(0), py(0.22), px(0.13) - px(0), boxH);
       ctx.strokeRect(px(0.87), py(0.22), px(1) - px(0.87), boxH);
 
+      // Current ball position — players shape themselves around it.
+      const b = ballAt(scene, t);
+
       // ── players, in their kits ──
       const r = Math.max(3.5, w * 0.013);
-      const drift = reduced ? 0 : 0.007;
-      const drawSide = (anchors: typeof tl.anchorsA, kit: Kit, shift: number) => {
+      const drift = reduced ? 0 : 0.006;
+      // Who's on the ball drives the shape. Live-ball scenes only: cards,
+      // injuries and whistles are dead-ball (ball start == end) so the teams
+      // just hold their shape. scene.side is the team in possession.
+      const liveBall =
+        scene.ball[0].x !== scene.ball[scene.ball.length - 1].x ||
+        scene.ball[0].y !== scene.ball[scene.ball.length - 1].y;
+      const possSide: 'A' | 'B' | null = liveBall ? scene.side : null;
+      // How far up the pitch each line pushes (keepers stay home).
+      const ROLE_ADV: Record<string, number> = { GK: 0, DEF: 1, MID: 1.6, FWD: 2.1 };
+
+      const drawSide = (anchors: typeof tl.anchorsA, kit: Kit, side: 'A' | 'B') => {
+        const dir = side === 'A' ? 1 : -1; // attacking direction
+        const attacking = possSide === side;
+        const defending = possSide !== null && possSide !== side;
         const keeper = gkColor(kit);
-        anchors.forEach((a, i) => {
-          const x = Math.max(0.02, Math.min(0.98, a.x + shift)) +
-            drift * Math.sin(now * 0.0013 + i * 2.1);
-          const y = Math.max(0.04, Math.min(0.96, a.y + drift * 1.6 * Math.cos(now * 0.0009 + i * 1.7)));
-          if (a.role === 'GK') {
+
+        // Transform each anchor: possession shape (push up / drop) + a tilt
+        // toward the ball's lane (compactness) + a little organic drift.
+        const pos = anchors.map((a, i) => {
+          const adv = ROLE_ADV[a.role] ?? 1;
+          let x = a.x;
+          if (attacking) x += dir * 0.034 * adv;
+          else if (defending) x -= dir * 0.02 * adv;
+          const tilt = a.role === 'GK' ? 0.05 : 0.16;
+          let y = a.y + (b.y - a.y) * tilt;
+          x += drift * Math.sin(now * 0.0013 + i * 2.1);
+          y += drift * 1.4 * Math.cos(now * 0.0009 + i * 1.7);
+          return { x, y };
+        });
+
+        // The outfield player nearest the ball carries it (attacking side, glued
+        // to the ball so it sits at his feet) or closes it down (defending side).
+        // As the ball travels its path the nearest dot changes → it reads as a
+        // pass moving between players.
+        let near = -1;
+        let nd = Infinity;
+        for (let i = 0; i < pos.length; i++) {
+          if (anchors[i].role === 'GK') continue;
+          const dx = pos[i].x - b.x;
+          const dy = pos[i].y - b.y;
+          const d = dx * dx + dy * dy;
+          if (d < nd) { nd = d; near = i; }
+        }
+        if (near >= 0) {
+          if (attacking) {
+            pos[near].x = b.x;
+            pos[near].y = b.y;
+          } else if (defending) {
+            pos[near].x += (b.x - pos[near].x) * 0.72;
+            pos[near].y += (b.y - pos[near].y) * 0.72;
+          }
+        }
+
+        pos.forEach((p, i) => {
+          const x = px(Math.max(0.02, Math.min(0.98, p.x)));
+          const y = py(Math.max(0.04, Math.min(0.96, p.y)));
+          if (anchors[i].role === 'GK') {
             // Keepers wear their own shirt, as in real football.
-            drawKitDot(ctx, px(x), py(y), r * 0.9, { primary: keeper, secondary: keeper, pattern: 'solid' });
+            drawKitDot(ctx, x, y, r * 0.9, { primary: keeper, secondary: keeper, pattern: 'solid' });
           } else {
-            drawKitDot(ctx, px(x), py(y), r, kit);
+            drawKitDot(ctx, x, y, r, kit);
           }
         });
       };
-      drawSide(tl.anchorsA, ka, scene.shiftA);
-      drawSide(tl.anchorsB, kb, -scene.shiftB);
+      drawSide(tl.anchorsA, ka, 'A');
+      drawSide(tl.anchorsB, kb, 'B');
 
-      // ── ball ──
-      const b = ballAt(scene, t);
+      // ── ball (drawn on top of its carrier) ──
       ctx.beginPath();
       ctx.arc(px(b.x), py(b.y), Math.max(2.5, r * 0.55), 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
