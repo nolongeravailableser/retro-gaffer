@@ -527,9 +527,10 @@ programmatically** from existing single position (confirm before building).
 ## 3. Active Work & Next Directions
 
 **In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins), 2
-(match experience) and 3 (2D pitch overhaul) are shipped; **Phase 4 is the
-remaining work** (dynamic positions/formations, FM finances/wages, League
-mode, stadium). See §2l for the full plan and the locked forks.
+(match experience), 3 (2D pitch overhaul) and **4.1 (dynamic positions/
+formations)** are shipped; **remaining Phase 4 work**: FM finances/wages +
+league-scaled rewards, League-Season mode + table, career stadium development.
+See §2l for the full plan and the locked forks.
 
 All earlier work — planned phases (0–3), the 2026-06-10 mega-session
 (sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
