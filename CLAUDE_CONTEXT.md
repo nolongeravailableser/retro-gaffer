@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Career league pyramid + stadium development SHIPPED; persistence v22, 267 tests. Phase 4 is feature-complete — see §3 "START HERE" for candidate next directions)
+> **Last updated:** 2026-06-11 (Career Hub SHIPPED — dynasty home: pyramid ladder, honours, history timeline, mid-season facility management; persistence v23, 269 tests. See §3 "START HERE")
 
 ---
 
@@ -602,6 +602,17 @@ programmatically** from existing single position (confirm before building).
     more prospects per intake. UI: `CareerReview` "Club Development" upgrade
     panel + `SeasonPanel` live readout. Tests: stadium(4) + careerLeague(+3) +
     savecode v22 → **267**. Classic sim untouched (career-only economy).
+  - **4.5 Career Hub (SHIPPED, commit `453f665`):** a dedicated dynasty home
+    (Club tab, career only). `CareerState.history: SeasonRecord[]` (logged at
+    each season end in `resolveLeagueRound`, carried across seasons; persist
+    **v23**); `careerHonours()` derives titles/promotions/relegations/peak tier.
+    `components/career/CareerHub.tsx` = club identity + `PyramidLadder.tsx`
+    (summit→base ladder, your rung lit with crest) + live this-season outlook
+    (position + promotion/relegation pill + matchweek bar) + honours cabinet +
+    club development + season-by-season history timeline (outcome badges).
+    `FacilitiesPanel.tsx` extracted (shared by hub + review; **mid-season
+    upgrades** now allowed, shows each facility's live effect). RunOverModal
+    gained a career honours strip. Tests → **269**. Verified live.
 - **Phase 4 is feature-complete.** All forks from §2l preamble are resolved.
 
 ---
@@ -610,32 +621,36 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered.
-**Phase 4 is feature-complete** through **4.4c — stadium development**: dynamic
-positions/formations (4.1), FM finances (4.2), standalone League (4.3), the
-Career league pyramid (4.4b), and career club facilities (4.4c). Everything is
-**committed locally on `main` but NOT pushed to `origin`** (push when the user
-asks). Gates: **tsc clean · 267 tests · build green · persistence v22**.
+**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered and
+**Phase 4 is feature-complete + the Career Hub (4.5)**: dynamic positions (4.1),
+FM finances (4.2), standalone League (4.3), the Career league pyramid (4.4b),
+career club facilities (4.4c), and the Career Hub dynasty home (4.5). Everything
+is **committed locally on `main` but NOT pushed to `origin`** (push when the user
+asks). Gates: **tsc clean · 269 tests · build green · persistence v23**.
 
 **No task is queued.** Candidate next directions (none designed/committed —
 confirm with the user before building):
-- **Push to production** — the pyramid + stadium work is unpushed; `origin/main`
-  auto-deploys to Vercel. The user must ask.
-- **Polish the career UI** — a dedicated Stadium/club screen (facilities are
-  currently only in the between-seasons review + a SeasonPanel readout); a
-  career-history/honours timeline; richer promotion/relegation moments.
+- **Push to production** — ALL the pyramid/stadium/hub work (commits since
+  `0b7962c`) is unpushed; `origin/main` auto-deploys to Vercel. The user must ask.
 - **Balance pass on the new economy** — `tierMult` + facility income are only
-  unit-tested, not playtested across a long career; watch for runaway bankroll
-  at high tiers with a maxed stadium.
-- Pitch-view polish (§2l Phase 3 notes), or anything fresh the user raises.
+  unit-tested, not playtested across a long career; watch for runaway bankroll at
+  high tiers with a maxed stadium. (No career sim harness exists yet — the
+  `npm run sim` balance harness only runs Classic.)
+- **Career-hub polish** — promotion/relegation zone colouring in the LeagueTable
+  (Season tab); off-ball/transition polish in the pitch view (§2l Phase 3 notes);
+  an honours moment/animation on promotion. Or anything fresh the user raises.
 
-**Career pyramid + stadium recap (just shipped — §2l 4.4b/4.4c):** Career reuses
-the top-level `s.league`; `CareerState.tier` drives the division and
-`.facilities` the club upgrades; `resolveLeagueRound` runs `seasonOutcome` at
+**Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
+`s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
+and `history` (completed-season log). `resolveLeagueRound` runs `seasonOutcome` at
 season end (champion = win the run, sacked = relegated from the bottom tier, else
-a promotion/relegation review that keeps the academy intake) and applies facility
-effects; `tierMult` scales prize money by tier. Store-integration coverage lives
-in `tests/careerLeague.test.ts` (+ `tests/stadium.test.ts`).
+a promotion/relegation review that keeps the academy intake), logs the season to
+`history`, and applies facility effects; `tierMult` scales prize money by tier.
+The **Career Hub** (`components/career/CareerHub.tsx`, in the Club tab) is the
+dynasty home: pyramid ladder, this-season outlook, honours (`careerHonours()`),
+mid-season facility upgrades (`FacilitiesPanel.tsx`), and the history timeline.
+Store-integration coverage: `tests/careerLeague.test.ts` (+ `stadium.test.ts`,
+`career.test.ts`).
 
 **Operational gotchas learned this session (IMPORTANT for browser testing):**
 - BEFORE any destructive browser test (New Game / startLeague / playing a
