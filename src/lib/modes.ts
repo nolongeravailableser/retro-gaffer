@@ -24,7 +24,11 @@ import { BOSSES, type BossSchedule } from './bosses';
 import { DEFAULT_TUNING, type EngineTuning } from './engine';
 import { DEFAULT_EVENT_RATES, type EventRates } from './events';
 
-export type ModeId = 'classic' | 'endless';
+export type ModeId = 'classic' | 'endless' | 'league';
+
+/** Teams in a league division → matchweeks = teams − 1. */
+export const LEAGUE_TEAMS = 12;
+export const LEAGUE_WEEKS = LEAGUE_TEAMS - 1; // 11
 
 export interface ModeConfig {
   id: ModeId;
@@ -104,12 +108,37 @@ export const ENDLESS: ModeConfig = {
   eventRates: DEFAULT_EVENT_RATES,
 };
 
+/**
+ * League Season: a 12-team division played as a single round-robin (11
+ * matchweeks) with a real table. No lives — your finishing position is the
+ * result (champion = won). Opponents come from the league fixtures, not the
+ * round-target curve. The league's own state (table/fixtures) lives in the
+ * store; this config just sets the run shape + economy.
+ */
+export const LEAGUE: ModeConfig = {
+  id: 'league',
+  name: 'League Season',
+  blurb: 'A 12-team division, 11 matchweeks, a real table. Win the title.',
+  scored: false,
+  maxRounds: LEAGUE_WEEKS,
+  startingLives: 1, // unused (no elimination); the season always completes
+  startingBankroll: STARTING_BANKROLL,
+  roundIncome: ROUND_INCOME,
+  roundTarget: ROUND_TARGET,
+  roundTargetStep: ROUND_TARGET_STEP,
+  bosses: {}, // no bosses in a league
+  engine: DEFAULT_TUNING,
+  eventRates: DEFAULT_EVENT_RATES,
+  finalMustWin: false,
+};
+
 export const DEFAULT_MODE_ID: ModeId = 'classic';
 
 /** Registry of all playable modes. */
 export const MODES: Record<ModeId, ModeConfig> = {
   classic: CLASSIC,
   endless: ENDLESS,
+  league: LEAGUE,
 };
 
 /** Resolve a mode config by id, falling back to Classic for unknown ids. */

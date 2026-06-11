@@ -64,6 +64,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   const mutator = getMutator(mutatorId);
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
+  const league = useGameStore((s) => s.league);
   const careerBest = useGameStore((s) => s.careerBest);
   const clubName = useGameStore((s) => s.clubName);
   const startRun = useGameStore((s) => s.startRun);
@@ -374,8 +375,13 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           <div className="rounded-md border border-rose-400/30 bg-rose-500/10 py-1.5">
             <p className="text-[10px] uppercase tracking-wide text-chrome-muted">Loss</p>
             <p className="font-display text-sm text-rose-300">{money(lossPay)}</p>
+            {/* No lives in a League season — the table standing is the cost. */}
             <p className="text-[9px] text-rose-300/70">
-              {lifeCost === 0 ? 'shield holds' : `−${lifeCost} ${lifeCost > 1 ? 'lives' : 'life'}`}
+              {league
+                ? 'no points'
+                : lifeCost === 0
+                  ? 'shield holds'
+                  : `−${lifeCost} ${lifeCost > 1 ? 'lives' : 'life'}`}
             </p>
           </div>
         </div>

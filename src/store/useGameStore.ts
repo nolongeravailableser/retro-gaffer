@@ -33,7 +33,17 @@ import { wageBill, divisionMult } from '@/lib/wages';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
-import { DEFAULT_MODE_ID, type ModeId } from '@/lib/modes';
+import { DEFAULT_MODE_ID, LEAGUE_TEAMS, type ModeId } from '@/lib/modes';
+import {
+  generateLeague,
+  playerFixture,
+  simAiWeek,
+  position as leaguePosition,
+  totalWeeks as leagueTotalWeeks,
+  fixtureKey,
+  YOU,
+  type LeagueState,
+} from '@/lib/league';
 import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import {
@@ -192,6 +202,8 @@ interface GameState {
   career: CareerState | null;
   /** Between-seasons review (board verdict + youth intake), or null. */
   careerReview: ReviewState | null;
+  /** Active League-Season state (table/fixtures/results), or null. */
+  league: LeagueState | null;
   /** Most seasons completed in a single career — persisted across careers. */
   careerBest: number;
   /** Every player id ever signed — an all-time "club legends" collection. */
@@ -309,6 +321,8 @@ interface GameState {
   newGame: () => void;
   /** Start a run in a chosen mode with an optional mutator. */
   startRun: (modeId: ModeId, mutatorId?: string | null) => void;
+  /** Start a League Season (round-robin division with a table). */
+  startLeague: () => void;
   /** Start an authored scenario by id (prebuilt squad + fixed start state). */
   startScenario: (id: string) => void;
   /** Begin a new Career: multiple seasons, persistent squad, board objectives. */
@@ -330,6 +344,9 @@ interface GameState {
 }
 
 const emptyXi = (): (string | null)[] => Array(XI_SIZE).fill(null);
+
+/** Base AI strength (ATK+DEF) for a League division — clubs spread around it. */
+const LEAGUE_BASE_STRENGTH = 1300;
 
 /** Fresh-run economic state, with the opening shop already rolled. */
 function freshRun(
@@ -354,6 +371,7 @@ function freshRun(
     scenario: null as string | null,
     career: null as CareerState | null,
     careerReview: null as ReviewState | null,
+    league: null as LeagueState | null,
     bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
@@ -399,6 +417,7 @@ function saveSlice(s: GameState) {
     scenarioStars: s.scenarioStars,
     career: s.career,
     careerReview: s.careerReview,
+    league: s.league,
     careerBest: s.careerBest,
     collection: s.collection,
     bestScore: s.bestScore,
@@ -438,6 +457,100 @@ function saveSlice(s: GameState) {
     suspensions: s.suspensions,
     injuries: s.injuries,
     playerHistory: s.playerHistory,
+  };
+}
+
+const ORDINALS = ['th', 'st', 'nd', 'rd'];
+/** 1 → "1st", 2 → "2nd", 11 → "11th". */
+function ordinal(n: number): string {
+  const v = n % 100;
+  return n + (ORDINALS[(v - 20) % 10] ?? ORDINALS[v] ?? ORDINALS[0]);
+}
+
+/**
+ * Resolve one League matchweek: record the player's result + the simulated AI
+ * fixtures into the table, advance the matchweek, and end the season (champion
+ * = won) — no lives. Reuses the FM finances (scaled rewards + rating wages).
+ */
+function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameState> {
+  const league = s.league!;
+  const mw = league.matchweek;
+  const pf = playerFixture(league, mw);
+  const config = runConfig(s);
+
+  // Record results (player is side A; orient into the fixture's home/away).
+  const results = { ...league.results };
+  if (pf) {
+    results[fixtureKey(pf)] =
+      pf.home === YOU
+        ? { home: result.score.a, away: result.score.b }
+        : { home: result.score.b, away: result.score.a };
+  }
+  Object.assign(results, simAiWeek(league, mw, s.runSeed));
+  const nextMw = mw + 1;
+  const newLeague: LeagueState = { ...league, results, matchweek: nextMw };
+
+  // Economy — division-scaled rewards + rating-based wages (FM finances).
+  const outcome = result.outcome;
+  const newStreak = outcome === 'win' ? s.streak + 1 : 0;
+  const weeks = leagueTotalWeeks(league);
+  const dm = divisionMult(mw, weeks + 1);
+  const reward = Math.round(MATCH_REWARD[outcome] * dm);
+  const roundIncome = Math.round(config.roundIncome * dm);
+  const intr = interest(s.bankroll);
+  const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
+  const wage = Math.round(
+    wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p))
+  );
+  const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
+  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage + wagerDelta);
+
+  // Discipline & fitness (same rules as the ladder).
+  const suspensions = result.suspensions ?? [];
+  const newInjuries: Record<string, number> = {};
+  for (const [id, r] of Object.entries(s.injuries)) if (r > 1) newInjuries[id] = r - 1;
+  for (const inj of result.injuries ?? [])
+    newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
+
+  const key = outcome === 'win' ? 'w' : outcome === 'loss' ? 'l' : 'd';
+  const record = { ...s.record, [key]: s.record[key] + 1 };
+
+  // Player histories accrue here too (starting XI).
+  const xiPlayers = s.xi
+    .map((id) => (id ? getPlayer(id) : null))
+    .filter((p): p is Player => !!p);
+  const playerHistory = accrueHistory(s.playerHistory, result.events, xiPlayers, {
+    goalsConceded: result.score.b,
+    outcome,
+    seed: `M-${s.runSeed}-${mw}`,
+  });
+
+  const done = nextMw > weeks;
+  const pos = leaguePosition(newLeague, YOU);
+  const runStatus: GameState['runStatus'] = done ? (pos === 1 ? 'won' : 'lost') : 'playing';
+  const note = done
+    ? pos === 1
+      ? '🏆 Champions! You won the league!'
+      : `Season over — finished ${ordinal(pos)} of ${league.clubs.length}.`
+    : null;
+
+  return {
+    league: newLeague,
+    round: nextMw,
+    bankroll,
+    streak: newStreak,
+    record,
+    suspensions,
+    injuries: newInjuries,
+    playerHistory,
+    wager: 0,
+    runStatus,
+    peakBankroll: Math.max(s.peakBankroll, bankroll),
+    bestStreak: Math.max(s.bestStreak, newStreak),
+    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, wager: wagerDelta },
+    notice: note,
+    noticeKind: 'success',
+    selectedPlayerId: null,
   };
 }
 
@@ -611,6 +724,8 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
+          // League runs resolve on a separate path (table/matchweeks, no lives).
+          if (s.league) return resolveLeagueRound(s, result);
           const config = runConfig(s);
           const boss = getBoss(s.round, config.bosses);
           // Boss sudden-death: a draw against an unbeaten side is a defeat.
@@ -1127,6 +1242,20 @@ export const useGameStore = create<GameState>()(
           scenarioStars: s.scenarioStars,
           careerBest: s.careerBest,
         })),
+
+      // Start a League Season: a fresh league-mode run + a generated division.
+      startLeague: () =>
+        set((s) => {
+          const fresh = freshRun(null, 'league', null);
+          const league = generateLeague(fresh.runSeed, LEAGUE_BASE_STRENGTH, LEAGUE_TEAMS);
+          return {
+            ...fresh,
+            league,
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
+          };
+        }),
 
       // Start an authored scenario: a fresh run overridden with its fixed state.
       startScenario: (id) =>

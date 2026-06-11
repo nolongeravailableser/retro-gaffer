@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Dice5, Trophy, Infinity as InfinityIcon, Briefcase, AlertTriangle } from 'lucide-react';
+import { X, Play, Dice5, Trophy, Infinity as InfinityIcon, Briefcase, ListOrdered, AlertTriangle } from 'lucide-react';
 import { MODES, type ModeId } from '@/lib/modes';
 import { MUTATORS } from '@/lib/mutators';
 import { useGameStore } from '@/store/useGameStore';
@@ -18,6 +18,7 @@ type ModeChoice = ModeId | 'career';
 const MODE_ICONS: Record<ModeId, React.ElementType> = {
   classic: Trophy,
   endless: InfinityIcon,
+  league: ListOrdered,
 };
 
 /** 'none' and 'random' are UI-only sentinels; everything else is a mutator id. */
@@ -27,6 +28,7 @@ type MutatorChoice = 'none' | 'random' | string;
 export default function NewRunModal({ open, onClose, onStarted }: NewRunModalProps) {
   const startRun = useGameStore((s) => s.startRun);
   const startCareer = useGameStore((s) => s.startCareer);
+  const startLeague = useGameStore((s) => s.startLeague);
   const runStatus = useGameStore((s) => s.runStatus);
   const round = useGameStore((s) => s.round);
   const ownedCount = useGameStore((s) => s.owned.length);
@@ -47,6 +49,12 @@ export default function NewRunModal({ open, onClose, onStarted }: NewRunModalPro
   const start = () => {
     if (mode === 'career') {
       startCareer();
+      onStarted?.();
+      onClose();
+      return;
+    }
+    if (mode === 'league') {
+      startLeague();
       onStarted?.();
       onClose();
       return;
@@ -156,8 +164,8 @@ export default function NewRunModal({ open, onClose, onStarted }: NewRunModalPro
                 </button>
               </div>
 
-              {/* Modifier — not applicable to Career */}
-              {mode !== 'career' && (
+              {/* Modifier — not applicable to Career or League */}
+              {mode !== 'career' && mode !== 'league' && (
                 <>
                   <p className="mb-2 font-display text-xs uppercase tracking-wide text-chrome-muted">
                     Modifier

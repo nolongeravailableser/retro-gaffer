@@ -14,6 +14,8 @@ import type { MatchResult, Player } from '@/lib/types';
 import { XI_SIZE } from '@/lib/types';
 import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
+import { generateOpponent } from '@/lib/opponent';
+import { playerFixture, YOU } from '@/lib/league';
 import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
@@ -32,6 +34,7 @@ import FeaturedBanner from '@/components/shop/FeaturedBanner';
 import SquadList from '@/components/squad/SquadList';
 import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
+import LeagueTable from '@/components/league/LeagueTable';
 import EventBanner from '@/components/season/EventBanner';
 import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
@@ -74,6 +77,7 @@ export default function App() {
   const owned = useGameStore((s) => s.owned);
   const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
+  const league = useGameStore((s) => s.league);
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
   const kit = useGameStore((s) => s.kit);
@@ -143,16 +147,26 @@ export default function App() {
     [scenario, mode, mutator]
   );
 
-  const roundOpponent = useMemo<MatchTeam | null>(
-    () =>
-      playerTeam && runStatus === 'playing'
-        ? buildRoundOpponent(playerTeam.attack, playerTeam.defense, round, runSeed, {
-            roundTarget: config.roundTarget,
-            bosses: config.bosses,
-          })
-        : null,
-    [playerTeam, round, runSeed, runStatus, config]
-  );
+  const roundOpponent = useMemo<MatchTeam | null>(() => {
+    if (!playerTeam || runStatus !== 'playing') return null;
+    // League: face this matchweek's fixture opponent (its club's strength).
+    if (league) {
+      const pf = playerFixture(league, league.matchweek);
+      if (!pf) return null;
+      const oppId = pf.home === YOU ? pf.away : pf.home;
+      const club = league.clubs.find((c) => c.id === oppId);
+      if (!club) return null;
+      const half = Math.round(club.strength / 2);
+      return {
+        ...generateOpponent(half, half, `${runSeed}-L${league.matchweek}-${oppId}`),
+        name: club.name,
+      };
+    }
+    return buildRoundOpponent(playerTeam.attack, playerTeam.defense, round, runSeed, {
+      roundTarget: config.roundTarget,
+      bosses: config.bosses,
+    });
+  }, [playerTeam, round, runSeed, runStatus, config, league]);
 
   const ready = filled === XI_SIZE;
 
@@ -340,6 +354,7 @@ export default function App() {
               hidePlay={showJourney && journey.stage === 'play'}
               onPlay={playRound}
             />
+            {league && <LeagueTable />}
           </div>
         )}
 
