@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + user-feedback roadmap Phase 1 shipped — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–2 shipped; persistence v19, 233 tests — see §2l)
 
 ---
 
@@ -466,13 +466,29 @@ programmatically** from existing single position (confirm before building).
 - Note: Auto-Sign (Shop header) and Auto-Pick-skips-unavailable were already
   shipped before this pass.
 
+**Phase 2 — match experience (SHIPPED 2026-06-11, commits `b82d284`…`6c3738c`):**
+- **2.1** engine per-player attribution: `MatchEvent` gained `playerId` +
+  `assist`/`assistId`; `pickScorer` returns the Player; `pickAssister` draws
+  from a SEPARATE seeded stream (`{seed}-assist-…`) so scores stay
+  byte-identical (sim still 39.0%). Cards/injuries carry ids too.
+- **2.2** `lib/ratings.ts` — `matchRatings` (3.0–10.0, FM-flavoured,
+  deterministic, MOTM) + `accrueHistory`/`avgRating`.
+- **2.3** `components/match/MatchReport.tsx` — key-events timeline (scorer +
+  assist + minute, cards, injuries, both sides) + side-A ratings (sorted,
+  MOTM star, chips). Live ratings panel (collapsible) during play + full
+  report at FT in `MatchView`.
+- **2.4** out-of-position subs: any fit bench player can replace an injured
+  one; off-role plays at 90% (`OUT_OF_POSITION`, a −10% stat clone) — fixes
+  "can't sub when injured".
+- **2.5** richer, context-aware commentary (bigger pools + opener/equaliser/
+  late-winner goal lines; RNG-safe).
+- **2.6** player histories: `playerHistory` (per-run, **persistence v19**),
+  accrued in `resolveRound`, shown inline in `SquadList`
+  ("N apps ★avg G⚽ A🅰 ×MOTM").
+- Note: ratings/history credit the STARTING XI (subbed-on scorers are an
+  unrecorded edge case). Persistence is now **v19**; tests **233**.
+
 **Remaining phases (NOT started):**
-- **Phase 2 — match experience**: assists + minutes on events (engine has
-  `playerName`/`minute` but no assister), live player match ratings, full
-  match report timeline, richer commentary, **out-of-position subs at −10%**
-  (also fixes "can't sub when injured" — subs are currently same-role only),
-  and **player histories** (apps/goals/assists/avg rating — nothing tracked
-  today; needs a persistence bump).
 - **Phase 3 — 2D pitch overhaul**: players are static on formation anchors
   with only micro-drift; ball teleports between keyframes. Make it read like
   football (off-ball movement, ball travelling through players, possession
@@ -486,8 +502,8 @@ programmatically** from existing single position (confirm before building).
 
 ## 3. Active Work & Next Directions
 
-**In flight: the user-feedback roadmap (§2l).** Phase 1 (quick wins) is
-shipped; **Phases 2–4 are the next work** (match experience → 2D pitch
+**In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins) and 2
+(match experience) are shipped; **Phases 3–4 are the next work** (2D pitch
 overhaul → big systems). See §2l for the full plan and the locked forks.
 
 All earlier work — planned phases (0–3), the 2026-06-10 mega-session
