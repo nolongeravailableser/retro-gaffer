@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   reviewBonus,
+  careerHonours,
   PROMOTION_BONUS,
   SURVIVAL_BONUS,
   RELEGATION_BONUS,
@@ -9,6 +10,7 @@ import {
   ageRoster,
   newMeta,
   youthMeta,
+  type SeasonRecord,
 } from '@/lib/career';
 import {
   getPlayer,
@@ -25,6 +27,36 @@ describe('reviewBonus', () => {
     expect(reviewBonus('relegated')).toBe(RELEGATION_BONUS);
     expect(PROMOTION_BONUS).toBeGreaterThan(SURVIVAL_BONUS);
     expect(SURVIVAL_BONUS).toBeGreaterThan(RELEGATION_BONUS);
+  });
+});
+
+describe('careerHonours', () => {
+  const rec = (over: Partial<SeasonRecord>): SeasonRecord => ({
+    season: 1, tier: 5, finishPos: 5, clubs: 12, outcome: 'stay', ...over,
+  });
+
+  it('tallies titles, promotions, relegations and the peak tier from history', () => {
+    const history: SeasonRecord[] = [
+      rec({ season: 1, tier: 5, finishPos: 1, outcome: 'promoted' }), // title + promotion
+      rec({ season: 2, tier: 4, finishPos: 8, outcome: 'stay' }),
+      rec({ season: 3, tier: 4, finishPos: 11, outcome: 'relegated' }),
+      rec({ season: 4, tier: 5, finishPos: 1, outcome: 'promoted' }), // another title + promotion
+      rec({ season: 5, tier: 1, finishPos: 1, outcome: 'champion' }), // the big one
+    ];
+    const h = careerHonours(history);
+    expect(h.divisionTitles).toBe(3); // three 1st-place finishes
+    expect(h.championOfEngland).toBe(true);
+    expect(h.promotions).toBe(3); // 2 promoted + 1 champion
+    expect(h.relegations).toBe(1);
+    expect(h.seasonsPlayed).toBe(5);
+    expect(h.highestTier).toBe(1);
+  });
+
+  it('handles an empty history', () => {
+    const h = careerHonours([]);
+    expect(h.seasonsPlayed).toBe(0);
+    expect(h.championOfEngland).toBe(false);
+    expect(h.highestTier).toBe(Number.POSITIVE_INFINITY);
   });
 });
 

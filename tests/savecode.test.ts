@@ -116,6 +116,8 @@ describe('migrations', () => {
     expect('targetRound' in career).toBe(false); // obsolete field removed
     // v22 also gives it starter (level-0) facilities.
     expect(career.facilities).toEqual({ stadium: 0, academy: 0, medical: 0 });
+    // v23 adds an empty career-history log.
+    expect(career.history).toEqual([]);
   });
 
   it('leaves a careerless save untouched at v21', () => {

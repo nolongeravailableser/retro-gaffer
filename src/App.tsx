@@ -45,6 +45,7 @@ import CrestBadge from '@/components/ui/CrestBadge';
 import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
+import CareerHub from '@/components/career/CareerHub';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
@@ -373,6 +374,7 @@ export default function App() {
 
         {activeTab === 'club' && (
           <div className="flex flex-col gap-4">
+            {career && <CareerHub />}
             <ClubSettings onReplayTutorial={() => setTutorialOpen(true)} />
             <SavePanel />
           </div>

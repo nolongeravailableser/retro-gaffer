@@ -2,21 +2,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Trophy, ThumbsUp, ArrowUpCircle, ArrowDownCircle, Coins,
-  GraduationCap, ArrowRight, Check, Search,
-  Building2, Dumbbell, HeartPulse, Hammer,
+  GraduationCap, ArrowRight, Check, Search, Hammer,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { potentialStars, SCOUT_YOUTH_COST } from '@/lib/career';
 import { division } from '@/lib/league';
-import {
-  FACILITIES, FACILITY_IDS, MAX_LEVEL, upgradeCost, isMaxed, type FacilityId,
-} from '@/lib/stadium';
-
-const FACILITY_ICON: Record<FacilityId, typeof Building2> = {
-  stadium: Building2,
-  academy: Dumbbell,
-  medical: HeartPulse,
-};
+import FacilitiesPanel from './FacilitiesPanel';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import StatBar from '@/components/ui/StatBar';
 import Stars from '@/components/ui/Stars';
@@ -31,7 +22,6 @@ export default function CareerReview() {
   const review = useGameStore((s) => s.careerReview);
   const advance = useGameStore((s) => s.advanceCareerSeason);
   const scoutYouth = useGameStore((s) => s.scoutYouth);
-  const upgradeFacility = useGameStore((s) => s.upgradeFacility);
   const facilities = useGameStore((s) => s.career?.facilities ?? null);
   const bankroll = useGameStore((s) => s.bankroll);
   const [picked, setPicked] = useState<string | null>(null);
@@ -157,56 +147,13 @@ export default function CareerReview() {
 
           {/* Club development — reinvest the bonus into facilities */}
           {facilities && (
-            <>
-              <p className="mb-2 mt-5 flex items-center gap-1.5 font-display text-sm text-chrome">
+            <div className="mt-5">
+              <p className="mb-2 flex items-center gap-1.5 font-display text-sm text-chrome">
                 <Hammer size={16} className="text-crt-green" />
                 Club Development
               </p>
-              <div className="flex flex-col gap-2">
-                {FACILITY_IDS.map((id) => {
-                  const info = FACILITIES[id];
-                  const level = facilities[id];
-                  const Icon = FACILITY_ICON[id];
-                  const maxed = isMaxed(level);
-                  const cost = maxed ? 0 : upgradeCost(id, level);
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-3 rounded-lg border border-white/10 p-3"
-                    >
-                      <Icon size={18} className="shrink-0 text-crt-green" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-display text-sm text-chrome">{info.name}</p>
-                        <p className="truncate text-[11px] text-chrome-muted">{info.blurb}</p>
-                        <div className="mt-1 flex items-center gap-1">
-                          {Array.from({ length: MAX_LEVEL }, (_, i) => (
-                            <span
-                              key={i}
-                              className={[
-                                'h-1.5 w-5 rounded-full',
-                                i < level ? 'bg-crt-green' : 'bg-white/15',
-                              ].join(' ')}
-                            />
-                          ))}
-                          <span className="ml-1 text-[10px] text-chrome-muted">
-                            Lvl {level}/{MAX_LEVEL}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => upgradeFacility(id)}
-                        disabled={maxed || bankroll < cost}
-                        data-testid={`upgrade-${id}`}
-                        className="flex shrink-0 items-center gap-0.5 rounded border border-crt-green/40 px-2 py-1 font-display text-[11px] text-crt-green hover:bg-crt-green/15 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {maxed ? 'MAX' : <>Upgrade £{cost}M</>}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+              <FacilitiesPanel bare />
+            </div>
           )}
         </div>
 

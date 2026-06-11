@@ -51,13 +51,20 @@ describe('career pyramid', () => {
     expect(s.careerReview!.toTier).toBe(BOTTOM_TIER - 1);
     expect(s.careerReview!.finishPos).toBe(1);
 
-    // Advance: a fresh league one tier up, season 2.
+    // The finished season is logged to history before the review.
+    expect(s.career!.history).toHaveLength(1);
+    expect(s.career!.history[0]).toMatchObject({
+      season: 1, tier: BOTTOM_TIER, finishPos: 1, outcome: 'promoted',
+    });
+
+    // Advance: a fresh league one tier up, season 2, history carried forward.
     useGameStore.getState().advanceCareerSeason(null);
     const next = useGameStore.getState();
     expect(next.careerReview).toBeNull();
     expect(next.career!.season).toBe(2);
     expect(next.career!.tier).toBe(BOTTOM_TIER - 1);
     expect(next.league!.matchweek).toBe(1);
+    expect(next.career!.history).toHaveLength(1); // preserved across seasons
   });
 
   it('winning the top tier wins the whole run (champions of England)', () => {

@@ -6,6 +6,7 @@ import {
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { ladderTier, bestLabel } from '@/lib/ladder';
 import { table as leagueTable, position as leaguePosition, division, YOU } from '@/lib/league';
+import { careerHonours } from '@/lib/career';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
 import { runScore, formatScore } from '@/lib/score';
@@ -222,6 +223,28 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
                 </span>
               </p>
             )}
+
+            {/* Career honours — the legacy of the run (titles, promotions, peak). */}
+            {career && (() => {
+              const h = careerHonours(career.history);
+              const bestTier = Math.min(career.tier, h.highestTier);
+              const chips: string[] = [];
+              if (h.divisionTitles > 0) chips.push(`${h.divisionTitles}× division title`);
+              if (h.promotions > 0) chips.push(`${h.promotions}× promotion`);
+              chips.push(`peak: ${division(bestTier).name}`);
+              return (
+                <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                  {chips.map((c) => (
+                    <span
+                      key={c}
+                      className="rounded-full border border-crt-amber/40 bg-crt-amber/10 px-2 py-0.5 font-ticker text-[11px] text-crt-amber"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
 
             {!scenario && !career && isNewBest && (
               <motion.span

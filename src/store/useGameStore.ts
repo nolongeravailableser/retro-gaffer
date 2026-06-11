@@ -563,11 +563,20 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   let careerBest = s.careerBest;
   let careerReview: ReviewState | null = null;
   let seasonNote: string | null = null;
+  let careerOut: CareerState | undefined;
 
   if (done && career) {
     // CAREER: a finished season climbs/drops the pyramid.
     const outcomeSeason = seasonOutcome(career.tier, pos, clubs);
     const divName = division(career.tier).name;
+    // Log the just-finished season for the history timeline + honours.
+    careerOut = {
+      ...career,
+      history: [
+        ...career.history,
+        { season: career.season, tier: career.tier, finishPos: pos, clubs, outcome: outcomeSeason },
+      ],
+    };
     if (outcomeSeason === 'champion') {
       // Won the top division — the ultimate. Career ends in glory.
       runStatus = 'won';
@@ -641,6 +650,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     achievements,
     careerReview,
     careerBest,
+    ...(careerOut && { career: careerOut }),
     wager: 0,
     runStatus,
     peakBankroll: Math.max(s.peakBankroll, bankroll),
@@ -1350,7 +1360,7 @@ export const useGameStore = create<GameState>()(
           return {
             ...fresh,
             league,
-            career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities() },
+            career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
             careerReview: null,
             best: s.best,
             scenarioStars: s.scenarioStars,
@@ -1432,7 +1442,14 @@ export const useGameStore = create<GameState>()(
                 : `Another season in the ${divName}.`;
 
           return {
-            career: { season: nextSeason, tier, meta, roster, facilities: prev.facilities },
+            career: {
+              season: nextSeason,
+              tier,
+              meta,
+              roster,
+              facilities: prev.facilities,
+              history: prev.history, // resolveLeagueRound already logged the finished season
+            },
             careerReview: null,
             league,
             owned,

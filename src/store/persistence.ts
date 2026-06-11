@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 22;
+export const CURRENT_VERSION = 23;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -140,6 +140,11 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
       ...s,
       career: { facilities: { stadium: 0, academy: 0, medical: 0 }, ...(s.career as object) },
     };
+  },
+  // Career Hub: existing careers start with an empty history log.
+  23: (s) => {
+    if (!s.career || typeof s.career !== 'object') return s;
+    return { ...s, career: { history: [], ...(s.career as object) } };
   },
 };
 

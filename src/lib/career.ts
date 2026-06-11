@@ -18,6 +18,17 @@ export interface CareerMeta {
   growthLeft: number;
 }
 
+/** One completed season in the club's history (drives the timeline + honours). */
+export interface SeasonRecord {
+  season: number;
+  /** Division tier the season was played in. */
+  tier: number;
+  finishPos: number;
+  clubs: number;
+  /** The season's verdict. */
+  outcome: SeasonOutcome;
+}
+
 export interface CareerState {
   /** 1-based season number. */
   season: number;
@@ -29,6 +40,32 @@ export interface CareerState {
   roster: Record<string, Player>;
   /** Club facility levels (stadium / academy / medical), carried across seasons. */
   facilities: Facilities;
+  /** Completed-season log, oldest first — the club's story so far. */
+  history: SeasonRecord[];
+}
+
+/** Honours & lifetime tallies derived from a career's completed-season log. */
+export interface CareerHonours {
+  /** Seasons finished 1st in their division. */
+  divisionTitles: number;
+  /** Won the top tier (the ultimate). */
+  championOfEngland: boolean;
+  promotions: number;
+  relegations: number;
+  seasonsPlayed: number;
+  /** Best (lowest-numbered) tier ever competed in. */
+  highestTier: number;
+}
+
+export function careerHonours(history: readonly SeasonRecord[]): CareerHonours {
+  return {
+    divisionTitles: history.filter((r) => r.finishPos === 1).length,
+    championOfEngland: history.some((r) => r.outcome === 'champion'),
+    promotions: history.filter((r) => r.outcome === 'promoted' || r.outcome === 'champion').length,
+    relegations: history.filter((r) => r.outcome === 'relegated' || r.outcome === 'sacked').length,
+    seasonsPlayed: history.length,
+    highestTier: history.length ? Math.min(...history.map((r) => r.tier)) : Number.POSITIVE_INFINITY,
+  };
 }
 
 /**
