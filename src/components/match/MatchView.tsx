@@ -59,6 +59,9 @@ type Speed = (typeof SPEEDS)[number];
 // (a touch slower than before, per playtester feedback that matches felt rushed).
 const SPEED_DELAY: Record<Speed, number> = { 0.5: 1000, 1: 650, 2: 280, 4: 80 };
 
+// A player fielded out of his role plays at 90% of his ATK/DEF.
+const OUT_OF_POSITION = 0.9;
+
 const OUTCOME_COPY = {
   win:  { label: 'VICTORY', cls: 'text-crt-green  border-crt-green/50'  },
   draw: { label: 'DRAW',    cls: 'text-crt-amber  border-crt-amber/50'  },
@@ -317,7 +320,19 @@ export default function MatchView({
       const sub = benchRef.current.find((p) => p.id === subId);
       const injured = lm.teamA.squad.find((p) => p.id === pause.playerId);
       if (!sub || !injured) return advance({ ...lm, carry: applyInjuryPenalty(lm.carry), pause: null }, true, tuningRef.current);
-      const starters = lm.teamA.squad.map((p) => (p.id === injured.id ? sub : p));
+      // Out of position → field a −10% clone (keeps the persisted player intact;
+      // rebuildStrength reads these stats, so the team gets correctly weaker).
+      const outOfPosition = sub.role !== injured.role;
+      const fielded: Player = outOfPosition
+        ? {
+            ...sub,
+            stats: {
+              attack: Math.round(sub.stats.attack * OUT_OF_POSITION),
+              defense: Math.round(sub.stats.defense * OUT_OF_POSITION),
+            },
+          }
+        : sub;
+      const starters = lm.teamA.squad.map((p) => (p.id === injured.id ? fielded : p));
       const strengths = rebuildRef.current
         ? rebuildRef.current(starters)
         : { attack: lm.teamA.attack, defense: lm.teamA.defense };
@@ -326,7 +341,9 @@ export default function MatchView({
         minute: Math.max(1, lm.nextMinute - 1),
         side: 'A' as const,
         kind: 'flavour' as const,
-        text: `🔁 Substitution: ${sub.name} replaces ${injured.name}.`,
+        text:
+          `🔁 Substitution: ${sub.name} replaces ${injured.name}.` +
+          (outOfPosition ? ` Out of position (${injured.role}) — playing at 90%.` : ''),
       }];
       return advance({ ...lm, teamA, events, pause: null }, true, tuningRef.current);
     });
@@ -402,8 +419,19 @@ export default function MatchView({
       ? live.teamA.squad.find((p) => p.id === pauseActive.playerId) ?? null
       : null;
   const squadIds = new Set(live.teamA.squad.map((p) => p.id));
+  // Any fit bench player can come on (not just like-for-like) — that was the
+  // "can't sub when injured" complaint. Same-role cover is listed first; an
+  // out-of-position sub plays at −10% (applied in decideSub).
   const subCandidates = injuredPlayer
-    ? benchPlayers.filter((p) => p.role === injuredPlayer.role && !squadIds.has(p.id))
+    ? benchPlayers
+        .filter((p) => !squadIds.has(p.id))
+        .sort((a, b) => {
+          const fit = (p: Player) => (p.role === injuredPlayer.role ? 0 : 1);
+          return (
+            fit(a) - fit(b) ||
+            b.stats.attack + b.stats.defense - (a.stats.attack + a.stats.defense)
+          );
+        })
     : [];
 
   const skipToEnd = () => setShown(events.length);
@@ -600,22 +628,28 @@ export default function MatchView({
                   <ArrowLeftRight size={15} /> {injuredPlayer.name} can't continue
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {subCandidates.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => decideSub(p.id)}
-                      data-testid={`sub-${p.id}`}
-                      className="flex items-center justify-between rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-green/60 hover:bg-crt-green/10"
-                    >
-                      <span className="font-display text-sm text-chrome">
-                        🔁 Bring on {p.name}
-                      </span>
-                      <span className="text-[11px] text-chrome-muted">
-                        {p.role} · ATK {p.stats.attack} · DEF {p.stats.defense}
-                      </span>
-                    </button>
-                  ))}
+                  {subCandidates.map((p) => {
+                    const offRole = p.role !== injuredPlayer.role;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => decideSub(p.id)}
+                        data-testid={`sub-${p.id}`}
+                        className="flex items-center justify-between rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-green/60 hover:bg-crt-green/10"
+                      >
+                        <span className="font-display text-sm text-chrome">
+                          🔁 Bring on {p.name}
+                        </span>
+                        <span className="text-[11px] text-chrome-muted">
+                          {p.role} · ATK {p.stats.attack} · DEF {p.stats.defense}
+                          {offRole && (
+                            <span className="text-crt-amber"> · −10% out of position</span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                   <button
                     type="button"
                     onClick={() => decideSub(null)}
