@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Handshake, Gavel, BadgePoundSterling, AlertTriangle } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
-import { overall, wageBill, wageBudget, tierMult, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { overall, wageBill, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { transferFee, poachFee } from '@/lib/market';
 import { clubOf, division } from '@/lib/league';
-import { wageDemand, evaluateBid, termsAffordable } from '@/lib/negotiation';
+import { wageDemand, evaluateBid, maxWageOffer } from '@/lib/negotiation';
 import type { Player } from '@/lib/types';
 
 interface Props {
@@ -42,8 +42,10 @@ export default function NegotiationModal({ player, onClose }: Props) {
     () => wageBill(owned.map(getPlayer).filter((p): p is Player => !!p)),
     [owned]
   );
-  const budget = wageBudget(bankroll, tierMult(tier));
-  const wagesOk = player ? termsAffordable(demand, currentBill, budget) : false;
+  // The most we can offer one player — scales with division + bankroll (the
+  // marquee gate: galácticos balk unless you climb or spend).
+  const ceiling = maxWageOffer(bankroll, tier);
+  const wagesOk = player ? demand <= ceiling : false;
 
   // Local negotiation state.
   const [stage, setStage] = useState<Stage>('club');
@@ -209,23 +211,23 @@ export default function NegotiationModal({ player, onClose }: Props) {
                 <div className="rounded-lg border border-white/10 bg-pitch-900/50 p-3 font-ticker text-xs">
                   <div className="flex justify-between">
                     <span className="text-chrome-muted">Wage demand</span>
-                    <span className="text-chrome">£{demand}M / wk</span>
+                    <span className={wagesOk ? 'text-chrome' : 'text-rose-300'}>£{demand}M / wk</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span className="text-chrome-muted">Most you can offer</span>
+                    <span className="text-chrome">£{ceiling}M / wk</span>
                   </div>
                   <div className="mt-1 flex justify-between">
                     <span className="text-chrome-muted">Current wage bill</span>
                     <span className="text-chrome">£{currentBill}M / wk</span>
-                  </div>
-                  <div className="mt-1 flex justify-between">
-                    <span className="text-chrome-muted">Wage budget</span>
-                    <span className={wagesOk ? 'text-crt-green' : 'text-rose-300'}>£{budget}M / wk</span>
                   </div>
                 </div>
 
                 {!wagesOk && (
                   <p className="flex items-start gap-1.5 font-ticker text-[11px] text-rose-300">
                     <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-                    His demands blow your wage budget — he won't join. Sell, climb a division, or chase a
-                    cheaper target.
+                    His £{demand}M/wk demand is beyond what you can offer — he won't join. Climb a
+                    division, build the bankroll, or chase a cheaper target.
                   </p>
                 )}
 

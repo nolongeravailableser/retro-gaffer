@@ -72,3 +72,24 @@ export function evaluateBid(askingPrice: number, bid: number, seed: string | num
 export function termsAffordable(demand: number, currentBill: number, budget: number): boolean {
   return currentBill + demand <= budget;
 }
+
+/** Wage-ceiling curve: base + per-division step + small slice of the bankroll. */
+export const WAGE_OFFER_BASE = 0.35;
+export const WAGE_OFFER_PER_TIER = 0.12;
+export const WAGE_OFFER_PER_M = 0.004;
+
+/**
+ * The most a club can realistically offer a single player (£M/wk) — the marquee
+ * gate. Scales with the DIVISION (a Premier League club can pay star wages a
+ * National League side can't) and a slice of the bankroll. So early/low-division
+ * you field free agents and sign solid pros, while genuine galácticos demand
+ * either a promotion or real money before they'll join. Modal-only (the sim signs
+ * directly), so this never moves the balance economy.
+ */
+export function maxWageOffer(bankroll: number, tier: number): number {
+  const v =
+    WAGE_OFFER_BASE +
+    WAGE_OFFER_PER_TIER * (BOTTOM_TIER - tier) +
+    Math.max(0, bankroll) * WAGE_OFFER_PER_M;
+  return Math.round(v * 10) / 10;
+}

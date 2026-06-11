@@ -3,6 +3,7 @@ import {
   wageDemand,
   evaluateBid,
   termsAffordable,
+  maxWageOffer,
   WAGE_DEMAND_PREMIUM,
 } from '@/lib/negotiation';
 import { wage } from '@/lib/wages';
@@ -28,6 +29,18 @@ describe('negotiation — personal terms', () => {
   it('termsAffordable gates on the wage budget', () => {
     expect(termsAffordable(2, 3, 6)).toBe(true); // 3 + 2 ≤ 6
     expect(termsAffordable(4, 3, 6)).toBe(false); // 3 + 4 > 6
+  });
+
+  it('maxWageOffer rises with division and bankroll (the marquee gate)', () => {
+    // A skint National League (bottom-tier) club can't match a galáctico's wage…
+    const poorBottom = maxWageOffer(20, BOTTOM_TIER);
+    const star = mk('FWD', 95, 60);
+    expect(wageDemand(star, BOTTOM_TIER)).toBeGreaterThan(poorBottom); // refuses
+    // …but the Premier League, or a rich club, can.
+    expect(maxWageOffer(20, TOP_TIER)).toBeGreaterThan(poorBottom);
+    expect(maxWageOffer(400, BOTTOM_TIER)).toBeGreaterThan(poorBottom);
+    // A solid pro signs even when poor + low-division.
+    expect(wageDemand(mk('MID', 72, 72), BOTTOM_TIER)).toBeLessThanOrEqual(maxWageOffer(35, BOTTOM_TIER));
   });
 });
 
