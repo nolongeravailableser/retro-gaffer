@@ -71,6 +71,10 @@ function drawKitDot(
 export default function MatchPitchView({ timeline, shown, speedDelay, finished, kitA, kitB }: MatchPitchViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clockRef = useRef({ shown: -1, at: 0 });
+  // Persistent rendered positions per side, lerped toward each frame's target so
+  // formation shifts and the carrier hand-off glide instead of snapping at scene
+  // boundaries. Lazily sized to the squads; survives across frames.
+  const smoothRef = useRef<{ A: { x: number; y: number }[]; B: { x: number; y: number }[] }>({ A: [], B: [] });
   const propsRef = useRef({ timeline, shown, speedDelay, finished, kitA, kitB });
   propsRef.current = { timeline, shown, speedDelay, finished, kitA, kitB };
   // Restart the scene clock whenever the playback cursor advances.
@@ -141,8 +145,16 @@ export default function MatchPitchView({ timeline, shown, speedDelay, finished, 
       ctx.strokeRect(px(0), py(0.22), px(0.13) - px(0), boxH);
       ctx.strokeRect(px(0.87), py(0.22), px(1) - px(0.87), boxH);
 
+      // Dribble vs pass: a long ball journey (a pass) snaps out fast then
+      // settles (ease-out); a short one (the carrier dribbling at his feet)
+      // stays gentle and near-linear. Player shapes still use the raw `t`.
+      const first = scene.ball[0];
+      const last = scene.ball[scene.ball.length - 1];
+      const travel = Math.hypot(last.x - first.x, last.y - first.y);
+      const isPass = travel > 0.2;
+      const bt = done || reduced ? 1 : isPass ? 1 - (1 - t) * (1 - t) : t;
       // Current ball position — players shape themselves around it.
-      const b = ballAt(scene, t);
+      const b = ballAt(scene, bt);
 
       // ── players, in their kits ──
       const r = Math.max(3.5, w * 0.013);
@@ -164,12 +176,18 @@ export default function MatchPitchView({ timeline, shown, speedDelay, finished, 
         const keeper = gkColor(kit);
 
         // Transform each anchor: possession shape (push up / drop) + a tilt
-        // toward the ball's lane (compactness) + a little organic drift.
-        const pos = anchors.map((a, i) => {
+        // toward the ball's lane (compactness) + off-ball runs + organic drift.
+        const target = anchors.map((a, i) => {
           const adv = ROLE_ADV[a.role] ?? 1;
           let x = a.x;
           if (attacking) x += dir * 0.034 * adv;
           else if (defending) x -= dir * 0.02 * adv;
+          // Off-ball runs: when attacking, the forward line surges and recycles
+          // (bigger amplitude up front) so it reads as players making runs.
+          if (attacking && a.role !== 'GK') {
+            const runAmp = a.role === 'FWD' ? 0.03 : a.role === 'MID' ? 0.017 : 0.005;
+            x += dir * runAmp * (0.5 + 0.5 * Math.sin(now * 0.0016 + i * 1.3));
+          }
           const tilt = a.role === 'GK' ? 0.05 : 0.16;
           let y = a.y + (b.y - a.y) * tilt;
           x += drift * Math.sin(now * 0.0013 + i * 2.1);
@@ -183,24 +201,38 @@ export default function MatchPitchView({ timeline, shown, speedDelay, finished, 
         // pass moving between players.
         let near = -1;
         let nd = Infinity;
-        for (let i = 0; i < pos.length; i++) {
+        for (let i = 0; i < target.length; i++) {
           if (anchors[i].role === 'GK') continue;
-          const dx = pos[i].x - b.x;
-          const dy = pos[i].y - b.y;
+          const dx = target[i].x - b.x;
+          const dy = target[i].y - b.y;
           const d = dx * dx + dy * dy;
           if (d < nd) { nd = d; near = i; }
         }
         if (near >= 0) {
           if (attacking) {
-            pos[near].x = b.x;
-            pos[near].y = b.y;
+            target[near].x = b.x;
+            target[near].y = b.y;
           } else if (defending) {
-            pos[near].x += (b.x - pos[near].x) * 0.72;
-            pos[near].y += (b.y - pos[near].y) * 0.72;
+            target[near].x += (b.x - target[near].x) * 0.72;
+            target[near].y += (b.y - target[near].y) * 0.72;
           }
         }
 
-        pos.forEach((p, i) => {
+        // Glide toward the target: a per-frame follow so scene boundaries and
+        // the carrier hand-off ease instead of snapping. The carrier tracks the
+        // ball harder so it stays at his feet. Reduced motion snaps.
+        const store = smoothRef.current[side];
+        if (store.length !== target.length) {
+          store.length = 0;
+          for (const tpos of target) store.push({ x: tpos.x, y: tpos.y });
+        }
+        target.forEach((tp, i) => {
+          const k = reduced ? 1 : i === near ? 0.45 : 0.2;
+          store[i].x += (tp.x - store[i].x) * k;
+          store[i].y += (tp.y - store[i].y) * k;
+        });
+
+        store.forEach((p, i) => {
           const x = px(Math.max(0.02, Math.min(0.98, p.x)));
           const y = py(Math.max(0.04, Math.min(0.96, p.y)));
           if (anchors[i].role === 'GK') {
