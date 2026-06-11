@@ -635,7 +635,7 @@ programmatically** from existing single position (confirm before building).
     - **Pitch-view polish** (MatchPitchView, determinism-safe): persistent dot
       smoothing (glides scene boundaries + carrier hand-off), off-ball forward
       runs, dribble-vs-pass ball pacing.
-  - **4.8 FM transfer market (Career/League) — Phase A (LOCAL, commits `4b524c5`+`6e35ab8`; NOT pushed):**
+  - **4.8 FM transfer market (Career/League) — Phase A (SHIPPED + PUSHED, commits `4b524c5`/`6e35ab8`/`78eb2a7`):**
     Replaces the roguelike gacha shop in the simulation modes with a real,
     browsable market. (Classic keeps the draft shop.)
     - **Content:** +165 lower-league/cult players (`data_src/english_lower.csv`,
@@ -656,7 +656,7 @@ programmatically** from existing single position (confirm before building).
       minus owned; **rival squads are Phase B**).
     - Sim: reaches PL ~94%, champ ~53%, sacked ~4%; Classic 36.8%. Cult £2-9M,
       stars £20-41M+, galáctico PL squad ~£500M. tsc · 274 tests · build green.
-  - **4.8 FM transfer market — Phase B (LOCAL, commit `767ba13`; NOT pushed):**
+  - **4.8 FM transfer market — Phase B (SHIPPED + PUSHED, commit `767ba13`):**
     rival clubs own real squads → a living market with poaching.
     - `lib/league.ts`: `LeagueClub.squad?` + `assignClubSquads(clubs, pool)`
       (clubs draft strongest-first into role-balanced 14-man squads — favourites
@@ -694,28 +694,62 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered;
-**Phases 1–4.6 are shipped.** 4.1 positions, 4.2 FM finances, 4.3 League, 4.4b
-pyramid, 4.4c facilities, 4.5 Career Hub, **4.6 polish pass** (economy
-rebalance, promotion celebration, pitch-view polish). Gates: **tsc clean · 270
-tests · build green · persistence v23.**
+**Status (2026-06-12):** the entire user-feedback roadmap (§2l) is delivered AND
+the **FM transfer market (4.8 Phase A + Phase B) is shipped and PUSHED to prod.**
+Gates: **tsc clean · 275 tests · build green · persistence v23.** Everything
+through commit `8ad840b` is on `origin/main` and live (prod page + `/api/daily`
+both 200). Working tree clean. **Nothing is unpushed.**
 
-**Push state:** prod is live through **4.7** (commit `327a53b`). **Local &
-unpushed:** the **4.8 FM transfer-market Phase A** commits (`4b524c5`, `6e35ab8`)
-+ this docs commit. 4.8 is economy-coherent (market wired + retune together) and
-verified — safe to push as one release when the user OKs (it's a big balance
-change they've been steering, so confirm before prod).
+**The current transfer system (Career/League):** browsable market
+(`components/shop/TransferMarket.tsx`) with three tiers — **free agents**
+(unowned, overall < `FREE_AGENT_MAX_OVERALL`=64, £0, no resale), **open-market**
+(unowned, ≥64, market value), **poach targets** (rival-owned, `poachFee` =
+market value × `POACH_PREMIUM`=1.4, and poaching dents the club's strength).
+Store actions: `signPlayer(id)` (buy/poach), `autoFillSquad()` (free-agent fill),
+tier-aware `sell`. Classic/Endless/Scenario keep the roguelike gacha `Shop`.
 
-**Push state:** prod is live through **4.8 Phase A** (`78eb2a7` — market values,
-free agents, +165 lower-league players, £35M start, economy retune). **Local &
-unpushed: only Phase B** (`767ba13` — rival squads + poaching), which is
-additive/low-risk (generateLeague unchanged → sim/Classic untouched). tsc · 275
-tests · build green; safe to push.
+**LIVE ECONOMY CONSTANTS (source of truth — §2l historical notes show older
+swept values; THESE are what's shipped):**
+- `lib/market.ts`: `VALUE_DIV`=45, `VALUE_EXP`=5, `MARKET_TIER_K`=1.2,
+  `MARKET_SELL_RATE`=0.85, `FREE_AGENT_MAX_OVERALL`=64, `POACH_PREMIUM`=1.4,
+  `CAREER_STARTING_BANKROLL`=35.
+- `lib/wages.ts`: `WAGE_TIER_K`=**1.3**. `lib/stadium.ts`: `UPKEEP_PER_LEVEL`=**0.75**.
+- Career sim (`tests/career.sim.ts`, run via `npm run sim`): reaches PL ~94%,
+  champion ~53% over 20 seasons, sacked ~4%; **Classic completion 36.8%** (the
+  Classic balance harness `tests/balance.sim.ts` shares the run).
 
-**NEXT (optional, none queued):** transfer-market polish (sell-to-clubs flavour,
-rivals re-signing after a poach, transfer windows/bidding); **cup competitions**
-(parked idea); or fresh requests. Calibrate any economy shift via
-`tests/career.sim.ts`.
+**⭐ NEXT TASK — make the transfer market feel more like Football Manager
+(user-requested; Career/League only, Classic untouched). Build tasks 1 & 2 first
+(they give the biggest "FM feel" jump), then 3, then 4. Sim-gate each; push as
+one release after the user OKs.**
+
+1. **Bidding & personal terms (highest impact).** Replace the instant "pay the
+   fee" buy with: make an offer → the selling club accepts/rejects/counters
+   (based on bid vs `marketValue`/`poachFee`) → then agree personal terms (a
+   wage demand scaled by rating, e.g. ~`wage(p)` × a factor; over-budget players
+   refuse). Free agents skip the club step (terms only). Likely a small
+   `lib/negotiation.ts` (pure: `evaluateBid`, `wageDemand`) + a negotiation
+   modal; `signPlayer` becomes the commit step.
+2. **Incoming offers for YOUR players.** Each matchweek (or between seasons),
+   rival clubs bid for your better players (seeded; bid ≈ marketValue ± noise,
+   biased toward clubs needing that role). Surface as a decision (accept = cash +
+   they leave + the buyer's squad/strength rises; reject). Makes selling a real
+   choice, not a button. State: a small `offers` list on `CareerState`/`league`
+   (→ persistence bump + migration).
+3. **Transfer windows.** Restrict signings/sales to a pre-season window (and
+   maybe a mid-season one, e.g. matchweek 6). Gate `signPlayer`/market UI on an
+   `isWindowOpen(matchweek)` check; show "window closed" state.
+4. **Contracts & Bosman.** Per-player contract length + wage on `CareerMeta`;
+   expiring players become genuine free agents; renew/release in the review.
+   Biggest data change (persistence + aging interplay) — do last.
+
+**Implementation anchors:** market logic in `lib/market.ts`; league/club state
++ squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);
+the FM economy resolves in the store's `resolveLeagueRound` + `signPlayer`/`sell`;
+UI in `components/shop/TransferMarket.tsx`. Re-gate any economy shift with
+`npm run sim` (career + Classic). **Parked after FM transfers:** cup competitions
+([[future-feature-ideas]]); transfer polish (sell-to-clubs flavour, rivals
+re-signing after a poach).
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
