@@ -261,12 +261,15 @@ export default function Hud({ onNewRun }: HudProps) {
           <motion.button
             type="button"
             onClick={clearNotice}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            // Centre via framer's `x` (not Tailwind's -translate-x-1/2): framer
+            // animates `transform`, which would otherwise clobber the class and
+            // let long toasts overflow the right edge.
+            initial={{ opacity: 0, y: -8, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -8, x: '-50%' }}
             role="status"
             title="Dismiss"
-            className={`absolute -bottom-11 left-1/2 z-10 flex max-w-[90vw] -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm ${TOAST.cls}`}
+            className={`absolute -bottom-11 left-1/2 z-10 flex max-w-[90vw] cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm ${TOAST.cls}`}
           >
             <TOAST.Icon size={14} className="shrink-0" />
             <span className="truncate">{notice}</span>
