@@ -29,7 +29,7 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { wageBill, divisionMult } from '@/lib/wages';
+import { wageBill, divisionMult, tierMult, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
@@ -41,19 +41,21 @@ import {
   position as leaguePosition,
   totalWeeks as leagueTotalWeeks,
   fixtureKey,
+  seasonOutcome,
+  nextTier,
+  division,
+  BOTTOM_TIER,
   YOU,
   type LeagueState,
 } from '@/lib/league';
 import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import {
-  boardTarget,
-  boardMet,
   generateYouth,
   ageRoster,
   youthMeta,
-  CAREER_BONUS,
-  TRIUMPH_BONUS,
+  reviewBonus,
+  YOUTH_INTAKE,
   SCOUT_YOUTH_COST,
   type CareerState,
   type ReviewState,
@@ -469,8 +471,14 @@ function ordinal(n: number): string {
 
 /**
  * Resolve one League matchweek: record the player's result + the simulated AI
- * fixtures into the table, advance the matchweek, and end the season (champion
- * = won) — no lives. Reuses the FM finances (scaled rewards + rating wages).
+ * fixtures into the table, advance the matchweek, end the season — no lives.
+ * Reuses the FM finances (tier-scaled rewards + rating wages).
+ *
+ * In **Career** (`s.career` set) the league is one rung of the pyramid: a
+ * finished season runs promotion/relegation (`seasonOutcome`) — winning the top
+ * tier wins the run, the drop zone in the bottom tier ends it (sacked), and
+ * anything else opens the between-seasons review (aging + academy). Standalone
+ * League is a single season: 1st = champions, otherwise "season over".
  */
 function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameState> {
   const league = s.league!;
@@ -490,11 +498,12 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const nextMw = mw + 1;
   const newLeague: LeagueState = { ...league, results, matchweek: nextMw };
 
-  // Economy — division-scaled rewards + rating-based wages (FM finances).
+  // Economy — a season is played in ONE division, so prize money/income scale
+  // by the pyramid TIER (flat across matchweeks), plus rating-based wages.
   const outcome = result.outcome;
   const newStreak = outcome === 'win' ? s.streak + 1 : 0;
   const weeks = leagueTotalWeeks(league);
-  const dm = divisionMult(mw, weeks + 1);
+  const dm = tierMult(s.career ? s.career.tier : LEAGUE_NEUTRAL_TIER);
   const reward = Math.round(MATCH_REWARD[outcome] * dm);
   const roundIncome = Math.round(config.roundIncome * dm);
   const intr = interest(s.bankroll);
@@ -525,13 +534,78 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     seed: `M-${s.runSeed}-${mw}`,
   });
 
+  // Resolve the season verdict: terminal status, the careerBest this banks, an
+  // optional between-seasons review, and the end-of-season notice.
   const done = nextMw > weeks;
   const pos = leaguePosition(newLeague, YOU);
-  const runStatus: GameState['runStatus'] = done ? (pos === 1 ? 'won' : 'lost') : 'playing';
-  const note = done
-    ? pos === 1
-      ? '🏆 Champions! You won the league!'
-      : `Season over — finished ${ordinal(pos)} of ${league.clubs.length}.`
+  const clubs = league.clubs.length;
+  const career = s.career;
+
+  let runStatus: GameState['runStatus'] = 'playing';
+  let careerBest = s.careerBest;
+  let careerReview: ReviewState | null = null;
+  let seasonNote: string | null = null;
+
+  if (done && career) {
+    // CAREER: a finished season climbs/drops the pyramid.
+    const outcomeSeason = seasonOutcome(career.tier, pos, clubs);
+    const divName = division(career.tier).name;
+    if (outcomeSeason === 'champion') {
+      // Won the top division — the ultimate. Career ends in glory.
+      runStatus = 'won';
+      careerBest = Math.max(s.careerBest, career.season);
+      seasonNote = `🏆 CHAMPIONS OF ENGLAND! You won the ${divName}!`;
+    } else if (outcomeSeason === 'sacked') {
+      // Relegated out of the bottom tier — nowhere lower. Sacked; career over.
+      runStatus = 'lost';
+      careerBest = Math.max(s.careerBest, career.season - 1);
+      seasonNote = `Relegated from the ${divName}. The board has sacked you.`;
+    } else {
+      // Promoted / stayed / relegated (but survived) → between-seasons review.
+      careerBest = Math.max(s.careerBest, career.season);
+      careerReview = {
+        season: career.season,
+        finishPos: pos,
+        clubs,
+        fromTier: career.tier,
+        toTier: nextTier(career.tier, outcomeSeason),
+        outcome: outcomeSeason,
+        bonus: reviewBonus(outcomeSeason),
+        youth: generateYouth(`${s.runSeed}-youth-${career.season}`, YOUTH_INTAKE),
+        scouted: [],
+      };
+    }
+  } else if (done) {
+    // STANDALONE LEAGUE: a single season. 1st = champions, else season over.
+    runStatus = pos === 1 ? 'won' : 'lost';
+    seasonNote =
+      pos === 1
+        ? '🏆 Champions! You won the league!'
+        : `Season over — finished ${ordinal(pos)} of ${clubs}.`;
+  }
+
+  // Achievements: a league has no bosses and no elimination (lives are
+  // meaningless), so those snapshot fields are inert. Career seasons feed the
+  // Dynasty badge via the careerBest this resolve banks.
+  const squadValue = s.owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
+  const unlocked = newlyUnlocked(s.achievements, {
+    result,
+    outcome,
+    round: mw,
+    runStatus,
+    boss: false,
+    lives: Number.MAX_SAFE_INTEGER,
+    bankroll,
+    streak: newStreak,
+    squadValue,
+    scenario: null,
+    daily: false,
+    endless: false,
+    careerSeasons: careerBest,
+  });
+  const achievements = unlocked.length ? [...s.achievements, ...unlocked] : s.achievements;
+  const achievementNote = unlocked.length
+    ? `🏆 Unlocked: ${unlocked.map((id) => getAchievement(id)?.name ?? id).join(' · ')}`
     : null;
 
   return {
@@ -543,12 +617,15 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     suspensions,
     injuries: newInjuries,
     playerHistory,
+    achievements,
+    careerReview,
+    careerBest,
     wager: 0,
     runStatus,
     peakBankroll: Math.max(s.peakBankroll, bankroll),
     bestStreak: Math.max(s.bestStreak, newStreak),
     lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, wager: wagerDelta },
-    notice: note,
+    notice: seasonNote ?? achievementNote,
     noticeKind: 'success',
     selectedPlayerId: null,
   };
@@ -780,32 +857,16 @@ export const useGameStore = create<GameState>()(
 
           // Resolve what the run status WILL be (mirrors the branching below)
           // so achievement checks can see a terminal won/lost on this round.
+          // (Career runs resolve on the league path above; this path is the
+          // finite climbs — Classic / Endless / Daily / Scenario.)
           const finalRound = s.round >= config.maxRounds;
           let statusAfter: 'playing' | 'won' | 'lost' = 'playing';
-          if (s.career) {
-            const sacked = lives <= 0;
-            const seasonOver = sacked || finalRound;
-            const met =
-              seasonOver &&
-              boardMet(s.career.season, sacked ? s.round : config.maxRounds, !sacked && outcome === 'win');
-            if (seasonOver && !met) statusAfter = 'lost';
-          } else if (lives <= 0) {
+          if (lives <= 0) {
             statusAfter = 'lost';
           } else if (finalRound) {
             statusAfter = outcome === 'win' || config.finalMustWin === false ? 'won' : 'lost';
           }
-          // Seasons completed toward Dynasty — mirrors EXACTLY what the career
-          // branches below will write to careerBest: a met review banks the
-          // current season; a sacking still banks the seasons already survived
-          // (season − 1). Keeping this in sync matters: a manager sacked in
-          // season 5 has completed 4 and must unlock Dynasty NOW, not next career.
-          const careerSeasons = s.career
-            ? statusAfter === 'lost'
-              ? Math.max(s.careerBest, s.career.season - 1)
-              : lives <= 0 || finalRound
-                ? Math.max(s.careerBest, s.career.season)
-                : s.careerBest
-            : s.careerBest;
+          const careerSeasons = s.careerBest;
 
           const squadValue = s.owned.reduce((sum, id) => sum + (getPlayer(id)?.cost ?? 0), 0);
           const unlocked = newlyUnlocked(s.achievements, {
@@ -876,7 +937,7 @@ export const useGameStore = create<GameState>()(
             tracksBest ? { best: { round: Math.max(s.best.round, reached) } } : {};
 
           // Scored modes (Endless / Daily) bank a personal best on a terminal run.
-          const scoredKey = s.career ? null : config.scored ? 'endless' : s.daily ? 'daily' : null;
+          const scoredKey = config.scored ? 'endless' : s.daily ? 'daily' : null;
           const bestScoreUpdate = (status: 'won' | 'lost') => {
             if (!scoredKey) return {};
             // A Daily counts ONCE per day — replays are practice and don't
@@ -896,46 +957,6 @@ export const useGameStore = create<GameState>()(
             if (scoredKey === 'daily') update.dailyCompleted = s.daily;
             return update;
           };
-
-          // CAREER MODE: a season ends (sacked OR reached the final) but the game
-          // does not — the board reviews you. You're only fired if you went out
-          // BEFORE meeting their target division.
-          if (s.career) {
-            const career = s.career;
-            const sacked = lives <= 0;
-            const seasonOver = sacked || s.round >= config.maxRounds;
-            if (seasonOver) {
-              const triumph = !sacked && outcome === 'win';
-              const reached = sacked ? s.round : config.maxRounds;
-              const met = boardMet(career.season, reached, triumph);
-              if (!met) {
-                // Fired before meeting expectations — the career ends here.
-                return {
-                  ...base,
-                  runStatus: 'lost' as const,
-                  careerBest: Math.max(s.careerBest, career.season - 1),
-                  ...endReached(reached),
-                };
-              }
-              // Met the demand → between-seasons review (run stays 'playing').
-              const review: ReviewState = {
-                season: career.season,
-                targetRound: career.targetRound,
-                reached,
-                triumph,
-                bonus: triumph ? TRIUMPH_BONUS : CAREER_BONUS,
-                youth: generateYouth(`${s.runSeed}-youth-${career.season}`, 2),
-                scouted: [],
-              };
-              return {
-                ...base,
-                careerReview: review,
-                careerBest: Math.max(s.careerBest, career.season),
-                ...endReached(reached),
-              };
-            }
-            // Season continues — fall through to the normal round advance.
-          }
 
           if (lives <= 0)
             return { ...base, runStatus: 'lost' as const, ...endReached(s.round), ...bestScoreUpdate('lost') };
@@ -1296,16 +1317,25 @@ export const useGameStore = create<GameState>()(
           };
         }),
 
-      // Begin a Career: a fresh classic-rules run wrapped in a season-1 board demand.
+      // Begin a Career: enter the bottom of the pyramid (National League) for
+      // season 1. Each season is a league in the club's current division; finish
+      // high to climb, finish in the drop zone to fall — win the top tier to win
+      // it all. (freshRun clears the prior career's aged/youth overlay.)
       startCareer: () =>
-        set((s) => ({
-          ...freshRun(null, 'classic', null),
-          best: s.best,
-          scenarioStars: s.scenarioStars,
-          careerBest: s.careerBest,
-          career: { season: 1, targetRound: boardTarget(1), meta: {}, roster: {} },
-          careerReview: null,
-        })),
+        set((s) => {
+          const fresh = freshRun(null, 'league', null);
+          const tier = BOTTOM_TIER;
+          const league = generateLeague(fresh.runSeed, division(tier).baseStrength, LEAGUE_TEAMS);
+          return {
+            ...fresh,
+            league,
+            career: { season: 1, tier, meta: {}, roster: {} },
+            careerReview: null,
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
+          };
+        }),
 
       // Pay to scout a prospect — reveals their exact potential in the review.
       scoutYouth: (youthId) =>
@@ -1347,13 +1377,24 @@ export const useGameStore = create<GameState>()(
           registerPlayers(Object.values(roster));
 
           const nextSeason = prev.season + 1;
-          const target = boardTarget(nextSeason);
+          // Apply promotion/relegation: the review already resolved which tier we
+          // play in next. A fresh league is generated for that division.
+          const tier = review.toTier;
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
+          const league = generateLeague(seed, division(tier).baseStrength, LEAGUE_TEAMS);
+          const divName = division(tier).name;
+          const move =
+            review.outcome === 'promoted'
+              ? `Promoted to the ${divName}!`
+              : review.outcome === 'relegated'
+                ? `Relegated to the ${divName}.`
+                : `Another season in the ${divName}.`;
 
           return {
-            career: { season: nextSeason, targetRound: target, meta, roster },
+            career: { season: nextSeason, tier, meta, roster },
             careerReview: null,
+            league,
             owned,
             collection,
             bankroll: s.bankroll + review.bonus,
@@ -1372,8 +1413,8 @@ export const useGameStore = create<GameState>()(
             shop: rollSlots(owned, seed, s.pack),
             shopSeed: seed,
             notice: chosen
-              ? `${chosen.name} joins the academy. Season ${nextSeason}: reach round ${target} or you're sacked.`
-              : `Season ${nextSeason}: reach round ${target} or you're sacked.`,
+              ? `${chosen.name} joins the academy. ${move}`
+              : move,
             noticeKind: 'info',
           };
         }),
@@ -1416,8 +1457,19 @@ export const useGameStore = create<GameState>()(
       },
       // Re-register a persisted career's aged/youth players into the pool overlay.
       onRehydrateStorage: () => (state) => {
-        const roster = state?.career?.roster;
+        if (!state) return;
+        const roster = state.career?.roster;
         if (roster) registerPlayers(Object.values(roster));
+        // A legacy (pre-pyramid) career has a tier but no league yet — generate
+        // one for its division so the league-resolve path has state to work with.
+        if (state.career && !state.league) {
+          state.league = generateLeague(
+            state.runSeed,
+            division(state.career.tier).baseStrength,
+            LEAGUE_TEAMS
+          );
+          state.round = state.league.matchweek;
+        }
       },
     }
   )

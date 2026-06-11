@@ -5,10 +5,9 @@ import {
 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { ladderTier, bestLabel } from '@/lib/ladder';
-import { table as leagueTable, position as leaguePosition, YOU } from '@/lib/league';
+import { table as leagueTable, position as leaguePosition, division, YOU } from '@/lib/league';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
-import { boardWantsTitle } from '@/lib/career';
 import { runScore, formatScore } from '@/lib/score';
 import { formatRunResult } from '@/lib/daily';
 import { submitDailyScore } from '@/lib/leaderboard';
@@ -118,7 +117,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
       : 'border-rose-400/50';
   const accent = won ? 'text-crt-green' : config.scored ? 'text-crt-amber' : 'text-rose-300';
   const heading = career
-    ? 'SACKED — CAREER OVER'
+    ? won ? 'CHAMPIONS OF ENGLAND!' : 'SACKED — CAREER OVER'
     : league
       ? won ? 'LEAGUE CHAMPIONS!' : 'SEASON OVER'
       : scenario
@@ -211,18 +210,15 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
               </div>
             )}
 
-            {/* Career: WHY you were sacked — the demand vs. what you reached. */}
-            {career && (
+            {/* Career: WHY you were sacked — relegated out of the bottom tier. */}
+            {career && !won && (
               <p className="mx-auto mt-2 flex max-w-sm items-center justify-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-200">
                 <Briefcase size={13} className="shrink-0" />
                 <span>
-                  Season {career.season}: the board wanted{' '}
-                  <span className="font-display">
-                    {boardWantsTitle(career.season)
-                      ? 'the title'
-                      : `${ladderTier(career.targetRound)} (round ${career.targetRound})`}
-                  </span>{' '}
-                  — you reached <span className="font-display">{ladderTier(round)}</span>.
+                  Season {career.season}: relegated from the{' '}
+                  <span className="font-display">{division(career.tier).name}</span> after{' '}
+                  <span className="font-display">{ord(leaguePos)}</span> of {league?.clubs.length}.
+                  There was nowhere lower to go.
                 </span>
               </p>
             )}

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  boardTarget,
-  boardWantsTitle,
-  boardMet,
+  reviewBonus,
+  PROMOTION_BONUS,
+  SURVIVAL_BONUS,
+  RELEGATION_BONUS,
   potentialStars,
   generateYouth,
   ageRoster,
@@ -16,32 +17,14 @@ import {
 } from '@/data/pool';
 import type { Player } from '@/lib/types';
 
-describe('boardTarget', () => {
-  it('escalates and caps at the title (12)', () => {
-    expect(boardTarget(1)).toBe(6);
-    expect(boardTarget(2)).toBe(8);
-    expect(boardTarget(3)).toBe(10);
-    expect(boardTarget(4)).toBe(12);
-    expect(boardTarget(9)).toBe(12);
-  });
-  it('never demands more than 12', () => {
-    for (let s = 1; s <= 20; s++) expect(boardTarget(s)).toBeLessThanOrEqual(12);
-  });
-});
-
-describe('board demands', () => {
-  it('early seasons want a division; late seasons want the title', () => {
-    expect(boardWantsTitle(1)).toBe(false);
-    expect(boardWantsTitle(4)).toBe(true);
-  });
-  it('boardMet honours reach vs title', () => {
-    // S1 (reach round 6): reaching 6 is enough, win or not.
-    expect(boardMet(1, 6, false)).toBe(true);
-    expect(boardMet(1, 5, false)).toBe(false);
-    expect(boardMet(1, 5, true)).toBe(true); // a triumph always satisfies
-    // S4 (title): only a triumph counts.
-    expect(boardMet(4, 12, false)).toBe(false);
-    expect(boardMet(4, 12, true)).toBe(true);
+describe('reviewBonus', () => {
+  it('pays most for promotion, least for surviving relegation', () => {
+    expect(reviewBonus('promoted')).toBe(PROMOTION_BONUS);
+    expect(reviewBonus('champion')).toBe(PROMOTION_BONUS); // title = a promotion-tier reward
+    expect(reviewBonus('stay')).toBe(SURVIVAL_BONUS);
+    expect(reviewBonus('relegated')).toBe(RELEGATION_BONUS);
+    expect(PROMOTION_BONUS).toBeGreaterThan(SURVIVAL_BONUS);
+    expect(SURVIVAL_BONUS).toBeGreaterThan(RELEGATION_BONUS);
   });
 });
 

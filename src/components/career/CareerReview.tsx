@@ -1,14 +1,22 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, ThumbsUp, Coins, GraduationCap, ArrowRight, Check, Search } from 'lucide-react';
+import {
+  Trophy, ThumbsUp, ArrowUpCircle, ArrowDownCircle, Coins,
+  GraduationCap, ArrowRight, Check, Search,
+} from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { ladderTier } from '@/lib/ladder';
-import { boardTarget, boardWantsTitle, potentialStars, SCOUT_YOUTH_COST } from '@/lib/career';
+import { potentialStars, SCOUT_YOUTH_COST } from '@/lib/career';
+import { division } from '@/lib/league';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import StatBar from '@/components/ui/StatBar';
 import Stars from '@/components/ui/Stars';
 
-/** Between-seasons board review + academy intake. Shown when a season completes. */
+const ord = (n: number) => {
+  const v = n % 100;
+  return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][v] ?? 'th');
+};
+
+/** Between-seasons promotion/relegation summary + academy intake. */
 export default function CareerReview() {
   const review = useGameStore((s) => s.careerReview);
   const advance = useGameStore((s) => s.advanceCareerSeason);
@@ -19,8 +27,13 @@ export default function CareerReview() {
   if (!review) return null;
 
   const nextSeason = review.season + 1;
-  const nextTarget = boardTarget(nextSeason);
-  const nextDemand = boardWantsTitle(nextSeason) ? 'win the title' : `reach ${ladderTier(nextTarget)}`;
+  const fromDiv = division(review.fromTier).name;
+  const toDiv = division(review.toTier).name;
+  const promoted = review.outcome === 'promoted';
+  const relegated = review.outcome === 'relegated';
+  const verdict = promoted ? 'PROMOTED!' : relegated ? 'RELEGATED' : 'SEASON COMPLETE';
+  const VerdictIcon = promoted ? ArrowUpCircle : relegated ? ArrowDownCircle : ThumbsUp;
+  const accent = promoted ? 'text-crt-green' : relegated ? 'text-rose-300' : 'text-crt-amber';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -29,20 +42,24 @@ export default function CareerReview() {
         animate={{ scale: 1, opacity: 1 }}
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border-2 border-crt-dim bg-pitch-950 shadow-glow"
       >
-        {/* Header — board verdict */}
+        {/* Header — promotion/relegation verdict */}
         <div className="border-b border-crt-dim bg-pitch-900/80 px-5 py-4 text-center">
-          <div className="mx-auto mb-1 flex items-center justify-center gap-2 text-crt-green">
-            {review.triumph ? <Trophy size={24} /> : <ThumbsUp size={20} />}
-            <h2 className="font-display text-xl">
-              {review.triumph ? 'CHAMPIONS!' : 'BOARD SATISFIED'}
-            </h2>
+          <div className={`mx-auto mb-1 flex items-center justify-center gap-2 ${accent}`}>
+            {promoted ? <Trophy size={24} /> : <VerdictIcon size={22} />}
+            <h2 className="font-display text-xl">{verdict}</h2>
           </div>
           <p className="text-xs text-chrome-muted">
-            Season {review.season} — reached {ladderTier(review.reached)}, the board asked for{' '}
-            {boardWantsTitle(review.season) ? 'the title' : ladderTier(review.targetRound)}.
+            Season {review.season} — finished{' '}
+            <span className="font-display">{ord(review.finishPos)}</span> of {review.clubs} in the{' '}
+            <span className="font-display">{fromDiv}</span>
+            {promoted
+              ? <> — up to the <span className="font-display">{toDiv}</span>.</>
+              : relegated
+                ? <> — down to the <span className="font-display">{toDiv}</span>.</>
+                : <>.</>}
           </p>
           <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-crt-amber/40 bg-crt-amber/15 px-3 py-1 font-display text-sm text-crt-amber">
-            <Coins size={14} /> +£{review.bonus}M board reward
+            <Coins size={14} /> +£{review.bonus}M end-of-season reward
           </p>
         </div>
 
@@ -130,7 +147,7 @@ export default function CareerReview() {
         {/* Footer — next season */}
         <div className="flex items-center justify-between gap-3 border-t border-crt-dim bg-pitch-900/80 px-5 py-3">
           <span className="text-[11px] text-chrome-muted">
-            Next: Season {nextSeason} · {nextDemand}
+            Next: Season {nextSeason} · {toDiv}
           </span>
           <button
             type="button"

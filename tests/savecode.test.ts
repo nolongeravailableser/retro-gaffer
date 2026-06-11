@@ -106,6 +106,21 @@ describe('migrations', () => {
     expect(migrated.onboarded).toBe(true);
   });
 
+  it('upgrades a legacy (board-target) career to the league pyramid (v21)', () => {
+    // A pre-pyramid career had a targetRound and no tier/league.
+    const old = validSave({ career: { season: 3, targetRound: 10, meta: {}, roster: {} } });
+    const migrated = migrateSave(old, 20) as Record<string, unknown>;
+    const career = migrated.career as Record<string, unknown>;
+    expect(career.tier).toBe(5); // dropped into the bottom tier
+    expect(career.season).toBe(3); // existing data preserved
+    expect('targetRound' in career).toBe(false); // obsolete field removed
+  });
+
+  it('leaves a careerless save untouched at v21', () => {
+    const migrated = migrateSave(validSave({ career: null }), 20) as Record<string, unknown>;
+    expect(migrated.career).toBeNull();
+  });
+
   it('round-trips club identity (name + manager + onboarded)', () => {
     const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
     const r = decodeSave(encodeSave(save));

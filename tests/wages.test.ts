@@ -4,10 +4,12 @@ import {
   wage,
   wageBill,
   divisionMult,
+  tierMult,
   wageBudget,
   DIV_MULT_FLOOR,
   DIV_MULT_CEIL,
 } from '@/lib/wages';
+import { TOP_TIER, BOTTOM_TIER } from '@/lib/league';
 import type { Player, Role } from '@/lib/types';
 
 function mk(role: Role, attack: number, defense: number): Player {
@@ -46,6 +48,14 @@ describe('wages', () => {
     // Endless (infinite maxRounds) stays bounded.
     expect(divisionMult(40, Infinity)).toBeGreaterThanOrEqual(DIV_MULT_FLOOR);
     expect(divisionMult(40, Infinity)).toBeLessThanOrEqual(DIV_MULT_CEIL);
+  });
+
+  it('tierMult pays the bottom tier the floor and the top tier the ceil', () => {
+    expect(tierMult(BOTTOM_TIER)).toBeCloseTo(DIV_MULT_FLOOR, 5);
+    expect(tierMult(TOP_TIER)).toBeCloseTo(DIV_MULT_CEIL, 5);
+    // Climbing the pyramid pays progressively more.
+    expect(tierMult(TOP_TIER)).toBeGreaterThan(tierMult(BOTTOM_TIER));
+    expect(tierMult(BOTTOM_TIER - 1)).toBeGreaterThan(tierMult(BOTTOM_TIER));
   });
 
   it('wageBudget grows with bankroll and division', () => {

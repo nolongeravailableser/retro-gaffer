@@ -5,11 +5,11 @@ import {
   CheckCircle2, Info,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { bestLabel, ladderTier } from '@/lib/ladder';
+import { bestLabel } from '@/lib/ladder';
 import { Briefcase } from 'lucide-react';
 import { getMutator, dailyMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
-import { boardWantsTitle } from '@/lib/career';
+import { division } from '@/lib/league';
 import { dailyKey } from '@/lib/daily';
 import { runScore, formatScore } from '@/lib/score';
 
@@ -138,18 +138,18 @@ export default function Hud({ onNewRun }: HudProps) {
         </div>
       )}
 
-      {/* Career badge — season + board demand */}
+      {/* Career badge — season + current division */}
       {career && (
         <div
           className="flex items-center gap-1.5 rounded-lg border border-crt-green/40 bg-crt-green/10 px-3 py-2"
-          title={`The board want you to reach ${ladderTier(career.targetRound)} this season`}
+          title={`Season ${career.season} in the ${division(career.tier).name}`}
         >
           <Briefcase size={14} className="text-crt-green" />
           <span className="font-display text-sm text-crt-green">
             Season {career.season}
           </span>
           <span className="text-xs text-chrome-muted">
-            → {boardWantsTitle(career.season) ? 'Title' : ladderTier(career.targetRound)}
+            · {division(career.tier).name}
           </span>
         </div>
       )}

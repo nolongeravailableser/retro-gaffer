@@ -6,6 +6,7 @@
  */
 
 import { Rng } from './rng';
+import type { SeasonOutcome } from './league';
 import type { Player, Role } from './types';
 
 /** Per-player career bookkeeping that aging reads/writes. */
@@ -19,21 +20,29 @@ export interface CareerMeta {
 export interface CareerState {
   /** 1-based season number. */
   season: number;
-  /** Division (round) the board demands you reach this season. */
-  targetRound: number;
+  /** Division tier the club currently competes in (1 = top, BOTTOM_TIER = base). */
+  tier: number;
   /** Per-owned-player aging bookkeeping. */
   meta: Record<string, CareerMeta>;
   /** Career roster snapshots (youth + aged players) for the pool overlay. */
   roster: Record<string, Player>;
 }
 
-/** Data shown on the between-seasons review screen. */
+/**
+ * Data shown on the between-seasons review screen — now a promotion/relegation
+ * summary plus the academy intake (aging/youth are unchanged from before).
+ */
 export interface ReviewState {
   season: number;
-  targetRound: number;
-  reached: number;
-  triumph: boolean; // won the whole climb
-  bonus: number; // retention bonus £m
+  /** Where the club finished this season's league. */
+  finishPos: number;
+  clubs: number;
+  /** Tier just played and the tier next season (promotion/relegation applied). */
+  fromTier: number;
+  toTier: number;
+  /** The season's verdict (never 'champion'/'sacked' — those end the run). */
+  outcome: SeasonOutcome;
+  bonus: number; // end-of-season reward £m
   /** Academy prospects on offer this window. */
   youth: Player[];
   /** Youth ids whose exact potential has been scouted (revealed). */
@@ -43,9 +52,19 @@ export interface ReviewState {
 /** Cost to fully scout a prospect's potential. */
 export const SCOUT_YOUTH_COST = 4;
 
-/** Career-best record, persisted across careers. */
-export const CAREER_BONUS = 12; // £m board reward for meeting expectations
-export const TRIUMPH_BONUS = 25; // £m for winning the whole season
+/** End-of-season board rewards (£m) by outcome. */
+export const PROMOTION_BONUS = 30; // promoted to a higher division
+export const SURVIVAL_BONUS = 12; // held station
+export const RELEGATION_BONUS = 6; // dropped but survived the sack
+
+export function reviewBonus(outcome: SeasonOutcome): number {
+  if (outcome === 'promoted' || outcome === 'champion') return PROMOTION_BONUS;
+  if (outcome === 'relegated') return RELEGATION_BONUS;
+  return SURVIVAL_BONUS; // stay
+}
+
+/** Academy prospects offered each between-seasons window. */
+export const YOUTH_INTAKE = 2;
 
 // Aging tuning.
 const PEAK_UNTIL = 2; // veterans hold their level for this many seasons
@@ -54,22 +73,6 @@ const GROWTH_STEP = 5; // stat gain per growth season (youth)
 const YOUTH_GROWTH_SEASONS = 3;
 const MIN_STAT = 10;
 const MAX_STAT = 99;
-
-/** The board's demand escalates each season, capped at the title. */
-export function boardTarget(season: number): number {
-  return Math.min(12, 4 + season * 2); // S1:6 S2:8 S3:10 S4+:12
-}
-
-/** Once the demand reaches the top division, the board wants the trophy itself. */
-export function boardWantsTitle(season: number): boolean {
-  return boardTarget(season) >= 12;
-}
-
-/** Did the season meet the board's demand? */
-export function boardMet(season: number, reached: number, triumph: boolean): boolean {
-  if (boardWantsTitle(season)) return triumph;
-  return reached >= boardTarget(season) || triumph;
-}
 
 /** A 1–5 potential rating from a ceiling stat value. */
 export function potentialStars(potential: number): number {

@@ -13,6 +13,7 @@
  * Constants are tuned against the balance sim (`npm run sim`).
  */
 
+import { TOP_TIER, BOTTOM_TIER } from './league';
 import type { Player, Role } from './types';
 
 /** Role weighting for a single 0–99 "overall" rating. */
@@ -59,6 +60,22 @@ export function divisionMult(round: number, maxRounds = 12): number {
   const t = Math.max(0, Math.min(1, (round - 1) / span));
   return Math.round((DIV_MULT_FLOOR + (DIV_MULT_CEIL - DIV_MULT_FLOOR) * t) * 100) / 100;
 }
+
+/**
+ * Division multiplier by pyramid TIER (Career/League). Unlike `divisionMult`,
+ * which scales by the round within a finite climb, a league season is played
+ * entirely in one division — so prize money/income are flat across its
+ * matchweeks and scaled only by how high up the pyramid you are. Bottom tier →
+ * floor, top tier → ceil. Standalone League (no tier) passes the mid tier.
+ */
+export function tierMult(tier: number): number {
+  const span = Math.max(1, BOTTOM_TIER - TOP_TIER);
+  const t = Math.max(0, Math.min(1, (BOTTOM_TIER - tier) / span));
+  return Math.round((DIV_MULT_FLOOR + (DIV_MULT_CEIL - DIV_MULT_FLOOR) * t) * 100) / 100;
+}
+
+/** The tier a tier-less standalone League season is paid at (mid pyramid). */
+export const LEAGUE_NEUTRAL_TIER = Math.round((TOP_TIER + BOTTOM_TIER) / 2);
 
 /**
  * Soft wage budget (£M/round): what the club can comfortably sustain given its

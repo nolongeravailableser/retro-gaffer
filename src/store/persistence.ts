@@ -20,7 +20,11 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 20;
+export const CURRENT_VERSION = 21;
+
+/** Bottom-tier value at the v21 migration (National League). Frozen here so the
+ *  migration stays stable even if the pyramid is later re-tiered. */
+const V21_BOTTOM_TIER = 5;
 
 type Save = Record<string, unknown>;
 
@@ -121,6 +125,14 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
     league: null,
     ...s,
   }),
+  // Career became a league pyramid: give any legacy (board-target) career a
+  // starting tier and drop the obsolete targetRound. A migrated career has no
+  // `league` yet — the store regenerates one for its tier on rehydrate.
+  21: (s) => {
+    if (!s.career || typeof s.career !== 'object') return s;
+    const { targetRound: _drop, ...rest } = s.career as Record<string, unknown>;
+    return { ...s, career: { tier: V21_BOTTOM_TIER, ...rest } };
+  },
 };
 
 /** Upgrade a saved blob from its version to CURRENT_VERSION. */
