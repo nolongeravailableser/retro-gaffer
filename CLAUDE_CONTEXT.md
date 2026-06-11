@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 243 tests — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 247 tests — see §2l)
 
 ---
 
@@ -518,16 +518,28 @@ programmatically** from existing single position (confirm before building).
   - `pickBestXI` greedy is position-aware (fields in position → no penalty by
     default). Pitch slots show position (CB/FB/DM/CM/AM/W/ST) + amber "!" when
     out of position. Sim still 39.0%. Tests: positions(6)+formations(4) → 243.
-- **Remaining (NOT started):** full FM finances/wages + league-scaled rewards
-  (needs sim re-gate), League-Season mode + table (new mode alongside),
-  career stadium development. Forks locked in the §2l preamble.
+- **4.2 FM finances & wages (SHIPPED, commits `f669d25`…`e11bd66`):**
+  - `src/lib/wages.ts` — `overall(p)` (role-weighted 0–99), `wage(p)` (convex
+    in overall → stars cost disproportionately), `wageBill(squad)`,
+    `divisionMult(round)` (prize money/income scale with the division; clamped
+    for Endless/scenarios), `wageBudget(bankroll, divMult)` (soft guideline).
+  - `resolveRound`: reward + round income × divisionMult; wage = rating-based
+    squad bill (replaces the old flat squad-size tax, now removed from
+    ladder.ts). SeasonPanel stakes match + show "Wage bill £X / £Y budget"
+    (rose when over). No persistence change (all derived).
+  - Balance: sim updated to the new economy + re-gated → completion 39.0% →
+    **37.2%** (real wages + lower early-league income bite; deaths still at the
+    R12 boss, not bankruptcy). Tests: wages.test.ts (5); removed the old
+    ladder wageBill test. 247 total.
+- **Remaining (NOT started):** League-Season mode + table (new mode alongside
+  the roguelike), career stadium development. Forks locked in the §2l preamble.
 
 ---
 
 ## 3. Active Work & Next Directions
 
 **In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins), 2
-(match experience), 3 (2D pitch overhaul) and **4.1 (dynamic positions/
+(match experience), 3 (2D pitch overhaul) and **4.1 (positions) + 4.2 (finances)
 formations)** are shipped; **remaining Phase 4 work**: FM finances/wages +
 league-scaled rewards, League-Season mode + table, career stadium development.
 See §2l for the full plan and the locked forks.
