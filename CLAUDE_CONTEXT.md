@@ -613,6 +613,11 @@ programmatically** from existing single position (confirm before building).
     `FacilitiesPanel.tsx` extracted (shared by hub + review; **mid-season
     upgrades** now allowed, shows each facility's live effect). RunOverModal
     gained a career honours strip. Tests → **269**. Verified live.
+    - **Follow-up polish (commit `5774f25`):** the `LeagueTable` (Season tab)
+      now colours promotion (green) / relegation (red, "Drop = sacked" in the
+      bottom tier) zones in a Career, with a legend; `SeasonPanel`'s header
+      reads "Matchweek N/11 · {Division}" for league/career runs instead of the
+      old ladder-tier "Round 1 · Sunday League".
 - **Phase 4 is feature-complete.** All forks from §2l preamble are resolved.
 
 ---
@@ -636,9 +641,10 @@ confirm with the user before building):
   unit-tested, not playtested across a long career; watch for runaway bankroll at
   high tiers with a maxed stadium. (No career sim harness exists yet — the
   `npm run sim` balance harness only runs Classic.)
-- **Career-hub polish** — promotion/relegation zone colouring in the LeagueTable
-  (Season tab); off-ball/transition polish in the pitch view (§2l Phase 3 notes);
-  an honours moment/animation on promotion. Or anything fresh the user raises.
+- **Career-hub polish** — DONE: promotion/relegation zone colouring in the
+  LeagueTable + league-aware Season header (commit `5774f25`). Remaining ideas:
+  off-ball/transition polish in the pitch view (§2l Phase 3 notes); an honours
+  moment/animation on promotion. Or anything fresh the user raises.
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
