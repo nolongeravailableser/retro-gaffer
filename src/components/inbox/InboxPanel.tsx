@@ -1,0 +1,117 @@
+import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Check, X } from 'lucide-react';
+import { useGameStore } from '@/store/useGameStore';
+import type { InboxKind, InboxMessage } from '@/lib/inbox';
+
+const KIND_ICON: Record<InboxKind, React.ElementType> = {
+  result: Trophy,
+  injury: HeartPulse,
+  board: Megaphone,
+  offer: Gavel,
+  transfer: ArrowLeftRight,
+  achievement: Trophy,
+};
+
+const KIND_TINT: Record<InboxKind, string> = {
+  result: 'text-crt-green',
+  injury: 'text-rose-300',
+  board: 'text-crt-amber',
+  offer: 'text-fuchsia-300',
+  transfer: 'text-sky-300',
+  achievement: 'text-crt-amber',
+};
+
+/**
+ * The club inbox (Career/League) — an FM-style message feed. Results, injuries
+ * and board verdicts are read-only records; incoming transfer bids are
+ * actionable (Accept = cash in + the player leaves; Reject = keep him).
+ */
+export default function InboxPanel() {
+  const inbox = useGameStore((s) => s.inbox);
+  const acceptOffer = useGameStore((s) => s.acceptOffer);
+  const rejectOffer = useGameStore((s) => s.rejectOffer);
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4" data-testid="inbox-panel">
+      <div className="mb-3 flex items-center gap-2">
+        <Mail size={18} className="text-crt-green" />
+        <h2 className="font-display text-xl">Inbox</h2>
+        <span className="ml-auto font-ticker text-[11px] text-chrome-muted">
+          {inbox.length} message{inbox.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {inbox.length === 0 ? (
+        <p className="py-8 text-center text-xs text-chrome-muted" data-testid="inbox-empty">
+          No messages yet. Match results, injuries, board verdicts and transfer bids will land here.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {inbox.map((m) => (
+            <MessageRow key={m.id} m={m} onAccept={acceptOffer} onReject={rejectOffer} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageRow({
+  m,
+  onAccept,
+  onReject,
+}: {
+  m: InboxMessage;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const Icon = KIND_ICON[m.kind];
+  const tint = KIND_TINT[m.kind];
+  const actionable = m.kind === 'offer' && !m.resolved;
+  return (
+    <div
+      data-testid={`inbox-msg-${m.id}`}
+      className={[
+        'rounded-lg border px-3 py-2',
+        m.read ? 'border-white/10 bg-pitch-950/30' : 'border-crt-green/30 bg-pitch-950/60',
+      ].join(' ')}
+    >
+      <div className="flex items-start gap-2">
+        <Icon size={15} className={`mt-0.5 shrink-0 ${tint}`} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-display text-sm text-chrome">{m.title}</p>
+            {!m.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-crt-green" />}
+            <span className="ml-auto shrink-0 font-ticker text-[10px] text-chrome-muted">MW {m.week}</span>
+          </div>
+          <p className="mt-0.5 font-ticker text-[11px] text-chrome-muted">{m.body}</p>
+
+          {actionable && (
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => onAccept(m.id)}
+                data-testid={`offer-accept-${m.id}`}
+                className="flex items-center gap-1 rounded border border-crt-green/50 px-2.5 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/15"
+              >
+                <Check size={12} /> Accept £{m.offer!.fee}M
+              </button>
+              <button
+                type="button"
+                onClick={() => onReject(m.id)}
+                data-testid={`offer-reject-${m.id}`}
+                className="flex items-center gap-1 rounded border border-white/15 px-2.5 py-1 font-display text-[11px] text-chrome-muted transition hover:bg-white/5"
+              >
+                <X size={12} /> Reject
+              </button>
+            </div>
+          )}
+          {m.kind === 'offer' && m.resolved && (
+            <p className="mt-1 font-ticker text-[10px] text-chrome-muted">
+              {m.resolved === 'accepted' ? '✓ Sold' : '✗ Bid rejected'}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

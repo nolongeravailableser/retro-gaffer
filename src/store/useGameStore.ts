@@ -81,6 +81,13 @@ import {
   CAREER_STARTING_BANKROLL,
 } from '@/lib/market';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
+import {
+  pushMessages,
+  resultMessage,
+  injuryMessage,
+  boardMessage,
+  type InboxMessage,
+} from '@/lib/inbox';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
 import {
@@ -244,6 +251,9 @@ interface GameState {
   careerReview: ReviewState | null;
   /** Active League-Season state (table/fixtures/results), or null. */
   league: LeagueState | null;
+  /** FM-style club inbox (Career/League): results, injuries, board notes, bids.
+   *  Newest first; empty outside the simulation modes. */
+  inbox: InboxMessage[];
   /** Most seasons completed in a single career — persisted across careers. */
   careerBest: number;
   /** Every player id ever signed — an all-time "club legends" collection. */
@@ -325,6 +335,12 @@ interface GameState {
   signPlayer: (id: string, agreedFee?: number) => void;
   /** Fill empty XI slots with the best free agents (Career/League market). */
   autoFillSquad: () => void;
+  /** Mark every inbox message as read (called when the Inbox tab is opened). */
+  markInboxRead: () => void;
+  /** Accept an incoming transfer bid (inbox `offer` message): cash in + player leaves. */
+  acceptOffer: (messageId: string) => void;
+  /** Reject an incoming transfer bid: keep the player, mark the message handled. */
+  rejectOffer: (messageId: string) => void;
   refreshShop: () => void;
   /** Dispatch a scout (paid): guarantee a brief-matching player in the shop. */
   scoutShop: (briefId: string) => void;
@@ -420,6 +436,7 @@ function freshRun(
     career: null as CareerState | null,
     careerReview: null as ReviewState | null,
     league: null as LeagueState | null,
+    inbox: [] as InboxMessage[],
     bankroll: config.startingBankroll,
     owned: [] as string[],
     shop: rollSlots([], shopSeed, 'all'),
@@ -466,6 +483,7 @@ function saveSlice(s: GameState) {
     career: s.career,
     careerReview: s.careerReview,
     league: s.league,
+    inbox: s.inbox,
     careerBest: s.careerBest,
     collection: s.collection,
     bestScore: s.bestScore,
@@ -575,9 +593,15 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const med = s.career ? injuryReduction(s.career.facilities.medical) : 0;
   const newInjuries: Record<string, number> = {};
   for (const [id, r] of Object.entries(s.injuries)) if (r > 1) newInjuries[id] = r - 1;
+  // Collect this week's genuine new injuries (post-medical-reduction) for the inbox.
+  const injuryMsgs: InboxMessage[] = [];
   for (const inj of result.injuries ?? []) {
     const rounds = inj.rounds - med;
-    if (rounds > 0) newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, rounds);
+    if (rounds > 0) {
+      newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, rounds);
+      const name = getPlayer(inj.playerId)?.name ?? 'A player';
+      injuryMsgs.push(injuryMessage(mw, inj.playerId, name, rounds));
+    }
   }
 
   const key = outcome === 'win' ? 'w' : outcome === 'loss' ? 'l' : 'd';
@@ -679,8 +703,21 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     ? `🏆 Unlocked: ${unlocked.map((id) => getAchievement(id)?.name ?? id).join(' · ')}`
     : null;
 
+  // --- Inbox: post this matchweek's result, any injuries, and a season verdict
+  // so the player has a persistent record (FM-style). Stamped with the matchweek.
+  const newMsgs: InboxMessage[] = [];
+  if (pf) {
+    const oppId = pf.home === YOU ? pf.away : pf.home;
+    const oppName = league.clubs.find((c) => c.id === oppId)?.name ?? 'the opposition';
+    newMsgs.push(resultMessage(mw, oppName, result.score.a, result.score.b));
+  }
+  newMsgs.push(...injuryMsgs);
+  if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
+  const inbox = pushMessages(s.inbox, newMsgs);
+
   return {
     league: newLeague,
+    inbox,
     round: nextMw,
     bankroll,
     streak: newStreak,
@@ -886,6 +923,66 @@ export const useGameStore = create<GameState>()(
             collection: addToCollection(s.collection, ...signed),
             notice: `Signed ${signed.length} free agent${signed.length > 1 ? 's' : ''} to complete the XI.`,
             noticeKind: 'success',
+          };
+        }),
+
+      markInboxRead: () =>
+        set((s) =>
+          s.inbox.some((m) => !m.read)
+            ? { inbox: s.inbox.map((m) => (m.read ? m : { ...m, read: true })) }
+            : {}
+        ),
+
+      // Accept a rival's bid for one of your players (an inbox `offer` message):
+      // bank the fee, the player leaves your squad, and the buyer's squad +
+      // strength rise (a real sale that reshapes the table). Mirrors poaching.
+      acceptOffer: (messageId) =>
+        set((s) => {
+          const msg = s.inbox.find((m) => m.id === messageId);
+          if (!msg?.offer || msg.resolved) return {};
+          const { playerId, clubId, fee, playerName } = msg.offer;
+          if (!s.owned.includes(playerId)) {
+            // The player is already gone — just retire the stale offer.
+            return { inbox: s.inbox.map((m) => (m.id === messageId ? { ...m, read: true, resolved: 'rejected' as const } : m)) };
+          }
+          const player = getPlayer(playerId);
+          let league = s.league;
+          if (league && player) {
+            const lift = Math.round((player.stats.attack + player.stats.defense) * 1.2);
+            league = {
+              ...league,
+              clubs: league.clubs.map((c) =>
+                c.id === clubId
+                  ? { ...c, squad: [...(c.squad ?? []), playerId], strength: c.strength + lift }
+                  : c
+              ),
+            };
+          }
+          return {
+            bankroll: s.bankroll + fee,
+            owned: s.owned.filter((o) => o !== playerId),
+            xi: s.xi.map((slot) => (slot === playerId ? null : slot)),
+            bench: s.bench.filter((b) => b !== playerId),
+            selectedPlayerId: s.selectedPlayerId === playerId ? null : s.selectedPlayerId,
+            league,
+            inbox: s.inbox.map((m) =>
+              m.id === messageId ? { ...m, read: true, resolved: 'accepted' as const } : m
+            ),
+            notice: `Sold ${playerName} for £${fee}M.`,
+            noticeKind: 'success',
+          };
+        }),
+
+      rejectOffer: (messageId) =>
+        set((s) => {
+          const msg = s.inbox.find((m) => m.id === messageId);
+          if (!msg?.offer || msg.resolved) return {};
+          return {
+            inbox: s.inbox.map((m) =>
+              m.id === messageId ? { ...m, read: true, resolved: 'rejected' as const } : m
+            ),
+            notice: `Turned down ${msg.offer.clubName}'s bid for ${msg.offer.playerName}.`,
+            noticeKind: 'info',
           };
         }),
 

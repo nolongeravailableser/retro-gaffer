@@ -47,6 +47,8 @@ import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
 import TransferMarket from '@/components/shop/TransferMarket';
+import InboxPanel from '@/components/inbox/InboxPanel';
+import { unreadCount } from '@/lib/inbox';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
@@ -80,6 +82,8 @@ export default function App() {
   const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
+  const inbox = useGameStore((s) => s.inbox);
+  const markInboxRead = useGameStore((s) => s.markInboxRead);
   const clubName = useGameStore((s) => s.clubName);
   const managerName = useGameStore((s) => s.managerName);
   const kit = useGameStore((s) => s.kit);
@@ -232,6 +236,20 @@ export default function App() {
     return journeyFor(fieldable, formation, filled);
   }, [owned, suspensions, injuries, formation, filled]);
 
+  // The Inbox is a Career/League feature; Classic keeps its 7 tabs.
+  const showInbox = !!(career || league);
+  const inboxUnread = unreadCount(inbox);
+
+  // Opening the Inbox marks everything read (clears the badge).
+  useEffect(() => {
+    if (activeTab === 'inbox' && inboxUnread > 0) markInboxRead();
+  }, [activeTab, inboxUnread, markInboxRead]);
+
+  // The Inbox tab vanishes outside Career/League — don't strand the user on it.
+  useEffect(() => {
+    if (activeTab === 'inbox' && !showInbox) setActiveTab('formation');
+  }, [activeTab, showInbox]);
+
   const showJourney = runStatus === 'playing' && !matchOpen;
   /** The tab the current stage wants the player on. */
   const stageTab: Tab =
@@ -267,7 +285,13 @@ export default function App() {
         <Hud onNewRun={() => setNewRunOpen(true)} />
       </header>
 
-      <TabNav active={activeTab} onChange={setActiveTab} attentionTab={attentionTab} />
+      <TabNav
+        active={activeTab}
+        onChange={setActiveTab}
+        attentionTab={attentionTab}
+        showInbox={showInbox}
+        inboxUnread={inboxUnread}
+      />
 
       {/* The core-loop guide: sign → pick → kick off, one obvious action per stage */}
       {showJourney && (
@@ -352,6 +376,8 @@ export default function App() {
             )}
           </div>
         )}
+
+        {activeTab === 'inbox' && showInbox && <InboxPanel />}
 
         {activeTab === 'season' && (
           <div className="flex flex-col gap-4">

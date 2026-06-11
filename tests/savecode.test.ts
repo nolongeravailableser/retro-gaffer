@@ -125,6 +125,14 @@ describe('migrations', () => {
     expect(migrated.career).toBeNull();
   });
 
+  it('adds an empty club inbox to a pre-inbox save (v24)', () => {
+    const migrated = migrateSave(validSave(), 23) as Record<string, unknown>;
+    expect(migrated.inbox).toEqual([]);
+    // An existing inbox is preserved untouched.
+    const withInbox = migrateSave(validSave({ inbox: [{ id: 'x' }] }), 23) as Record<string, unknown>;
+    expect(withInbox.inbox).toEqual([{ id: 'x' }]);
+  });
+
   it('round-trips club identity (name + manager + onboarded)', () => {
     const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
     const r = decodeSave(encodeSave(save));

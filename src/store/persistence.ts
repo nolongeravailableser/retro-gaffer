@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 23;
+export const CURRENT_VERSION = 24;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -146,6 +146,8 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
     if (!s.career || typeof s.career !== 'object') return s;
     return { ...s, career: { history: [], ...(s.career as object) } };
   },
+  // Club inbox: existing saves start with an empty message feed.
+  24: (s) => (Array.isArray((s as { inbox?: unknown }).inbox) ? s : { ...s, inbox: [] }),
 };
 
 /** Upgrade a saved blob from its version to CURRENT_VERSION. */
