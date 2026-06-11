@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-10 (… + improvement program + Daily leaderboard + QA audit #2 fixes — all deployed)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + user-feedback roadmap Phase 1 shipped — see §2l)
 
 ---
 
@@ -441,14 +441,61 @@ being suspendable is correct football):
 
 ---
 
+## 2l. User-feedback roadmap (2026-06-11) — Phase 1 shipped (`a67fec7`)
+
+A ~25-point batch of player feedback was triaged into groups and a 4-phase
+plan (user-approved sequencing). Forks the user locked in for Phase 4:
+**league = new mode alongside the roguelike** (not a replacement); **finances
+= full FM-style** (per-player wages by rating + wage budget + league-scaled
+rewards, re-gated via `npm run sim`); **player positions = inferred
+programmatically** from existing single position (confirm before building).
+
+**Phase 1 — quick wins (SHIPPED `a67fec7`):**
+- Match speed: added **0.5× "immersive"** pace; 1× calmed to 650ms/event
+  (`SPEED_DELAY` in `MatchView.tsx`).
+- **Numeric Gaffer's Gamble** stake input beside None/¼/Max (`SeasonPanel.tsx`,
+  `data-testid="wager-input"`).
+- **Sell** now a labelled "Sell <value>M" under a SELL column + a two-step
+  confirm (arms "Sure?", second tap commits, tap-away cancels) — `SquadList.tsx`.
+- **Clear Squad** button exposes the existing `benchAll` beside Auto-Pick.
+- **Assign feedback**: `placeInSlot` (store) was a silent no-op on role
+  mismatch — now sets an explanatory error notice (the real cause of the
+  "can't drag bench→position" report; drag itself was always wired).
+- **Pitch-slot BAN / injury (NR) badge + rose ring** when a fielded starter
+  is unavailable (`Slot.tsx`/`Pitch.tsx`) — previously only shown in the list.
+- Note: Auto-Sign (Shop header) and Auto-Pick-skips-unavailable were already
+  shipped before this pass.
+
+**Remaining phases (NOT started):**
+- **Phase 2 — match experience**: assists + minutes on events (engine has
+  `playerName`/`minute` but no assister), live player match ratings, full
+  match report timeline, richer commentary, **out-of-position subs at −10%**
+  (also fixes "can't sub when injured" — subs are currently same-role only),
+  and **player histories** (apps/goals/assists/avg rating — nothing tracked
+  today; needs a persistence bump).
+- **Phase 3 — 2D pitch overhaul**: players are static on formation anchors
+  with only micro-drift; ball teleports between keyframes. Make it read like
+  football (off-ball movement, ball travelling through players, possession
+  shape). Pure viz layer, determinism-safe (separate `{seed}-viz` RNG).
+- **Phase 4 — big systems**: dynamic positions + formations (granular slots,
+  out-of-position penalty), full FM finances/wages, League-Season mode +
+  table, career stadium development. Each needs its own design pass +
+  balance re-gating.
+
+---
+
 ## 3. Active Work & Next Directions
 
-**Nothing in flight.** All planned phases (0–3), the 2026-06-10 mega-session
+**In flight: the user-feedback roadmap (§2l).** Phase 1 (quick wins) is
+shipped; **Phases 2–4 are the next work** (match experience → 2D pitch
+overhaul → big systems). See §2l for the full plan and the locked forks.
+
+All earlier work — planned phases (0–3), the 2026-06-10 mega-session
 (sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
 extended stats, 2D pitch view, team kits), the improvement program (§2j:
 interactive match, sound, crests, achievements, ErrorBoundary, e2e, PWA, Daily
-leaderboard) and QA audit #2 (§2k) are shipped and deployed. No active bugs
-outstanding. Persistence is at **v18**; tests at **224/224** across 24 files.
+leaderboard) and QA audit #2 (§2k) — is shipped and deployed. Persistence is at
+**v18**; tests at **224/224** across 24 files.
 
 **Former candidate next steps — now all shipped** (the 2026-06-10 PM
 improvement program + leaderboard delivered the list below; kept here as a
