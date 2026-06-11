@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Career Hub SHIPPED — dynasty home: pyramid ladder, honours, history timeline, mid-season facility management; persistence v23, 269 tests. See §3 "START HERE")
+> **Last updated:** 2026-06-11 (Career Hub + polish pass SHIPPED — economy rebalance (tier-scaled wages), promotion celebration, pitch-view polish; persistence v23, 270 tests. Phases 1–4.6 PUSHED to prod through commit `b3f453c`; 4.6 commits local & unpushed. See §3 "START HERE")
 
 ---
 
@@ -618,6 +618,23 @@ programmatically** from existing single position (confirm before building).
       bottom tier) zones in a Career, with a legend; `SeasonPanel`'s header
       reads "Matchweek N/11 · {Division}" for league/career runs instead of the
       old ladder-tier "Round 1 · Sunday League".
+  - **4.6 Polish pass (SHIPPED locally, commits `45da828`…`28c9780`):**
+    - **Career economy rebalance.** New `tests/career.sim.ts` (Monte-Carlo
+      dynasty harness over the real engine/league/economy/aging) exposed
+      runaway bankroll — a complete persistent squad has nothing left to buy, so
+      tier income piled up unbounded (median PL £2.6B). Fix: `wageTierMult(tier)`
+      in wages.ts (×1 at the bottom tier, ×`WAGE_TIER_K`=1.8 per rung → ~10.5× in
+      the PL), applied in `resolveLeagueRound` for career runs only. Swept to
+      K=1.8: bankroll now plateaus (PL median £211M, down 12×) and is solvent
+      (56% eventually champion over 20 seasons); bottom tier + Classic
+      untouched (Classic sim still 37.2%). SeasonPanel stakes/wage preview now
+      mirror resolveLeagueRound (tierMult + matchday + tier-scaled wages).
+    - **Promotion celebration** in CareerReview: confetti + spring-in trophy +
+      animated tier-rise (old division struck through → new in green);
+      respects reduced-motion.
+    - **Pitch-view polish** (MatchPitchView, determinism-safe): persistent dot
+      smoothing (glides scene boundaries + carrier hand-off), off-ball forward
+      runs, dribble-vs-pass ball pacing.
 - **Phase 4 is feature-complete.** All forks from §2l preamble are resolved.
 
 ---
@@ -626,25 +643,23 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered and
-**Phase 4 is feature-complete + the Career Hub (4.5)**: dynamic positions (4.1),
-FM finances (4.2), standalone League (4.3), the Career league pyramid (4.4b),
-career club facilities (4.4c), and the Career Hub dynasty home (4.5). Everything
-is **committed locally on `main` but NOT pushed to `origin`** (push when the user
-asks). Gates: **tsc clean · 269 tests · build green · persistence v23**.
+**Status (2026-06-11):** the entire user-feedback roadmap (§2l) is delivered;
+**Phases 1–4.6 are shipped.** 4.1 positions, 4.2 FM finances, 4.3 League, 4.4b
+pyramid, 4.4c facilities, 4.5 Career Hub, **4.6 polish pass** (economy
+rebalance, promotion celebration, pitch-view polish). Gates: **tsc clean · 270
+tests · build green · persistence v23.**
 
-**No task is queued.** Candidate next directions (none designed/committed —
-confirm with the user before building):
-- **Push to production** — ALL the pyramid/stadium/hub work (commits since
-  `0b7962c`) is unpushed; `origin/main` auto-deploys to Vercel. The user must ask.
-- **Balance pass on the new economy** — `tierMult` + facility income are only
-  unit-tested, not playtested across a long career; watch for runaway bankroll at
-  high tiers with a maxed stadium. (No career sim harness exists yet — the
-  `npm run sim` balance harness only runs Classic.)
-- **Career-hub polish** — DONE: promotion/relegation zone colouring in the
-  LeagueTable + league-aware Season header (commit `5774f25`). Remaining ideas:
-  off-ball/transition polish in the pitch view (§2l Phase 3 notes); an honours
-  moment/animation on promotion. Or anything fresh the user raises.
+**Push state:** everything **through commit `b3f453c` is PUSHED to `origin/main`
+and live** (prod page + `/api/daily` both 200). The **4.6 commits
+(`45da828`…`28c9780` + the docs commit) are LOCAL and unpushed** — push when the
+user asks (`origin/main` auto-deploys to Vercel). The 4.6 batch is self-contained
+and verified; recommended to push as one coherent release.
+
+**No task is queued — all candidate directions are done.** The career experience
+is comprehensive end-to-end. Possible future ideas (none requested): a money
+SINK to make wealth matter even more at the top (recurring facility upkeep, a
+transfer market with inflation), an honours/animation flourish on winning the
+title (champion currently goes straight to RunOverModal), or fresh requests.
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
@@ -703,9 +718,9 @@ pointer to where each landed):
 **Still open (deliberately deferred, not bugs):**
 - **G5** — the round-4 "gift" boss stays deliberately easy (comic relief);
   revisit only if a twist is wanted.
-- **Daily leaderboard activation** — code ships dark; provision Upstash Redis
-  in the Vercel dashboard (Storage → Upstash Redis → connect → redeploy) to
-  light it up. No code change needed (see §2j).
+- **Daily leaderboard** — LIVE (Upstash provisioned; prod `/api/daily` 200).
+  (Was listed here as "ships dark" — that's stale; it's been live since
+  2026-06-10, see §2j.)
 
 Historical note: the original game-modes roadmap (Phases 0–3, commit `4f8a14d`
 onward) is fully delivered — details in §2. The surviving roadmap item,
