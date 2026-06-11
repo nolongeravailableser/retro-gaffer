@@ -20,7 +20,7 @@ import { simulateMatch, type MatchTeam } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { interest, streakBonus, ROUND_INCOME } from '@/lib/ladder';
 import { wageBill, tierMult, WAGE_TIER_K } from '@/lib/wages';
-import { matchdayIncome, upgradeCost, isMaxed, type FacilityId } from '@/lib/stadium';
+import { matchdayIncome, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId } from '@/lib/stadium';
 import { ageRoster, newMeta, reviewBonus, type CareerMeta } from '@/lib/career';
 import {
   generateLeague, simAiWeek, position, seasonOutcome, nextTier,
@@ -158,6 +158,11 @@ function developClub(c: Career) {
 let WAGE_K = 1;
 const wageTierMult = (tier: number) => WAGE_K ** (BOTTOM_TIER - tier);
 
+/** Tunable facility running-cost per level under test (£m/matchweek, pre-tier). */
+let UPKEEP_LEVEL = 0;
+const upkeepFor = (c: Career) =>
+  Math.round((c.facilities.stadium + c.facilities.academy + c.facilities.medical) * UPKEEP_LEVEL * tierMult(c.tier));
+
 /** Play one matchweek (player fixture via the real engine), update the economy. */
 function playMatchweek(c: Career, league: LeagueState, mw: number, results: Record<string, LeagueResult>) {
   const pf = playerFixture(league, mw);
@@ -183,7 +188,8 @@ function playMatchweek(c: Career, league: LeagueState, mw: number, results: Reco
     const intr = interest(c.bankroll);
     const sb = outcome === 'win' ? streakBonus(c.streak) : 0;
     const wage = Math.round(wageBill(c.owned.map((id) => cur(c, id))) * wageTierMult(c.tier));
-    c.bankroll = Math.max(0, c.bankroll + reward + income + intr + sb - wage);
+    const upkeep = upkeepFor(c);
+    c.bankroll = Math.max(0, c.bankroll + reward + income + intr + sb - wage - upkeep);
   }
   Object.assign(results, simAiWeek(league, mw, c.seed));
 }
@@ -263,26 +269,25 @@ const median = (xs: number[]) => {
   return s[Math.floor(s.length / 2)];
 };
 
-function runSweep(N: number, k: number) {
+function runSweep(N: number, k: number, upkeep = 0) {
   WAGE_K = k;
+  UPKEEP_LEVEL = upkeep;
   const results = Array.from({ length: N }, (_, i) => simulateCareer((i * 2654435761) >>> 0));
   const champions = results.filter((r) => r.outcome === 'champion').length;
   const sacked = results.filter((r) => r.outcome === 'sacked').length;
   const reachedPL = results.filter((r) => r.reachedPL).length;
   const avgSeasons = results.reduce((s, r) => s + r.seasons, 0) / N;
-  const t1Banks: number[] = [];
-  const t5Banks: number[] = [];
+  const banks: Record<number, number[]> = { 1: [], 2: [], 3: [], 5: [] };
   let promoT2 = 0, playedT2 = 0, promoT1 = 0, playedT1 = 0;
   for (const r of results) {
-    if (r.bankrollByTier[1]) t1Banks.push(...r.bankrollByTier[1]);
-    if (r.bankrollByTier[5]) t5Banks.push(...r.bankrollByTier[5]);
+    for (const t of [1, 2, 3, 5]) if (r.bankrollByTier[t]) banks[t].push(...r.bankrollByTier[t]);
     if (r.promoBy[2]) { playedT2 += r.promoBy[2].played; promoT2 += r.promoBy[2].promoted; }
     if (r.promoBy[1]) { playedT1 += r.promoBy[1].played; promoT1 += r.promoBy[1].promoted; }
   }
   const maxBank = Math.max(...results.map((r) => r.maxBankroll));
   return {
     k, champions, sacked, reachedPL, avgSeasons,
-    medT5: median(t5Banks), medT1: median(t1Banks), maxBank,
+    medT5: median(banks[5]), medT3: median(banks[3]), medT2: median(banks[2]), medT1: median(banks[1]), maxBank,
     promoT2pct: playedT2 ? (100 * promoT2) / playedT2 : 0,
     titlePct: playedT1 ? (100 * promoT1) / playedT1 : 0,
     N,
@@ -311,9 +316,33 @@ describe('career balance — wage-scaling sweep', () => {
   });
 });
 
+describe('career balance — facility-upkeep sweep', () => {
+  it('compares facility running costs (with shipped wage-scaling) as a money sink', () => {
+    const N = 250;
+    const lines = ['\n=== CAREER WAGE×UPKEEP COMBO SWEEP ===',
+      'wageK  upkeep  champ%  PL%   avgS  medT3    medT2     medT1     maxBank'];
+    const combos: [number, number][] = [
+      [1.8, 0], [1.6, 0.5], [1.6, 0.75], [1.5, 0.75], [1.5, 1.0], [1.4, 1.0],
+    ];
+    for (const [k, u] of combos) {
+      const r = runSweep(N, k, u);
+      lines.push(
+        `${k.toFixed(1).padStart(4)}  ${u.toFixed(2).padStart(6)}  ${((100 * r.champions) / r.N).toFixed(0).padStart(5)}%  ` +
+        `${((100 * r.reachedPL) / r.N).toFixed(0).padStart(3)}%  ${r.avgSeasons.toFixed(1).padStart(4)}  ` +
+        `£${String(r.medT3 ?? 0).padStart(5)}M  £${String(r.medT2 ?? 0).padStart(6)}M  ` +
+        `£${String(r.medT1).padStart(6)}M  £${String(r.maxBank).padStart(6)}M`
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'));
+    expect(N).toBeGreaterThan(0);
+  });
+});
+
 describe('career balance simulation', () => {
   it('reports the pyramid climb + economy health', () => {
-    WAGE_K = WAGE_TIER_K; // detailed report mirrors the SHIPPED wage-scaling
+    WAGE_K = WAGE_TIER_K; // detailed report mirrors the SHIPPED economy …
+    UPKEEP_LEVEL = UPKEEP_PER_LEVEL; // … including facility upkeep
     const N = 300;
     const results = Array.from({ length: N }, (_, i) => simulateCareer((i * 2654435761) >>> 0));
 

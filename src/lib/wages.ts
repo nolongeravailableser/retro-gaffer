@@ -77,8 +77,9 @@ export function tierMult(tier: number): number {
 /** The tier a tier-less standalone League season is paid at (mid pyramid). */
 export const LEAGUE_NEUTRAL_TIER = Math.round((TOP_TIER + BOTTOM_TIER) / 2);
 
-/** How steeply the wage bill rises per division climbed in a Career. */
-export const WAGE_TIER_K = 1.8;
+/** How steeply the wage bill rises per division climbed in a Career. Tuned
+ *  alongside facility upkeep (the two share the money-sink load). */
+export const WAGE_TIER_K = 1.5;
 
 /**
  * Career wage multiplier by pyramid tier — the Premier League demands Premier

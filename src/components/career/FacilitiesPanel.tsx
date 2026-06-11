@@ -2,8 +2,9 @@ import { Building2, Dumbbell, HeartPulse, Hammer } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import {
   FACILITIES, FACILITY_IDS, MAX_LEVEL, upgradeCost, isMaxed,
-  matchdayIncome, youthBonus, injuryReduction, type FacilityId,
+  matchdayIncome, youthBonus, injuryReduction, facilityUpkeep, type FacilityId,
 } from '@/lib/stadium';
+import { tierMult } from '@/lib/wages';
 
 const FACILITY_ICON: Record<FacilityId, typeof Building2> = {
   stadium: Building2,
@@ -33,9 +34,12 @@ interface FacilitiesPanelProps {
  */
 export default function FacilitiesPanel({ bare = false }: FacilitiesPanelProps) {
   const facilities = useGameStore((s) => s.career?.facilities ?? null);
+  const tier = useGameStore((s) => s.career?.tier ?? null);
   const bankroll = useGameStore((s) => s.bankroll);
   const upgradeFacility = useGameStore((s) => s.upgradeFacility);
-  if (!facilities) return null;
+  if (!facilities || tier === null) return null;
+
+  const upkeep = facilityUpkeep(facilities, tierMult(tier));
 
   return (
     <div>
@@ -89,6 +93,11 @@ export default function FacilitiesPanel({ bare = false }: FacilitiesPanelProps) 
           );
         })}
       </div>
+      {upkeep > 0 && (
+        <p className="mt-2 text-right font-ticker text-[10px] text-chrome-muted">
+          Running costs: <span className="text-rose-300">−£{upkeep}M</span> / matchweek
+        </p>
+      )}
     </div>
   );
 }

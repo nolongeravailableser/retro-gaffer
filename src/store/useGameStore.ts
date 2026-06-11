@@ -67,6 +67,7 @@ import {
   matchdayIncome,
   youthBonus,
   injuryReduction,
+  facilityUpkeep,
   type FacilityId,
 } from '@/lib/stadium';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
@@ -252,6 +253,8 @@ interface GameState {
     interest: number;
     streak: number;
     wage: number;
+    /** Facility running costs (career only; 0 otherwise). */
+    upkeep: number;
     wager: number;
   } | null;
   /** Stake placed on the upcoming match (Gaffer's Gamble). */
@@ -528,8 +531,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const wage = Math.round(
     wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult
   );
+  // Career: facility running costs — the money sink that keeps wealth meaningful
+  // at the top (a big club costs real cash to run every week).
+  const upkeep = s.career ? facilityUpkeep(s.career.facilities, dm) : 0;
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
-  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage + wagerDelta);
+  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep + wagerDelta);
 
   // Discipline & fitness (same rules as the ladder). The medical centre shaves
   // rounds off new injuries (career only) — a bad enough knock can heal at once.
@@ -658,7 +664,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     runStatus,
     peakBankroll: Math.max(s.peakBankroll, bankroll),
     bestStreak: Math.max(s.bestStreak, newStreak),
-    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, wager: wagerDelta },
+    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, wager: wagerDelta },
     notice: seasonNote ?? achievementNote,
     noticeKind: 'success',
     selectedPlayerId: null,
@@ -953,6 +959,7 @@ export const useGameStore = create<GameState>()(
               interest: intr,
               streak: sb,
               wage,
+              upkeep: 0, // facility upkeep is career-only (league path)
               wager: wagerDelta,
             },
             notice: achievementNote ?? shieldNote,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Trophy, Crown, RotateCcw, Share2, Check, X, Play, Briefcase,
 } from 'lucide-react';
@@ -19,6 +19,15 @@ interface RunOverModalProps {
   /** Open the New Run setup modal (full mode/mutator picker). */
   onNewRun?: () => void;
 }
+
+// Deterministic confetti spread for the champions-of-England flourish.
+const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
+  left: (i * 37) % 100,
+  delay: (i % 12) * 0.05,
+  drift: ((i * 41) % 50) - 25,
+  rot: (i * 73) % 360,
+  color: ['#39ff14', '#ffcc00', '#ff4d4d', '#4da6ff', '#ff66cc'][i % 5],
+}));
 
 /**
  * The end-of-run moment. A celebratory (or commiserating) overlay shown over
@@ -51,6 +60,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
 
   const [shared, setShared] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   // Reset the dismissed flag whenever a fresh run begins.
   useEffect(() => {
@@ -172,12 +182,27 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
           className={`flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border-2 bg-pitch-950 shadow-glow ${frame}`}
         >
           {/* Header — the moment */}
-          <div className="relative border-b border-crt-dim bg-pitch-900/80 px-5 py-5 text-center">
+          <div className="relative overflow-hidden border-b border-crt-dim bg-pitch-900/80 px-5 py-5 text-center">
+            {/* Champions of England — a confetti capstone for a dynasty's summit */}
+            {career && won && !reduceMotion && (
+              <div className="pointer-events-none absolute inset-0" aria-hidden>
+                {CONFETTI.map((c, i) => (
+                  <motion.span
+                    key={i}
+                    className="absolute top-0 h-2 w-2 rounded-[1px]"
+                    style={{ left: `${c.left}%`, backgroundColor: c.color }}
+                    initial={{ y: -16, opacity: 0, rotate: 0 }}
+                    animate={{ y: 220, x: c.drift, opacity: [0, 1, 1, 0], rotate: c.rot + 540 }}
+                    transition={{ duration: 1.8, delay: c.delay, ease: 'easeIn', repeat: 1, repeatDelay: 0.3 }}
+                  />
+                ))}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setDismissed(true)}
               aria-label="Dismiss"
-              className="absolute right-3 top-3 text-chrome-muted hover:text-chrome"
+              className="absolute right-3 top-3 z-10 text-chrome-muted hover:text-chrome"
             >
               <X size={18} />
             </button>

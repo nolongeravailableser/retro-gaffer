@@ -79,3 +79,19 @@ export function youthBonus(academyLevel: number): number {
 export function injuryReduction(medicalLevel: number): number {
   return medicalLevel;
 }
+
+/** £m/matchweek running cost per facility level, before division scaling. */
+export const UPKEEP_PER_LEVEL = 1.0;
+
+/**
+ * Recurring facility running cost (£m/matchweek). A big, well-appointed club is
+ * expensive to run — and more so in a higher division (`tierMult` passed in by
+ * the caller). This is the money SINK that keeps wealth meaningful at the top:
+ * once your squad is complete, your stadium/academy/medical still cost real
+ * cash every week, so banked millions get drawn down rather than hoarded.
+ * Career only. Tuned against the career balance sim.
+ */
+export function facilityUpkeep(f: Facilities, tierMult: number): number {
+  const levels = f.stadium + f.academy + f.medical;
+  return Math.round(levels * UPKEEP_PER_LEVEL * tierMult);
+}

@@ -14,7 +14,7 @@ import {
   lifeBuybackCost,
 } from '@/lib/ladder';
 import { wageBill, divisionMult, tierMult, wageTierMult, wageBudget, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
-import { matchdayIncome } from '@/lib/stadium';
+import { matchdayIncome, facilityUpkeep } from '@/lib/stadium';
 import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -217,13 +217,15 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   const matchday = league && career ? matchdayIncome(career.facilities.stadium) : 0;
   const wageMult = career ? wageTierMult(career.tier) : 1;
   const wage = Math.round(wageBill(owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult);
+  const upkeep = career ? facilityUpkeep(career.facilities, dm) : 0;
   const budget = wageBudget(bankroll, dm);
   const netLast = lastIncome
     ? lastIncome.reward +
       lastIncome.income +
       lastIncome.interest +
       lastIncome.streak -
-      lastIncome.wage +
+      lastIncome.wage -
+      lastIncome.upkeep +
       lastIncome.wager
     : 0;
   const boss = getBoss(round, config.bosses);
@@ -232,7 +234,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
   const roundIncomeNow = Math.round(config.roundIncome * dm) + matchday;
-  const base = roundIncomeNow + projectedInterest - wage;
+  const base = roundIncomeNow + projectedInterest - wage - upkeep;
   const winPay = Math.round(MATCH_REWARD.win * dm) + base + streakBonus(streak + 1) + wager;
   const drawPay = Math.round(MATCH_REWARD.draw * dm) + base;
   const lossPay = Math.round(MATCH_REWARD.loss * dm) + base - wager;
@@ -428,6 +430,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
         </div>
         <p className="mt-1.5 text-right text-[10px] text-chrome-muted">
           incl. +£{projectedInterest}M interest{wage > 0 && ` · −£${wage}M wages`}
+          {upkeep > 0 && ` · −£${upkeep}M upkeep`}
           {streak > 0 && ` · +£${streakBonus(streak + 1)}M streak on win`}
         </p>
         {wage > 0 && (
@@ -485,6 +488,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           Last round: {netLast >= 0 ? '+' : '−'}£{Math.abs(netLast)}M (£{lastIncome.reward} result · £
           {lastIncome.income} round · £{lastIncome.interest} int · £{lastIncome.streak} streak
           {lastIncome.wage ? ` · −£${lastIncome.wage} wages` : ''}
+          {lastIncome.upkeep ? ` · −£${lastIncome.upkeep} upkeep` : ''}
           {lastIncome.wager ? ` · ${lastIncome.wager > 0 ? '+' : '−'}£${Math.abs(lastIncome.wager)} bet` : ''})
         </p>
       )}
