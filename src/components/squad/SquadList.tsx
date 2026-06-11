@@ -3,6 +3,8 @@ import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
+import { marketSellValue } from '@/lib/market';
+import { LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { avgRating } from '@/lib/ratings';
 import { Draggable } from '@/components/dnd/dnd';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
@@ -27,6 +29,14 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const sell = useGameStore((s) => s.sell);
   const clubName = useGameStore((s) => s.clubName);
+  const careerTier = useGameStore((s) => s.career?.tier ?? null);
+  const inLeague = useGameStore((s) => s.league !== null);
+  // Career/League sell at market value (free agents fetch nothing); else 80% of cost.
+  const saleValue = (p: Parameters<typeof sellValue>[0]) => {
+    if (careerTier !== null) return marketSellValue(p, careerTier);
+    if (inLeague) return marketSellValue(p, LEAGUE_NEUTRAL_TIER);
+    return sellValue(p);
+  };
   const autoPickXI = useGameStore((s) => s.autoPickXI);
   const benchAll = useGameStore((s) => s.benchAll);
 
@@ -255,8 +265,8 @@ export default function SquadList({ multipliers }: SquadListProps) {
                       <button
                         type="button"
                         onClick={(e) => onSellClick(e, id)}
-                        aria-label={confirmSellId === id ? `Confirm selling ${p.name}` : `Sell ${p.name} for ${sellValue(p)}M`}
-                        title={confirmSellId === id ? 'Tap again to confirm' : `Sell for £${sellValue(p)}M`}
+                        aria-label={confirmSellId === id ? `Confirm selling ${p.name}` : `Sell ${p.name} for ${saleValue(p)}M`}
+                        title={confirmSellId === id ? 'Tap again to confirm' : `Sell for £${saleValue(p)}M`}
                         className={[
                           'w-16 flex items-center justify-end gap-0.5 rounded px-1 py-0.5 text-[10px] font-display transition-colors',
                           confirmSellId === id
@@ -268,7 +278,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
                           'Sure?'
                         ) : (
                           <>
-                            <Coins size={9} /> Sell {sellValue(p)}M
+                            <Coins size={9} /> Sell {saleValue(p)}M
                           </>
                         )}
                       </button>

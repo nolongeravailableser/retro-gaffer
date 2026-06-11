@@ -46,6 +46,7 @@ import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
+import TransferMarket from '@/components/shop/TransferMarket';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
 import RecordsPanel from '@/components/records/RecordsPanel';
@@ -338,9 +339,17 @@ export default function App() {
 
         {activeTab === 'transfers' && (
           <div className="flex flex-col gap-4">
-            <FeaturedBanner />
-            <Shop />
-            <ScoutPanel />
+            {/* Career/League use the FM-style transfer market; Classic & co. keep
+                the roguelike draft shop (featured agent + scouting). */}
+            {career || league ? (
+              <TransferMarket />
+            ) : (
+              <>
+                <FeaturedBanner />
+                <Shop />
+                <ScoutPanel />
+              </>
+            )}
           </div>
         )}
 

@@ -19,10 +19,10 @@ import type { Player } from './types';
  *  Tuned so a starting £50M comfortably fields a lower-league XI (overall ~62 ≈
  *  £2M) while stars run into the tens of millions (×division inflation on top). */
 const VALUE_DIV = 45;
-const VALUE_EXP = 4;
+const VALUE_EXP = 5;
 
 /** How much each division up multiplies a player's value (richer leagues pay more). */
-export const MARKET_TIER_K = 1.35;
+export const MARKET_TIER_K = 1.2;
 
 /**
  * Career/League opening transfer kitty (£m). Higher than Classic's £50M because

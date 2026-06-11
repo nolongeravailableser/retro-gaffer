@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { baseValue, marketValue, marketSellValue, marketTierMult, MARKET_SELL_RATE } from '@/lib/market';
+import {
+  baseValue, marketValue, marketSellValue, marketTierMult, MARKET_SELL_RATE,
+  transferFee, isFreeAgent, FREE_AGENT_MAX_OVERALL,
+} from '@/lib/market';
+import { overall } from '@/lib/wages';
 import { TOP_TIER, BOTTOM_TIER } from '@/lib/league';
 import type { Player, Role } from '@/lib/types';
 
@@ -27,8 +31,22 @@ describe('market valuations', () => {
   });
 
   it('sell value is a haircut on market value', () => {
-    const p = mk('DEF', 80, 88);
+    const p = mk('DEF', 90, 95); // ensure not a free agent
+    expect(isFreeAgent(p)).toBe(false);
     expect(marketSellValue(p, 3)).toBeLessThan(marketValue(p, 3));
     expect(marketSellValue(p, 3)).toBeCloseTo(Math.round(marketValue(p, 3) * MARKET_SELL_RATE), 0);
+  });
+
+  it('free agents (below the overall floor) cost nothing and have no resale', () => {
+    const journeyman = mk('MID', 50, 50);
+    expect(overall(journeyman)).toBeLessThan(FREE_AGENT_MAX_OVERALL);
+    expect(isFreeAgent(journeyman)).toBe(true);
+    expect(transferFee(journeyman, 5)).toBe(0);
+    expect(transferFee(journeyman, 1)).toBe(0); // free in every division
+    expect(marketSellValue(journeyman, 3)).toBe(0);
+
+    const star = mk('FWD', 92, 55);
+    expect(isFreeAgent(star)).toBe(false);
+    expect(transferFee(star, 1)).toBe(marketValue(star, 1)); // quality costs full value
   });
 });

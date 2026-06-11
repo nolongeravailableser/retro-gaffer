@@ -35,7 +35,11 @@ export default function JourneyBar({
   onGo,
 }: JourneyBarProps) {
   const autoBuy = useGameStore((s) => s.autoBuy);
+  const autoFillSquad = useGameStore((s) => s.autoFillSquad);
   const autoPickXI = useGameStore((s) => s.autoPickXI);
+  // Career/League sign from the browsable market — the one-tap helper fills the
+  // XI with free agents; Classic & co. auto-buy from the draft shop offers.
+  const isMarket = useGameStore((s) => s.career !== null || s.league !== null);
 
   const { stage } = journey;
   const stageIdx = STEPS.findIndex((s) => s.stage === stage);
@@ -57,7 +61,9 @@ export default function JourneyBar({
   // they work from any tab — the helper is always at hand, not buried in a panel.
   const helper =
     stage === 'sign'
-      ? { label: 'Auto-Sign', action: autoBuy, title: 'Sign the best offers that fill your missing roles' }
+      ? isMarket
+        ? { label: 'Fill (free)', action: autoFillSquad, title: 'Fill empty XI slots with the best free agents (£0)' }
+        : { label: 'Auto-Sign', action: autoBuy, title: 'Sign the best offers that fill your missing roles' }
       : stage === 'pick'
         ? { label: 'Auto-Pick', action: autoPickXI, title: 'Field your strongest available XI' }
         : null;

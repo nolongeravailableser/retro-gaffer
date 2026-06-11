@@ -29,7 +29,7 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { wageBill, divisionMult, tierMult, wageTierMult, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { wageBill, divisionMult, tierMult, wageTierMult, overall, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
@@ -70,6 +70,12 @@ import {
   facilityUpkeep,
   type FacilityId,
 } from '@/lib/stadium';
+import {
+  transferFee,
+  marketSellValue,
+  isFreeAgent,
+  CAREER_STARTING_BANKROLL,
+} from '@/lib/market';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
@@ -104,6 +110,17 @@ export function isSlotEligible(
 ): boolean {
   const p = getPlayer(playerId);
   return !!p && canFillSlot(p, slotPosition(formationId, slotIndex));
+}
+
+/**
+ * The division tier that drives transfer-market valuations, or null when a run
+ * has no market (Classic/Endless/Scenario use the roguelike draft shop instead).
+ * Career → its current tier; standalone League → the neutral mid tier.
+ */
+function marketTierOf(s: { career: CareerState | null; league: LeagueState | null }): number | null {
+  if (s.career) return s.career.tier;
+  if (s.league) return LEAGUE_NEUTRAL_TIER;
+  return null;
 }
 
 type ShopSlots = (string | null)[];
@@ -293,6 +310,10 @@ interface GameState {
   // economy
   buy: (shopIndex: number) => void;
   sell: (id: string) => void;
+  /** Sign any available player from the Career/League transfer market at their fee. */
+  signPlayer: (id: string) => void;
+  /** Fill empty XI slots with the best free agents (Career/League market). */
+  autoFillSquad: () => void;
   refreshShop: () => void;
   /** Dispatch a scout (paid): guarantee a brief-matching player in the shop. */
   scoutShop: (briefId: string) => void;
@@ -738,15 +759,96 @@ export const useGameStore = create<GameState>()(
         const { owned } = get();
         const player = getPlayer(id);
         if (!player || !owned.includes(id)) return;
-        set((s) => ({
-          bankroll: s.bankroll + sellValue(player),
-          owned: s.owned.filter((o) => o !== id),
-          xi: s.xi.map((slot) => (slot === id ? null : slot)),
-          bench: s.bench.filter((b) => b !== id),
-          selectedPlayerId: s.selectedPlayerId === id ? null : s.selectedPlayerId,
-          notice: null,
-        }));
+        set((s) => {
+          // Career/League sell at division-scaled market value (free agents have
+          // no resale); Classic/other use the flat 80%-of-cost rule.
+          const mt = marketTierOf(s);
+          const proceeds = mt !== null ? marketSellValue(player, mt) : sellValue(player);
+          return {
+            bankroll: s.bankroll + proceeds,
+            owned: s.owned.filter((o) => o !== id),
+            xi: s.xi.map((slot) => (slot === id ? null : slot)),
+            bench: s.bench.filter((b) => b !== id),
+            selectedPlayerId: s.selectedPlayerId === id ? null : s.selectedPlayerId,
+            notice: null,
+          };
+        });
       },
+
+      // Sign any available player from the Career/League transfer market at their
+      // transfer fee (free agents — sub-64 overall — cost nothing). Auto-assigns
+      // into the XI like a draft buy. No-op outside league/career modes.
+      signPlayer: (id) => {
+        const s = get();
+        const mt = marketTierOf(s);
+        if (mt === null) return;
+        const player = getPlayer(id);
+        if (!player || s.owned.includes(id)) return;
+        const fee = transferFee(player, mt);
+        const check = checkBuy(s.bankroll, s.owned.length, { ...player, cost: fee });
+        if (!check.ok) {
+          set({ notice: check.reason ?? 'Cannot sign', noticeKind: 'error' });
+          return;
+        }
+        // Auto-assign: first empty matching XI slot, else bench.
+        const newXi = [...s.xi];
+        let placedInXi = false;
+        for (let i = 0; i < XI_SIZE; i++) {
+          if (newXi[i] === null && slotRole(s.formation, i) === player.role) {
+            newXi[i] = id;
+            placedInXi = true;
+            break;
+          }
+        }
+        const newBench = [...s.bench];
+        let placedOnBench = false;
+        if (!placedInXi && newBench.length < BENCH_SIZE) {
+          newBench.push(id);
+          placedOnBench = true;
+        }
+        set({
+          bankroll: s.bankroll - fee,
+          owned: [...s.owned, id],
+          collection: addToCollection(s.collection, id),
+          xi: placedInXi ? newXi : s.xi,
+          bench: placedOnBench ? newBench : s.bench,
+          notice: `Signed ${player.name}${fee === 0 ? ' on a free transfer' : ` for £${fee}M`}!`,
+          noticeKind: 'success',
+        });
+      },
+
+      // One-tap squad fill for the Career/League market: drop the best available
+      // FREE AGENT into every empty XI slot (£0), guaranteeing a legal — if
+      // humble — side. The manager then spends the budget on quality upgrades.
+      autoFillSquad: () =>
+        set((s) => {
+          if (marketTierOf(s) === null) return {};
+          const ownedSet = new Set(s.owned);
+          const newXi = [...s.xi];
+          const newOwned = [...s.owned];
+          const signed: string[] = [];
+          for (let i = 0; i < XI_SIZE; i++) {
+            if (newXi[i] !== null || newOwned.length >= ROSTER_CAP) continue;
+            const role = slotRole(s.formation, i);
+            const cand = POOL
+              .filter((p) => p.role === role && isFreeAgent(p) && !ownedSet.has(p.id))
+              .sort((a, b) => overall(b) - overall(a))[0];
+            if (cand) {
+              newXi[i] = cand.id;
+              newOwned.push(cand.id);
+              ownedSet.add(cand.id);
+              signed.push(cand.id);
+            }
+          }
+          if (!signed.length) return { notice: 'Squad already filled', noticeKind: 'info' };
+          return {
+            xi: newXi,
+            owned: newOwned,
+            collection: addToCollection(s.collection, ...signed),
+            notice: `Signed ${signed.length} free agent${signed.length > 1 ? 's' : ''} to complete the XI.`,
+            noticeKind: 'success',
+          };
+        }),
 
       refreshShop: () => {
         const { bankroll, owned, shopSeed, pack, relics, freeRefreshUsed, dryStreak } = get();
@@ -1312,6 +1414,10 @@ export const useGameStore = create<GameState>()(
           const league = generateLeague(fresh.runSeed, LEAGUE_BASE_STRENGTH, LEAGUE_TEAMS);
           return {
             ...fresh,
+            // The transfer market sets prices; you start with a modest kitty and
+            // fill out the side with free agents (see lib/market.ts).
+            bankroll: CAREER_STARTING_BANKROLL,
+            peakBankroll: CAREER_STARTING_BANKROLL,
             league,
             best: s.best,
             scenarioStars: s.scenarioStars,
@@ -1369,6 +1475,10 @@ export const useGameStore = create<GameState>()(
           const league = generateLeague(fresh.runSeed, division(tier).baseStrength, LEAGUE_TEAMS);
           return {
             ...fresh,
+            // Modest opening transfer kitty — field the side with free agents
+            // (overall < 64) and spend this on a few quality upgrades.
+            bankroll: CAREER_STARTING_BANKROLL,
+            peakBankroll: CAREER_STARTING_BANKROLL,
             league,
             career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
             careerReview: null,
