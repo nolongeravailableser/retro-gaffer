@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (feedback roadmap through Phase 4.3 League mode + 4.4a pyramid foundation shipped & debugged; persistence v20, 255 tests. NEXT: Career→league pyramid — see §3 "START HERE")
+> **Last updated:** 2026-06-11 (Career → league pyramid SHIPPED — promotion/relegation across the English tiers, keeping aging/youth; persistence v21, 260 tests. NEXT: 4.4 stadium development — see §3 "START HERE")
 
 ---
 
@@ -557,21 +557,39 @@ programmatically** from existing single position (confirm before building).
     DIVISIONS (National League→Premier League, rising AI base), TOP/BOTTOM_TIER,
     PROMOTION/RELEGATION_SPOTS (top/bottom 3), `seasonOutcome` (champion/
     promoted/stay/relegated/sacked) + `nextTier`. Tests +3.
-  - **NEXT — Career = league pyramid (the big restructure, NOT started):** make
-    each Career season a league in the club's current `tier`; end of season →
-    `seasonOutcome` → promotion/relegation/sacked/champion → `nextTier` → new
-    league next season. PLAN: extend `CareerState` with `tier` + the season's
-    `LeagueState`; the career branch of `resolveRound` resolves matchweeks (no
-    lives) and, at season end, runs promotion/relegation + KEEP the existing
-    aging/youth intake (CareerReview becomes a promotion/relegation summary);
-    `startCareer` begins in the BOTTOM tier (National League); App career
-    opponent = the league fixture; win = win the Premier League; sacked = the
-    drop zone in the bottom tier. Persistence migration (CareerState shape).
-    DESIGN FORK — DECIDED (user, 2026-06-11): **keep aging/youth AND add the
-    pyramid** (restructure the existing Career in place; the board-target is
-    replaced by the league finish — avoid the drop, win promotion; win the
-    Premier League = the ultimate). Build is fully teed up; left for a fresh
-    focused session because it rewrites shipped Career + bumps the save shape.
+  - **4.4b Career = league pyramid (SHIPPED, commits `413c276`+`94cddbd`):**
+    Each Career season is now a league in the club's current `tier` of the
+    English pyramid (National League → Premier League). The board-target framing
+    is gone; the league finish decides everything.
+    - **Reuse, not nest:** Career sets the top-level `s.league` (same field
+      standalone League uses), so App's opponent logic + `resolveLeagueRound`
+      work unchanged. `CareerState` gained `tier` (dropped `targetRound`).
+    - `resolveLeagueRound` is career-aware: a finished season runs
+      `seasonOutcome(tier, pos, 12)` → `champion` (top tier 1st) WINS the run;
+      `sacked` (drop zone in the bottom tier) ENDS it; else opens the
+      between-seasons review (promoted/stay/relegated) which KEEPS the existing
+      `ageRoster` + `generateYouth` academy intake. `advanceCareerSeason`
+      applies `review.toTier` (`nextTier`) and generates a fresh league there.
+      Removed the dead classic-career branch from `resolveRound`.
+    - **Economy:** `lib/wages.ts` `tierMult(tier)` — a season is one division,
+      so prize money/income scale by the pyramid TIER (flat across matchweeks),
+      bottom→floor (0.6) … top→ceil (1.7). Standalone League pays
+      `LEAGUE_NEUTRAL_TIER`. Sim still **37.2%** (Classic path untouched).
+    - **Achievements** now evaluate on the league/career path (restores Dynasty
+      etc. for career; no bosses, lives inert via a MAX_SAFE_INTEGER sentinel).
+    - **Persistence v21:** legacy careers get `tier: BOTTOM_TIER` + drop
+      `targetRound`; `onRehydrateStorage` regenerates a league for a league-less
+      career. `lib/career.ts` removed `boardTarget`/`boardWantsTitle`/`boardMet`.
+    - **UI:** Hud + SeasonPanel show the division + promotion/relegation framing;
+      `CareerReview` is a promotion/relegation summary (keeps academy intake);
+      `RunOverModal` headlines "CHAMPIONS OF ENGLAND!" on a top-tier win and
+      "SACKED" only on relegation from the bottom tier; NewRunModal Career copy
+      updated. Tests: career.test (reviewBonus), wages (tierMult), savecode (v21
+      migration), **careerLeague.test.ts (5 store-integration tests)** → 260.
+    - **Verified live:** New Career → National League (tier 5), 12 clubs,
+      tier-appropriate AI strength, division shown everywhere, table renders,
+      floor-economy stakes. Existing R7 Classic save migrated + rehydrated clean
+      (backed up to `gaffer-run-BACKUP` and restored).
 - **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
 
 ---
@@ -581,33 +599,26 @@ programmatically** from existing single position (confirm before building).
 ### ⭐ NEXT SESSION — START HERE
 
 **Status (2026-06-11):** the user-feedback roadmap (§2l) is delivered through
-**Phase 4.3 (standalone League mode) + 4.4a (pyramid foundation)**. Phases 1, 2,
-3, 4.1, 4.2, 4.3 are all shipped AND debug-passed. Everything is **committed
-locally on `main` but NOT pushed to `origin`** (push when the user asks).
-Gates: **tsc clean · 255 tests · build green · persistence v20**.
+**Phase 4.4b — Career = league pyramid** (promotion/relegation across the
+English tiers, keeping aging/youth). Phases 1, 2, 3, 4.1, 4.2, 4.3, 4.4a, 4.4b
+are all shipped AND verified. Everything is **committed locally on `main` but
+NOT pushed to `origin`** (push when the user asks). Gates: **tsc clean · 260
+tests · build green · persistence v21**.
 
-**THE NEXT TASK: Career → league pyramid** (design DECIDED — keep aging/youth +
-add promotion/relegation across the English tiers). Full plan + locked decision
-in §2l "4.3 → NEXT". In short:
-1. Extend `CareerState` (lib/career.ts) with `tier: number` + the season's
-   `league: LeagueState`. Persistence migration (bump CURRENT_VERSION to 21;
-   existing career saves → default to a sensible tier, e.g. BOTTOM_TIER).
-2. `startCareer` (store): begin in `BOTTOM_TIER` (National League),
-   `generateLeague(seed, division(tier).baseStrength)`, season 1.
-3. Career branch of `resolveRound`: resolve matchweeks via the league path
-   (mirror `resolveLeagueRound` — no lives); at season end run
-   `seasonOutcome(tier, position, 12)` → champion/promoted/stay/relegated/
-   sacked, then KEEP the existing aging/youth (ageRoster/generateYouth) in the
-   between-seasons review, and `advanceCareerSeason` starts a fresh league in
-   `nextTier(...)`.
-4. App: career opponent = the league fixture's club (same as `league` does now).
-5. UI: show the division name + the league table in career; CareerReview becomes
-   a promotion/relegation summary. RunOverModal: "sacked" only when relegated
-   from the bottom tier; "won" when you win the Premier League.
-6. Re-gate with `npm run sim` if the career economy shifts; verify a full
-   season + a promotion live.
-Then **4.4 stadium development** (career-only facilities: capacity→matchday
-income, training→youth, medical→fewer injuries).
+**THE NEXT TASK: 4.4 stadium development** (career-only facilities). Idea
+(NOT yet designed in detail): capacity → matchday income, training → faster
+youth growth, medical → fewer/shorter injuries; upgraded with the end-of-season
+bonus. It's career-only, so it threads through `CareerState` (persist bump +
+migration) and the `advanceCareerSeason` / `resolveLeagueRound` economy. Confirm
+the design with the user before building (how many facilities, cost curve,
+whether it touches `npm run sim`).
+
+**Career pyramid recap (just shipped — see §2l 4.4b):** Career reuses the
+top-level `s.league`; `CareerState.tier` drives the division; `resolveLeagueRound`
+runs `seasonOutcome` at season end (champion = win the run, sacked = relegated
+from the bottom tier, else a promotion/relegation review that keeps the academy
+intake); `tierMult` scales prize money by tier. Store-integration coverage lives
+in `tests/careerLeague.test.ts`.
 
 **Operational gotchas learned this session (IMPORTANT for browser testing):**
 - BEFORE any destructive browser test (New Game / startLeague / playing a
