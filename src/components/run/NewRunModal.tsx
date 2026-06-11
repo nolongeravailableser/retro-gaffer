@@ -158,8 +158,8 @@ export default function NewRunModal({ open, onClose, onStarted }: NewRunModalPro
                     Career
                   </span>
                   <span className="text-[11px] leading-snug text-chrome-muted">
-                    Manage a club across many seasons — keep your squad, meet the board's
-                    demands, grow academy youth. Lose your job and it's over.
+                    Climb the English pyramid — each season is a league. Win promotion or
+                    risk the drop, grow academy youth. Win the Premier League to win it all.
                   </span>
                 </button>
               </div>
