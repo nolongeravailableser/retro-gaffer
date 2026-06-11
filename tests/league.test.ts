@@ -9,6 +9,9 @@ import {
   position,
   totalWeeks,
   fixtureKey,
+  assignClubSquads,
+  allClubOwnedIds,
+  clubOf,
   YOU,
   seasonOutcome,
   nextTier,
@@ -16,6 +19,7 @@ import {
   BOTTOM_TIER,
   type LeagueState,
 } from '@/lib/league';
+import { POOL } from '@/data/pool';
 
 describe('roundRobin', () => {
   it('schedules a single round-robin: n-1 weeks, every pair once', () => {
@@ -47,6 +51,34 @@ describe('generateLeague', () => {
     expect(totalWeeks(a)).toBe(11);
     // the player has exactly one fixture each week
     for (let w = 1; w <= 11; w++) expect(playerFixture(a, w)).not.toBeNull();
+  });
+});
+
+describe('assignClubSquads (Phase B)', () => {
+  it('drafts distinct, role-balanced squads for AI clubs (not YOU); strongest first', () => {
+    const lg = generateLeague('sb-1', 1300);
+    assignClubSquads(lg.clubs, POOL);
+    const ai = lg.clubs.filter((c) => c.id !== YOU);
+    const you = lg.clubs.find((c) => c.id === YOU)!;
+    expect(you.squad).toBeUndefined(); // the player drafts their own
+    for (const c of ai) expect(c.squad!.length).toBe(14); // 1+5+5+3
+
+    // No player owned by two clubs.
+    const all = ai.flatMap((c) => c.squad!);
+    expect(new Set(all).size).toBe(all.length);
+
+    // The strongest club's squad outrates the weakest club's (drafts first).
+    const byId = new Map(POOL.map((p) => [p.id, p]));
+    const rate = (ids: string[]) =>
+      ids.reduce((s, id) => s + (byId.get(id)!.stats.attack + byId.get(id)!.stats.defense), 0);
+    const sorted = [...ai].sort((a, b) => b.strength - a.strength);
+    expect(rate(sorted[0].squad!)).toBeGreaterThan(rate(sorted[sorted.length - 1].squad!));
+
+    // Ownership lookups.
+    const owned = allClubOwnedIds(lg);
+    expect(owned.has(all[0])).toBe(true);
+    expect(clubOf(lg, all[0])).not.toBeNull();
+    expect(clubOf(lg, '__nobody__')).toBeNull();
   });
 });
 

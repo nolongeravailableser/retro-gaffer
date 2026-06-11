@@ -78,6 +78,49 @@ export interface LeagueClub {
   name: string;
   /** Combined attack+defense rating used for AI-vs-AI sims (not the player). */
   strength: number;
+  /** Pool player ids this club owns (Phase B). Empty for YOU. You can poach
+   *  these (for a premium, weakening the club); they're not free agents. */
+  squad?: string[];
+}
+
+/** Minimal player shape the squad-assigner needs (avoids a lib/wages cycle). */
+interface RatedPlayer {
+  id: string;
+  role: string;
+  stats: { attack: number; defense: number };
+}
+
+/** Role targets for a generated AI club squad (14 — a full XI + cover). */
+const CLUB_SQUAD_NEED: Record<string, number> = { GK: 1, DEF: 5, MID: 5, FWD: 3 };
+
+/**
+ * Give each AI club a real, seeded squad drafted from `pool`: clubs draft in
+ * strength order (strongest first), greedily taking the best available player
+ * per still-needed role. So the title favourites own the galácticos and the
+ * minnows get journeymen — and the players a club owns are NOT free agents (you
+ * must poach them). YOU (the player) drafts nothing here — you build your own.
+ * Mutates `clubs` in place. Deterministic given the draft order.
+ */
+export function assignClubSquads(clubs: LeagueClub[], pool: readonly RatedPlayer[]): void {
+  const rank = (p: RatedPlayer) => p.stats.attack + p.stats.defense;
+  const byRole = new Map<string, RatedPlayer[]>();
+  for (const p of pool) {
+    (byRole.get(p.role) ?? byRole.set(p.role, []).get(p.role)!).push(p);
+  }
+  for (const arr of byRole.values()) arr.sort((a, b) => rank(b) - rank(a)); // best first
+  const cursor = new Map<string, number>(); // next index per role
+
+  const aiClubs = clubs.filter((c) => c.id !== YOU).sort((a, b) => b.strength - a.strength);
+  for (const club of aiClubs) {
+    const squad: string[] = [];
+    for (const [role, need] of Object.entries(CLUB_SQUAD_NEED)) {
+      const arr = byRole.get(role) ?? [];
+      let i = cursor.get(role) ?? 0;
+      for (let n = 0; n < need && i < arr.length; n++, i++) squad.push(arr[i].id);
+      cursor.set(role, i);
+    }
+    club.squad = squad;
+  }
 }
 
 export interface Fixture {
@@ -179,6 +222,18 @@ export function generateLeague(
 
 export function totalWeeks(state: LeagueState): number {
   return state.clubs.length - 1;
+}
+
+/** Every pool-player id owned by an AI club (so they're excluded from free agents). */
+export function allClubOwnedIds(state: LeagueState): Set<string> {
+  const ids = new Set<string>();
+  for (const c of state.clubs) for (const id of c.squad ?? []) ids.add(id);
+  return ids;
+}
+
+/** The AI club that owns a player (a poach target), or null if unowned/free. */
+export function clubOf(state: LeagueState, playerId: string): LeagueClub | null {
+  return state.clubs.find((c) => c.id !== YOU && (c.squad ?? []).includes(playerId)) ?? null;
 }
 
 /** The player's fixture for a given matchweek (or null on a bye/none). */

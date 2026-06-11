@@ -78,3 +78,15 @@ export function marketSellValue(p: Player, tier: number): number {
   if (isFreeAgent(p)) return 0;
   return Math.max(1, Math.round(marketValue(p, tier) * MARKET_SELL_RATE));
 }
+
+/** Premium paid to prise a player from a rival club (vs an unattached signing). */
+export const POACH_PREMIUM = 1.4;
+
+/**
+ * Fee to poach a player who's owned by a rival club (£m). Always non-zero — a
+ * contracted player is never a free transfer, even a journeyman — and carries a
+ * premium over open-market value (you're unsettling a rival).
+ */
+export function poachFee(p: Player, tier: number): number {
+  return Math.max(1, Math.round(marketValue(p, tier) * POACH_PREMIUM));
+}

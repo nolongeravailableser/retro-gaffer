@@ -36,6 +36,9 @@ import { drawEvent, type GameEvent } from '@/lib/events';
 import { DEFAULT_MODE_ID, LEAGUE_TEAMS, type ModeId } from '@/lib/modes';
 import {
   generateLeague,
+  assignClubSquads,
+  allClubOwnedIds,
+  clubOf,
   playerFixture,
   simAiWeek,
   position as leaguePosition,
@@ -73,6 +76,7 @@ import {
 import {
   transferFee,
   marketSellValue,
+  poachFee,
   isFreeAgent,
   CAREER_STARTING_BANKROLL,
 } from '@/lib/market';
@@ -121,6 +125,13 @@ function marketTierOf(s: { career: CareerState | null; league: LeagueState | nul
   if (s.career) return s.career.tier;
   if (s.league) return LEAGUE_NEUTRAL_TIER;
   return null;
+}
+
+/** A fresh league with AI clubs' squads drafted from the pool (Phase B). */
+function leagueWithSquads(seed: string | number, strength: number): LeagueState {
+  const lg = generateLeague(seed, strength, LEAGUE_TEAMS);
+  assignClubSquads(lg.clubs, POOL);
+  return lg;
 }
 
 type ShopSlots = (string | null)[];
@@ -775,16 +786,18 @@ export const useGameStore = create<GameState>()(
         });
       },
 
-      // Sign any available player from the Career/League transfer market at their
-      // transfer fee (free agents — sub-64 overall — cost nothing). Auto-assigns
-      // into the XI like a draft buy. No-op outside league/career modes.
+      // Sign a player from the Career/League market. Unattached players cost
+      // their transfer fee (free agents — sub-64 overall — are free); a player at
+      // a rival club is POACHED for a premium, which removes him from that club
+      // and weakens them in the table. Auto-assigns into the XI. No-op elsewhere.
       signPlayer: (id) => {
         const s = get();
         const mt = marketTierOf(s);
         if (mt === null) return;
         const player = getPlayer(id);
         if (!player || s.owned.includes(id)) return;
-        const fee = transferFee(player, mt);
+        const club = s.league ? clubOf(s.league, id) : null;
+        const fee = club ? poachFee(player, mt) : transferFee(player, mt);
         const check = checkBuy(s.bankroll, s.owned.length, { ...player, cost: fee });
         if (!check.ok) {
           set({ notice: check.reason ?? 'Cannot sign', noticeKind: 'error' });
@@ -806,13 +819,34 @@ export const useGameStore = create<GameState>()(
           newBench.push(id);
           placedOnBench = true;
         }
+        // Poaching: take the player off the rival's books and dent their strength
+        // (a key signing genuinely weakens them for the rest of the season).
+        let league = s.league;
+        if (club && league) {
+          const hit = Math.round((player.stats.attack + player.stats.defense) * 1.2);
+          league = {
+            ...league,
+            clubs: league.clubs.map((c) =>
+              c.id === club.id
+                ? {
+                    ...c,
+                    squad: (c.squad ?? []).filter((x) => x !== id),
+                    strength: Math.max(300, c.strength - hit),
+                  }
+                : c
+            ),
+          };
+        }
         set({
           bankroll: s.bankroll - fee,
           owned: [...s.owned, id],
           collection: addToCollection(s.collection, id),
           xi: placedInXi ? newXi : s.xi,
           bench: placedOnBench ? newBench : s.bench,
-          notice: `Signed ${player.name}${fee === 0 ? ' on a free transfer' : ` for £${fee}M`}!`,
+          league,
+          notice: club
+            ? `Poached ${player.name} from ${club.name} for £${fee}M!`
+            : `Signed ${player.name}${fee === 0 ? ' on a free transfer' : ` for £${fee}M`}!`,
           noticeKind: 'success',
         });
       },
@@ -824,6 +858,8 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           if (marketTierOf(s) === null) return {};
           const ownedSet = new Set(s.owned);
+          // Rival-owned players aren't free agents — exclude them from the fill.
+          const taken = s.league ? allClubOwnedIds(s.league) : new Set<string>();
           const newXi = [...s.xi];
           const newOwned = [...s.owned];
           const signed: string[] = [];
@@ -831,7 +867,7 @@ export const useGameStore = create<GameState>()(
             if (newXi[i] !== null || newOwned.length >= ROSTER_CAP) continue;
             const role = slotRole(s.formation, i);
             const cand = POOL
-              .filter((p) => p.role === role && isFreeAgent(p) && !ownedSet.has(p.id))
+              .filter((p) => p.role === role && isFreeAgent(p) && !ownedSet.has(p.id) && !taken.has(p.id))
               .sort((a, b) => overall(b) - overall(a))[0];
             if (cand) {
               newXi[i] = cand.id;
@@ -1411,7 +1447,7 @@ export const useGameStore = create<GameState>()(
       startLeague: () =>
         set((s) => {
           const fresh = freshRun(null, 'league', null);
-          const league = generateLeague(fresh.runSeed, LEAGUE_BASE_STRENGTH, LEAGUE_TEAMS);
+          const league = leagueWithSquads(fresh.runSeed, LEAGUE_BASE_STRENGTH);
           return {
             ...fresh,
             // The transfer market sets prices; you start with a modest kitty and
@@ -1472,7 +1508,7 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           const fresh = freshRun(null, 'league', null);
           const tier = BOTTOM_TIER;
-          const league = generateLeague(fresh.runSeed, division(tier).baseStrength, LEAGUE_TEAMS);
+          const league = leagueWithSquads(fresh.runSeed, division(tier).baseStrength);
           return {
             ...fresh,
             // Modest opening transfer kitty — field the side with free agents
@@ -1552,7 +1588,7 @@ export const useGameStore = create<GameState>()(
           const tier = review.toTier;
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
-          const league = generateLeague(seed, division(tier).baseStrength, LEAGUE_TEAMS);
+          const league = leagueWithSquads(seed, division(tier).baseStrength);
           const divName = division(tier).name;
           const move =
             review.outcome === 'promoted'
@@ -1640,12 +1676,14 @@ export const useGameStore = create<GameState>()(
         // A legacy (pre-pyramid) career has a tier but no league yet — generate
         // one for its division so the league-resolve path has state to work with.
         if (state.career && !state.league) {
-          state.league = generateLeague(
-            state.runSeed,
-            division(state.career.tier).baseStrength,
-            LEAGUE_TEAMS
-          );
+          state.league = leagueWithSquads(state.runSeed, division(state.career.tier).baseStrength);
           state.round = state.league.matchweek;
+        }
+        // A pre-Phase-B league has clubs but no squads — draft them so the
+        // transfer market's poach/free-agent split works (idempotent: only when
+        // none are set, so it never undoes mid-season poaching).
+        if (state.league && !state.league.clubs.some((c) => c.squad)) {
+          assignClubSquads(state.league.clubs, POOL);
         }
       },
     }

@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Search, Users, Wand2, BadgePoundSterling } from 'lucide-react';
+import { Search, Users, Wand2 } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { POOL } from '@/data/pool';
-import { overall } from '@/lib/wages';
-import { transferFee, isFreeAgent } from '@/lib/market';
-import { LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { overall, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { transferFee, poachFee, isFreeAgent } from '@/lib/market';
 import { division } from '@/lib/league';
 import { computeChemistry } from '@/lib/chemistry';
 import { ROSTER_CAP } from '@/lib/economy';
@@ -13,23 +12,26 @@ import { ROLE_STYLES } from '@/components/ui/roleStyles';
 
 type RoleFilter = 'ALL' | Role;
 const ROLE_FILTERS: RoleFilter[] = ['ALL', 'GK', 'DEF', 'MID', 'FWD'];
+type Avail = 'all' | 'free' | 'clubs';
 const MAX_ROWS = 60;
 
 /**
  * The Career/League transfer market: a browsable, searchable, filterable list of
- * every available player priced at market value — with a free-agent tier you can
- * always dip into. Replaces the roguelike draft shop in the simulation modes.
+ * every player — free agents you can sign for nothing, unattached players at
+ * market value, and rivals' players you can POACH (for a premium, weakening
+ * them). Replaces the roguelike draft shop in the simulation modes.
  */
 export default function TransferMarket() {
   const owned = useGameStore((s) => s.owned);
   const xi = useGameStore((s) => s.xi);
   const bankroll = useGameStore((s) => s.bankroll);
   const career = useGameStore((s) => s.career);
+  const league = useGameStore((s) => s.league);
   const signPlayer = useGameStore((s) => s.signPlayer);
   const autoFillSquad = useGameStore((s) => s.autoFillSquad);
 
   const [role, setRole] = useState<RoleFilter>('ALL');
-  const [freeOnly, setFreeOnly] = useState(false);
+  const [avail, setAvail] = useState<Avail>('all');
   const [query, setQuery] = useState('');
 
   const tier = career?.tier ?? LEAGUE_NEUTRAL_TIER;
@@ -39,27 +41,38 @@ export default function TransferMarket() {
     () => xi.map((id) => getPlayer(id)).filter((p): p is Player => !!p),
     [xi]
   );
-
   const ownedSet = useMemo(() => new Set(owned), [owned]);
+
+  // Map each rival-owned player id → its club name (poach targets).
+  const clubByPlayer = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of league?.clubs ?? []) {
+      for (const id of c.squad ?? []) m.set(id, c.name);
+    }
+    return m;
+  }, [league]);
+
+  const feeOf = (p: Player) => (clubByPlayer.has(p.id) ? poachFee(p, tier) : transferFee(p, tier));
 
   const { rows, total } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const avail = POOL.filter((p) => {
+    const list = POOL.filter((p) => {
       if (ownedSet.has(p.id)) return false;
       if (role !== 'ALL' && p.role !== role) return false;
-      if (freeOnly && !isFreeAgent(p)) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
+      const atClub = clubByPlayer.has(p.id);
+      if (avail === 'free' && (atClub || !isFreeAgent(p))) return false;
+      if (avail === 'clubs' && !atClub) return false;
       return true;
     });
-    // Affordable players first (the best you can actually sign on this budget —
-    // including free agents), then the rest; each group best-rated first. So a
-    // new manager sees signable targets, not just unaffordable galácticos.
-    avail.sort((a, b) => {
-      const aff = (transferFee(b, tier) <= bankroll ? 1 : 0) - (transferFee(a, tier) <= bankroll ? 1 : 0);
+    // Affordable first (the best you can actually sign now), then best-rated.
+    list.sort((a, b) => {
+      const aff = (feeOf(b) <= bankroll ? 1 : 0) - (feeOf(a) <= bankroll ? 1 : 0);
       return aff || overall(b) - overall(a);
     });
-    return { rows: avail.slice(0, MAX_ROWS), total: avail.length };
-  }, [ownedSet, role, freeOnly, query, tier, bankroll]);
+    return { rows: list.slice(0, MAX_ROWS), total: list.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownedSet, role, avail, query, tier, bankroll, clubByPlayer]);
 
   const full = owned.length >= ROSTER_CAP;
 
@@ -101,18 +114,25 @@ export default function TransferMarket() {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setFreeOnly((v) => !v)}
-          className={[
-            'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-display transition',
-            freeOnly
-              ? 'border-crt-green bg-crt-green/20 text-crt-green'
-              : 'border-white/10 text-chrome-muted hover:text-chrome hover:bg-white/5',
-          ].join(' ')}
-        >
-          <BadgePoundSterling size={12} /> Free agents
-        </button>
+        <div className="flex items-center gap-1">
+          {([['all', 'Everyone'], ['free', 'Free agents'], ['clubs', 'At clubs']] as [Avail, string][]).map(
+            ([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAvail(key)}
+                className={[
+                  'rounded-full border px-2.5 py-1 text-xs font-display transition',
+                  avail === key
+                    ? 'border-crt-green bg-crt-green/20 text-crt-green'
+                    : 'border-white/10 text-chrome-muted hover:text-chrome hover:bg-white/5',
+                ].join(' ')}
+              >
+                {label}
+              </button>
+            )
+          )}
+        </div>
         <div className="relative ml-auto flex items-center">
           <Search size={13} className="absolute left-2 text-chrome-muted" />
           <input
@@ -129,7 +149,8 @@ export default function TransferMarket() {
       {/* List */}
       <div className="flex flex-col gap-1.5">
         {rows.map((p) => {
-          const fee = transferFee(p, tier);
+          const atClub = clubByPlayer.get(p.id);
+          const fee = feeOf(p);
           const free = fee === 0;
           const rs = ROLE_STYLES[p.role];
           const withC = computeChemistry([...starters, p]);
@@ -147,7 +168,7 @@ export default function TransferMarket() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-sm text-chrome">{p.name}</p>
                 <p className="truncate font-ticker text-[10px] text-chrome-muted">
-                  {p.club} · {p.era}
+                  {atClub ? <span className="text-fuchsia-300">↪ {atClub}</span> : `${p.club} · ${p.era}`}
                   {bonus > 0 && <span className="ml-1 text-crt-green">✦+{bonus}%</span>}
                 </p>
               </div>
@@ -162,16 +183,24 @@ export default function TransferMarket() {
                 onClick={() => signPlayer(p.id)}
                 disabled={!affordable}
                 data-testid={`sign-${p.id}`}
-                title={full ? 'Squad full' : affordable ? `Sign for ${free ? 'free' : `£${fee}M`}` : `Need £${fee}M`}
+                title={
+                  full
+                    ? 'Squad full'
+                    : affordable
+                      ? atClub ? `Poach for £${fee}M` : `Sign for ${free ? 'free' : `£${fee}M`}`
+                      : `Need £${fee}M`
+                }
                 className={[
                   'flex w-20 shrink-0 items-center justify-center rounded border px-2 py-1 font-display text-[11px] transition',
-                  free
-                    ? 'border-crt-green/50 text-crt-green hover:bg-crt-green/15'
-                    : 'border-crt-amber/40 text-crt-amber hover:bg-crt-amber/10',
+                  atClub
+                    ? 'border-fuchsia-400/50 text-fuchsia-200 hover:bg-fuchsia-500/15'
+                    : free
+                      ? 'border-crt-green/50 text-crt-green hover:bg-crt-green/15'
+                      : 'border-crt-amber/40 text-crt-amber hover:bg-crt-amber/10',
                   !affordable && 'cursor-not-allowed opacity-40',
                 ].join(' ')}
               >
-                {free ? 'Free' : `£${fee}M`}
+                {atClub ? `£${fee}M` : free ? 'Free' : `£${fee}M`}
               </button>
             </div>
           );
@@ -183,8 +212,8 @@ export default function TransferMarket() {
 
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-chrome-muted">
         <Users size={12} />
-        Showing {rows.length} of {total} available · Squad {owned.length}/{ROSTER_CAP} · free agents
-        (under 64 OVR) cost nothing.
+        Showing {rows.length} of {total} · Squad {owned.length}/{ROSTER_CAP} · free agents (under 64 OVR)
+        are free; <span className="text-fuchsia-300">poaching</span> a rival weakens them.
       </p>
     </div>
   );
