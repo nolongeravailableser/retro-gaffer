@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (4.7 SHIPPED locally — facility-upkeep money sink + champions-of-England flourish, with a wage×upkeep economy re-tune; persistence v23, 270 tests. Phases 1–4.6 PUSHED to prod (commit `112995c`); 4.7 commits local & unpushed. See §3 "START HERE")
+> **Last updated:** 2026-06-11 (4.8 FM transfer market — Phase A — SHIPPED locally: browsable market + free agents + market valuations for Career/League, +165 lower-league players (pool 668), economy retuned. persistence v23, 274 tests. Phases 1–4.7 PUSHED to prod; only the 4.8 commits are local & unpushed. NEXT: Phase B rival squads. See §3 "START HERE")
 
 ---
 
@@ -635,7 +635,31 @@ programmatically** from existing single position (confirm before building).
     - **Pitch-view polish** (MatchPitchView, determinism-safe): persistent dot
       smoothing (glides scene boundaries + carrier hand-off), off-ball forward
       runs, dribble-vs-pass ball pacing.
-  - **4.7 Money sink + title flourish (SHIPPED locally, commit `faec112`):**
+  - **4.8 FM transfer market (Career/League) — Phase A (LOCAL, commits `4b524c5`+`6e35ab8`; NOT pushed):**
+    Replaces the roguelike gacha shop in the simulation modes with a real,
+    browsable market. (Classic keeps the draft shop.)
+    - **Content:** +165 lower-league/cult players (`data_src/english_lower.csv`,
+      tagged `cult_hero|lower_legend`) via a new safe `--add` mode in
+      `generate_players.py` (appends a shard, keeps every existing id intact).
+      Pool **503 → 668**. Records "players signed" uses `POOL.length` (auto).
+    - **`lib/market.ts`:** `marketValue` (convex EXP=5 × `MARKET_TIER_K`=1.2 tier
+      inflation — quality is expensive and scales with the division); **free-agent
+      floor** (`overall<64` = £0, no resale → always fieldable, never
+      bankrupt-locked); `transferFee`/`marketSellValue`;
+      `CAREER_STARTING_BANKROLL`=35.
+    - **store/UI:** `signPlayer`, `autoFillSquad` (free-agent fill), market-value
+      selling; `components/shop/TransferMarket.tsx` (search/role-filter/free-agent
+      toggle/affordable-first); wired into the Transfers tab for Career/League;
+      JourneyBar/SquadList market-aware.
+    - **economy retune** (market is now the primary sink): `WAGE_TIER_K` 1.5→1.3,
+      `UPKEEP_PER_LEVEL` 1.0→0.75. No persistence change (free agents = pool
+      minus owned; **rival squads are Phase B**).
+    - Sim: reaches PL ~94%, champ ~53%, sacked ~4%; Classic 36.8%. Cult £2-9M,
+      stars £20-41M+, galáctico PL squad ~£500M. tsc · 274 tests · build green.
+    - **NEXT — Phase B:** rival clubs own seeded squads → poach/sell-to-clubs +
+      market dynamics (the third leg of the FM-market ask). Persistence bump
+      (squads in `LeagueState`).
+  - **4.7 Money sink + title flourish (SHIPPED + PUSHED, commit `faec112`):**
     - **Facility upkeep** (`facilityUpkeep` in stadium.ts, `UPKEEP_PER_LEVEL`=1.0):
       a recurring £/matchweek running cost = totalLevels × per-level × tierMult,
       career-only, applied in `resolveLeagueRound`. `lastIncome` gained an
@@ -662,17 +686,19 @@ pyramid, 4.4c facilities, 4.5 Career Hub, **4.6 polish pass** (economy
 rebalance, promotion celebration, pitch-view polish). Gates: **tsc clean · 270
 tests · build green · persistence v23.**
 
-**Push state:** everything **through commit `112995c` (4.6) is PUSHED to
-`origin/main` and live** (prod page + `/api/daily` both 200). The **4.7 commits
-(`faec112` + this docs commit) are LOCAL and unpushed** — push when the user asks
-(`origin/main` auto-deploys to Vercel). 4.7 is self-contained and verified;
-recommended to push as one release.
+**Push state:** prod is live through **4.7** (commit `327a53b`). **Local &
+unpushed:** the **4.8 FM transfer-market Phase A** commits (`4b524c5`, `6e35ab8`)
++ this docs commit. 4.8 is economy-coherent (market wired + retune together) and
+verified — safe to push as one release when the user OKs (it's a big balance
+change they've been steering, so confirm before prod).
 
-**No task is queued — all candidate directions (incl. the money sink + title
-flourish) are done.** The career economy now has a satisfying shape and wealth
-matters at the top. Possible future ideas (none requested): a transfer market
-with price inflation (a deeper sink + more agency), cup competitions alongside
-the league, or fresh requests.
+**NEXT — Phase B of the transfer market (the user's third ask, "market
+dynamics"):** give the 11 rival league clubs real seeded squads (store in
+`LeagueState` → persistence bump + migration), so the market = free agents +
+players listed by rivals; add **poaching** (a fee premium) and **selling to
+clubs that need a role**. Optional later: bidding/negotiation, transfer windows.
+Then: cup competitions (parked idea). Calibrate any economy shift via
+`tests/career.sim.ts` (the career sim already drafts at `transferFee`).
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
