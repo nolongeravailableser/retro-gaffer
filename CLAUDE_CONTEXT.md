@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 247 tests — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 252 tests — see §2l)
 
 ---
 
@@ -531,8 +531,21 @@ programmatically** from existing single position (confirm before building).
     **37.2%** (real wages + lower early-league income bite; deaths still at the
     R12 boss, not bankruptcy). Tests: wages.test.ts (5); removed the old
     ladder wageBill test. 247 total.
-- **Remaining (NOT started):** League-Season mode + table (new mode alongside
-  the roguelike), career stadium development. Forks locked in the §2l preamble.
+- **4.3 League-Season mode (IN PROGRESS):**
+  - **4.3a engine (SHIPPED, commit `d7be85e`):** `src/lib/league.ts` —
+    `generateLeague` (YOU + 11 seeded AI clubs, varied strength), `roundRobin`
+    (circle method → 11 matchweeks, every pair once, balanced home/away),
+    `simAiResult`/`simAiWeek` (light xG sim for non-player fixtures),
+    `table`/`position` (3-1-0, sorted points→GD→GF→name). Pure/deterministic.
+    Tests: league.test.ts (5).
+  - **Integration NOT started** (the large part): a `league` mode in modes.ts;
+    `league: LeagueState|null` in the store (persist v20 + migration + saveSlice
+    + freshRun reset); a league resolve path (record player result → simAiWeek →
+    advance matchweek → champion=won, no lives); App wiring (opponent = the
+    matchweek fixture's club via generateOpponent from its strength); a League
+    Table UI + New Run "League" card. Reuse finances/positions. Design call to
+    confirm: champion-only = won, or top-N promotion.
+- **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
 
 ---
 
