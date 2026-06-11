@@ -1,16 +1,32 @@
 import { ListOrdered } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { table, totalWeeks, YOU } from '@/lib/league';
+import {
+  table, totalWeeks, YOU, PROMOTION_SPOTS, RELEGATION_SPOTS, TOP_TIER, BOTTOM_TIER,
+} from '@/lib/league';
 
 /** The live league standings for an active League Season (you highlighted). */
 export default function LeagueTable() {
   const league = useGameStore((s) => s.league);
   const clubName = useGameStore((s) => s.clubName);
+  const career = useGameStore((s) => s.career);
   if (!league) return null;
 
   const rows = table(league);
   const weeks = totalWeeks(league);
   const played = Math.min(league.matchweek - 1, weeks);
+
+  // Promotion/relegation zones only apply in a Career (the pyramid). Standalone
+  // League is a one-off title chase — no zones, just the leader in amber.
+  const tier = career?.tier ?? null;
+  const clubs = rows.length;
+  const promotes = tier !== null && tier !== TOP_TIER; // top tier can't promote
+  const zoneFor = (rank: number): 'promotion' | 'relegation' | null => {
+    if (tier === null) return null;
+    if (promotes && rank <= PROMOTION_SPOTS) return 'promotion';
+    if (rank > clubs - RELEGATION_SPOTS) return 'relegation';
+    return null;
+  };
+  const relegationLabel = tier === BOTTOM_TIER ? 'Drop = sacked' : 'Relegation';
 
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-3" data-testid="league-table">
@@ -40,6 +56,13 @@ export default function LeagueTable() {
           <tbody>
             {rows.map((r, i) => {
               const isYou = r.teamId === YOU;
+              const zone = zoneFor(i + 1);
+              const zoneBar =
+                zone === 'promotion'
+                  ? 'border-l-2 border-l-crt-green'
+                  : zone === 'relegation'
+                    ? 'border-l-2 border-l-rose-400'
+                    : 'border-l-2 border-l-transparent';
               return (
                 <tr
                   key={r.teamId}
@@ -48,7 +71,7 @@ export default function LeagueTable() {
                     isYou ? 'bg-crt-green/15 text-crt-green' : i === 0 ? 'text-crt-amber' : 'text-chrome',
                   ].join(' ')}
                 >
-                  <td className="py-1 pr-1 text-left text-chrome-muted">{i + 1}</td>
+                  <td className={`py-1 pl-1.5 pr-1 text-left text-chrome-muted ${zoneBar}`}>{i + 1}</td>
                   <td className="py-1 text-left font-display">
                     {isYou ? clubName ?? 'Your XI' : r.name}
                   </td>
@@ -64,11 +87,25 @@ export default function LeagueTable() {
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-[10px] text-chrome-muted">
-        {played === 0
-          ? 'Single round-robin — win the title to be champions.'
-          : `${played} of ${weeks} matchweeks played.`}
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] text-chrome-muted">
+        <span>
+          {played === 0
+            ? 'Single round-robin — win the title to be champions.'
+            : `${played} of ${weeks} matchweeks played.`}
+        </span>
+        {tier !== null && (
+          <span className="flex items-center gap-2 font-ticker">
+            {promotes && (
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2.5 w-0.5 bg-crt-green" /> Promotion
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-0.5 bg-rose-400" /> {relegationLabel}
+            </span>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

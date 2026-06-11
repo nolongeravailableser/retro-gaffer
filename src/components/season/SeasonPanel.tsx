@@ -19,6 +19,7 @@ import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
 import {
   division,
+  totalWeeks,
   TOP_TIER,
   BOTTOM_TIER,
   PROMOTION_SPOTS,
@@ -221,6 +222,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
       lastIncome.wager
     : 0;
   const boss = getBoss(round, config.bosses);
+  const leagueWeeks = league ? totalWeeks(league) : 0;
 
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
@@ -299,11 +301,24 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
       )}
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-chrome-muted">
-            Round {round}/{Number.isFinite(maxRounds) ? maxRounds : '∞'}
-            {boss && <span className="ml-1.5 text-fuchsia-300">· BOSS</span>}
-          </p>
-          <h2 className="font-display text-xl">{ladderTier(round)}</h2>
+          {league ? (
+            <>
+              <p className="text-xs uppercase tracking-wide text-chrome-muted">
+                Matchweek {Math.min(league.matchweek, leagueWeeks)}/{leagueWeeks}
+              </p>
+              <h2 className="font-display text-xl">
+                {career ? division(career.tier).name : 'League Season'}
+              </h2>
+            </>
+          ) : (
+            <>
+              <p className="text-xs uppercase tracking-wide text-chrome-muted">
+                Round {round}/{Number.isFinite(maxRounds) ? maxRounds : '∞'}
+                {boss && <span className="ml-1.5 text-fuchsia-300">· BOSS</span>}
+              </p>
+              <h2 className="font-display text-xl">{ladderTier(round)}</h2>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {streak > 0 && (
