@@ -44,10 +44,15 @@ export function mergeModifiers(a: MatchModifiers, b: MatchModifiers): MatchModif
   };
 }
 
-/** Effective attack/defense for a starting XI under a set of modifiers. */
+/**
+ * Effective attack/defense for a starting XI under a set of modifiers.
+ * `posMult` is an optional per-player out-of-position factor (1 = in position,
+ * <1 = playing out of position) keyed by player id — see lib/positions.
+ */
 export function effectiveStrength(
   perPlayer: readonly PlayerChem[],
-  mods: MatchModifiers = NO_MODIFIERS
+  mods: MatchModifiers = NO_MODIFIERS,
+  posMult: Record<string, number> = {}
 ): { attack: number; defense: number } {
   let attack = 0;
   let defense = 0;
@@ -55,7 +60,8 @@ export function effectiveStrength(
     const chem = 1 + (c.multiplier - 1) * mods.chemAmplify;
     const roleM = mods.role[c.player.role] ?? 1;
     const playerM = mods.player[c.player.id] ?? 1;
-    const f = chem * roleM * playerM * mods.teamMult;
+    const pos = posMult[c.player.id] ?? 1;
+    const f = chem * roleM * playerM * mods.teamMult * pos;
     attack += c.player.stats.attack * f;
     defense += c.player.stats.defense * f;
   }

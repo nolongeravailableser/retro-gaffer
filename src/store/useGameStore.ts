@@ -17,8 +17,11 @@ import {
   DEFAULT_FORMATION,
   getFormation,
   slotRole,
+  slotPosition,
   roleCounts,
 } from '@/lib/formations';
+import { canFillSlot, canPlay } from '@/lib/positions';
+import { positionLabel } from '@/lib/playerMeta';
 import { getPack } from '@/lib/packs';
 import {
   interest,
@@ -78,7 +81,7 @@ export function isSlotEligible(
   formationId: string
 ): boolean {
   const p = getPlayer(playerId);
-  return !!p && slotRole(formationId, slotIndex) === p.role;
+  return !!p && canFillSlot(p, slotPosition(formationId, slotIndex));
 }
 
 type ShopSlots = (string | null)[];
@@ -946,14 +949,21 @@ export const useGameStore = create<GameState>()(
         const player = getPlayer(id);
         const state = get();
         if (!player || !state.owned.includes(id)) return;
-        const wantRole = slotRole(state.formation, slotIndex);
-        if (wantRole !== player.role) {
-          // Tell the manager WHY the drop/assign bounced (was a silent no-op).
+        const wantPos = slotPosition(state.formation, slotIndex);
+        if (!canFillSlot(player, wantPos)) {
+          // Eligible by neither exact position nor coarse role — explain why.
           set({
-            notice: `${player.name} is a ${player.role} — drop them on a ${wantRole} slot`,
+            notice: `${player.name} (${player.role}) can't play ${positionLabel(wantPos)}`,
             noticeKind: 'error',
           });
           return;
+        }
+        if (!canPlay(player, wantPos)) {
+          // Fillable on coarse-role cover, but out of position — warn (still allowed).
+          set({
+            notice: `${player.name} is out of position at ${positionLabel(wantPos)} — −10%`,
+            noticeKind: 'info',
+          });
         }
         // Suspended or injured players can't take the field.
         if (state.suspensions.includes(id)) {

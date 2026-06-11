@@ -17,6 +17,8 @@ import { buildRoundOpponent } from '@/lib/ladder';
 import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
+import { slotPosition } from '@/lib/formations';
+import { positionFit } from '@/lib/positions';
 import { relicModifiers } from '@/lib/relics';
 import { importTeam, readChallengeCode, type OpponentTeam } from '@/lib/codec';
 import { consumeLoadError } from '@/store/persistence';
@@ -121,14 +123,20 @@ export default function App() {
     const multipliers = new Map<string, number>(
       chemistry.perPlayer.map((c) => [c.player.id, c.multiplier])
     );
+    // Out-of-position factor per player, from where each sits in the formation.
+    const posMult: Record<string, number> = {};
+    xi.forEach((id, slot) => {
+      const p = id ? getPlayer(id) : null;
+      if (p) posMult[p.id] = positionFit(p, slotPosition(formation, slot));
+    });
     const mods = mergeModifiers(roundMods, relicModifiers(relics));
-    const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods);
+    const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods, posMult);
     const playerTeam: MatchTeam | null =
       starters.length > 0
         ? { name: clubName ?? 'Your XI', attack, defense, squad: starters }
         : null;
     return { chemistry, multipliers, filled: starters.length, playerTeam };
-  }, [xi, roundMods, relics, clubName]);
+  }, [xi, formation, roundMods, relics, clubName]);
 
   const config = useMemo(
     () => runConfig({ scenario, mode, mutator }),
