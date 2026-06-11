@@ -133,6 +133,17 @@ describe('migrations', () => {
     expect(withInbox.inbox).toEqual([{ id: 'x' }]);
   });
 
+  it('gives pre-contract career players a default deal (v25)', () => {
+    const old = validSave({
+      career: { season: 2, tier: 5, meta: { p1: { age: 1, growthLeft: 0 } }, roster: {}, facilities: {}, history: [] },
+    });
+    const migrated = migrateSave(old, 24) as Record<string, unknown>;
+    const career = migrated.career as { meta: Record<string, { contractYears?: number }> };
+    expect(career.meta.p1.contractYears).toBe(3); // default deal
+    // A careerless save is untouched.
+    expect((migrateSave(validSave({ career: null }), 24) as Record<string, unknown>).career).toBeNull();
+  });
+
   it('round-trips club identity (name + manager + onboarded)', () => {
     const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
     const r = decodeSave(encodeSave(save));

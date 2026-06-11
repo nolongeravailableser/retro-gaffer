@@ -110,6 +110,19 @@ export function boardMessage(week: number, title: string, body: string): InboxMe
   return { id: `board-${week}`, week, kind: 'board', title, body, read: false };
 }
 
+/** Players who left the club on free transfers (expired contracts / Bosman). */
+export function departureMessage(week: number, season: number, names: readonly string[]): InboxMessage {
+  const n = names.length;
+  return {
+    id: `bosman-${season}`,
+    week,
+    kind: 'transfer',
+    title: `${n} player${n === 1 ? '' : 's'} left on a free`,
+    body: `Out of contract — left on a Bosman: ${names.join(', ')}.`,
+    read: false,
+  };
+}
+
 /** An incoming bid from a rival club for one of your players (actionable). */
 export function offerMessage(week: number, offer: OfferPayload): InboxMessage {
   return {

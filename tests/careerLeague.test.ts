@@ -175,4 +175,35 @@ describe('career pyramid', () => {
     expect(useGameStore.getState().noticeKind).toBe('error');
     expect(useGameStore.getState().notice).toMatch(/window closed/i);
   });
+
+  it('contracts: a signing gets a deal, then expires to a free unless renewed', () => {
+    // Sign two free agents at MW1 (window open) → each on a 3-year deal.
+    const frees = POOL.filter((p) => overall(p) < 64).slice(0, 2);
+    const [stay, walk] = frees;
+    useGameStore.getState().signPlayer(stay.id);
+    useGameStore.getState().signPlayer(walk.id);
+    expect(useGameStore.getState().career!.meta[stay.id].contractYears).toBe(3);
+
+    // Drive the deal down to its final year (two season rollovers).
+    const renewSeason = () => {
+      playSeason('win'); // win the division → promotion review
+      useGameStore.getState().advanceCareerSeason(null); // no renewals
+    };
+    renewSeason(); // 3 → 2
+    renewSeason(); // 2 → 1 (now expiring)
+    expect(useGameStore.getState().career!.meta[stay.id].contractYears).toBe(1);
+
+    // In the next review, renew `stay` but not `walk`, then advance.
+    playSeason('win');
+    expect(useGameStore.getState().careerReview).not.toBeNull();
+    useGameStore.getState().renewContract(stay.id);
+    expect(useGameStore.getState().careerReview!.renewed).toContain(stay.id);
+    useGameStore.getState().advanceCareerSeason(null);
+
+    const s = useGameStore.getState();
+    expect(s.owned).toContain(stay.id); // renewed → kept, fresh deal
+    expect(s.career!.meta[stay.id].contractYears).toBe(3);
+    expect(s.owned).not.toContain(walk.id); // expired + unrenewed → left on a free
+    expect(s.inbox.some((m) => m.kind === 'transfer')).toBe(true); // Bosman note
+  });
 });

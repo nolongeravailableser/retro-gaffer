@@ -16,6 +16,19 @@ export interface CareerMeta {
   age: number;
   /** Seasons of growth remaining (youth ramp up before plateauing). */
   growthLeft: number;
+  /** Seasons left on the player's contract. Hits 0 → leaves on a free (Bosman)
+   *  unless renewed in the between-seasons review. */
+  contractYears: number;
+}
+
+/** Contract length (seasons) a fresh signing is given. */
+export const DEFAULT_CONTRACT = 3;
+/** Academy graduates sign longer deals. */
+export const YOUTH_CONTRACT = 4;
+
+/** Whether a player's deal expires at the end of this season (decide in the review). */
+export function isExpiring(meta: CareerMeta | undefined): boolean {
+  return (meta?.contractYears ?? DEFAULT_CONTRACT) <= 1;
 }
 
 /** One completed season in the club's history (drives the timeline + honours). */
@@ -87,6 +100,8 @@ export interface ReviewState {
   youth: Player[];
   /** Youth ids whose exact potential has been scouted (revealed). */
   scouted: string[];
+  /** Owned players whose expiring contract the manager has chosen to renew. */
+  renewed: string[];
 }
 
 /** Cost to fully scout a prospect's potential. */
@@ -170,14 +185,14 @@ export function generateYouth(seed: string | number, n: number): Player[] {
   return out;
 }
 
-/** Fresh meta for a newly acquired player (signed at their peak). */
+/** Fresh meta for a newly acquired player (signed at their peak, on a full deal). */
 export function newMeta(): CareerMeta {
-  return { age: 0, growthLeft: 0 };
+  return { age: 0, growthLeft: 0, contractYears: DEFAULT_CONTRACT };
 }
 
-/** Meta for an academy youth (ramps up before plateauing). */
+/** Meta for an academy youth (ramps up before plateauing; signs a long deal). */
 export function youthMeta(): CareerMeta {
-  return { age: 0, growthLeft: YOUTH_GROWTH_SEASONS };
+  return { age: 0, growthLeft: YOUTH_GROWTH_SEASONS, contractYears: YOUTH_CONTRACT };
 }
 
 /**
@@ -221,9 +236,36 @@ export function ageRoster(
       }
     }
 
-    nextMeta[id] = { age, growthLeft };
+    // Aging is stats-only; the contract is resolved separately (resolveContracts).
+    nextMeta[id] = { age, growthLeft, contractYears: m.contractYears ?? DEFAULT_CONTRACT };
     roster[id] = { ...cur, stats: { attack: clamp(attack), defense: clamp(defense) } };
   }
 
   return { meta: nextMeta, roster };
+}
+
+/**
+ * Run the squad's contracts down a season. Renewed players reset to a full deal;
+ * everyone else loses a year, and anyone whose deal expires (and wasn't renewed)
+ * LEAVES on a free transfer (Bosman). Pure. Returns the next meta (departed
+ * players dropped) and the list of ids that walked.
+ */
+export function resolveContracts(
+  ownedIds: readonly string[],
+  meta: Record<string, CareerMeta>,
+  renewed: ReadonlySet<string>
+): { meta: Record<string, CareerMeta>; departed: string[] } {
+  const nextMeta: Record<string, CareerMeta> = {};
+  const departed: string[] = [];
+  for (const id of ownedIds) {
+    const m = meta[id] ?? newMeta();
+    if (renewed.has(id)) {
+      nextMeta[id] = { ...m, contractYears: DEFAULT_CONTRACT };
+      continue;
+    }
+    const years = (m.contractYears ?? DEFAULT_CONTRACT) - 1;
+    if (years <= 0) departed.push(id);
+    else nextMeta[id] = { ...m, contractYears: years };
+  }
+  return { meta: nextMeta, departed };
 }

@@ -6,6 +6,7 @@ import {
   injuryMessage,
   boardMessage,
   offerMessage,
+  departureMessage,
   INBOX_CAP,
   type InboxMessage,
 } from '@/lib/inbox';
@@ -22,6 +23,10 @@ describe('inbox', () => {
     const o = offerMessage(6, { playerId: 'p_y', playerName: 'Kane', clubId: 'ai1', clubName: 'Marsh Town', fee: 40 });
     expect(o.id).toBe('offer-6-p_y');
     expect(o.offer?.fee).toBe(40);
+    const d = departureMessage(1, 4, ['Buffon', 'Pirlo']);
+    expect(d.id).toBe('bosman-4');
+    expect(d.kind).toBe('transfer');
+    expect(d.body).toContain('Buffon, Pirlo');
   });
 
   it('prepends newest-first and de-dupes by id (idempotent on replay)', () => {

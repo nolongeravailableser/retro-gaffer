@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 24;
+export const CURRENT_VERSION = 25;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -148,6 +148,26 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   },
   // Club inbox: existing saves start with an empty message feed.
   24: (s) => (Array.isArray((s as { inbox?: unknown }).inbox) ? s : { ...s, inbox: [] }),
+  // Contracts & Bosman: give every existing career-squad player a default deal,
+  // and any pending review an empty renewals list.
+  25: (s) => {
+    const career = (s as { career?: unknown }).career;
+    if (!career || typeof career !== 'object') return s;
+    const c = career as { meta?: Record<string, { contractYears?: number }> };
+    const meta = c.meta && typeof c.meta === 'object' ? c.meta : {};
+    const nextMeta: Record<string, unknown> = {};
+    for (const [id, m] of Object.entries(meta)) {
+      nextMeta[id] = m && typeof m === 'object' && typeof m.contractYears === 'number'
+        ? m
+        : { ...(m as object), contractYears: 3 };
+    }
+    const review = (s as { careerReview?: unknown }).careerReview;
+    const nextReview =
+      review && typeof review === 'object' && !Array.isArray((review as { renewed?: unknown }).renewed)
+        ? { ...(review as object), renewed: [] }
+        : review;
+    return { ...s, career: { ...(career as object), meta: nextMeta }, careerReview: nextReview };
+  },
 };
 
 /** Upgrade a saved blob from its version to CURRENT_VERSION. */

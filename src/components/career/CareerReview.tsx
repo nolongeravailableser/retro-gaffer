@@ -4,9 +4,12 @@ import {
   Trophy, ThumbsUp, ArrowUpCircle, ArrowDownCircle, ArrowUp, Coins,
   GraduationCap, ArrowRight, Check, Search, Hammer,
 } from 'lucide-react';
-import { useGameStore } from '@/store/useGameStore';
-import { potentialStars, SCOUT_YOUTH_COST } from '@/lib/career';
+import { useGameStore, getPlayer } from '@/store/useGameStore';
+import { potentialStars, isExpiring, SCOUT_YOUTH_COST } from '@/lib/career';
 import { division } from '@/lib/league';
+import { overall } from '@/lib/wages';
+import { FileSignature, RefreshCw } from 'lucide-react';
+import type { Player } from '@/lib/types';
 import FacilitiesPanel from './FacilitiesPanel';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import StatBar from '@/components/ui/StatBar';
@@ -31,12 +34,22 @@ export default function CareerReview() {
   const review = useGameStore((s) => s.careerReview);
   const advance = useGameStore((s) => s.advanceCareerSeason);
   const scoutYouth = useGameStore((s) => s.scoutYouth);
+  const renewContract = useGameStore((s) => s.renewContract);
   const facilities = useGameStore((s) => s.career?.facilities ?? null);
+  const meta = useGameStore((s) => s.career?.meta ?? {});
+  const owned = useGameStore((s) => s.owned);
   const bankroll = useGameStore((s) => s.bankroll);
   const [picked, setPicked] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
 
   if (!review) return null;
+
+  // Players whose deal expires this summer — renew them or they leave on a free.
+  const expiring = owned
+    .filter((id) => isExpiring(meta[id]))
+    .map((id) => getPlayer(id))
+    .filter((p): p is Player => !!p)
+    .sort((a, b) => overall(b) - overall(a));
 
   const nextSeason = review.season + 1;
   const fromDiv = division(review.fromTier).name;
@@ -208,6 +221,63 @@ export default function CareerReview() {
               );
             })}
           </div>
+
+          {/* Expiring contracts — renew or lose them on a Bosman free */}
+          {expiring.length > 0 && (
+            <div className="mt-5">
+              <p className="mb-2 flex items-center gap-1.5 font-display text-sm text-chrome">
+                <FileSignature size={16} className="text-crt-amber" />
+                Expiring Contracts
+              </p>
+              <p className="mb-3 text-[11px] text-chrome-muted">
+                These deals run out this summer. Renew the ones you want to keep — anyone you don't
+                leaves on a free transfer (Bosman).
+              </p>
+              <div className="flex flex-col gap-2" data-testid="expiring-contracts">
+                {expiring.map((p) => {
+                  const rs = ROLE_STYLES[p.role];
+                  const renew = review.renewed.includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      className={[
+                        'flex items-center gap-3 rounded-lg border p-2.5 transition',
+                        renew ? 'border-crt-green/40 bg-crt-green/5' : 'border-crt-amber/25 bg-pitch-950/40',
+                      ].join(' ')}
+                    >
+                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-display ${rs.text} ${rs.bg} ${rs.border}`}>
+                        {p.position ?? p.role}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-display text-sm text-chrome">{p.name}</p>
+                        <p className="font-ticker text-[10px] text-chrome-muted">
+                          OVR {overall(p)} ·{' '}
+                          {renew ? (
+                            <span className="text-crt-green">renewing — stays at the club</span>
+                          ) : (
+                            <span className="text-crt-amber">expiring — will leave on a free</span>
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => renewContract(p.id)}
+                        data-testid={`renew-${p.id}`}
+                        className={[
+                          'flex shrink-0 items-center gap-1 rounded border px-2.5 py-1 font-display text-[11px] transition',
+                          renew
+                            ? 'border-crt-green/50 bg-crt-green/15 text-crt-green'
+                            : 'border-white/15 text-chrome-muted hover:bg-white/5',
+                        ].join(' ')}
+                      >
+                        {renew ? <><Check size={12} /> Renewed</> : <><RefreshCw size={12} /> Renew</>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Club development — reinvest the bonus into facilities */}
           {facilities && (

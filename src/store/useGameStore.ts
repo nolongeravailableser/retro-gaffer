@@ -61,6 +61,8 @@ import {
   ageRoster,
   youthMeta,
   reviewBonus,
+  newMeta,
+  resolveContracts,
   YOUTH_INTAKE,
   SCOUT_YOUTH_COST,
   type CareerState,
@@ -92,6 +94,7 @@ import {
   injuryMessage,
   boardMessage,
   offerMessage,
+  departureMessage,
   type InboxMessage,
 } from '@/lib/inbox';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
@@ -414,6 +417,8 @@ interface GameState {
   startCareer: () => void;
   /** Pay to reveal an academy prospect's exact potential during the review. */
   scoutYouth: (youthId: string) => void;
+  /** Renew an expiring player's contract in the review (toggle on/off). */
+  renewContract: (playerId: string) => void;
   /** Spend bankroll to upgrade a club facility one level (career only). */
   upgradeFacility: (id: FacilityId) => void;
   /** Resolve the between-seasons review and begin the next season. */
@@ -691,6 +696,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
           YOUTH_INTAKE + youthBonus(career.facilities.academy)
         ),
         scouted: [],
+        renewed: [],
       };
     }
   } else if (done) {
@@ -944,6 +950,10 @@ export const useGameStore = create<GameState>()(
           xi: placedInXi ? newXi : s.xi,
           bench: placedOnBench ? newBench : s.bench,
           league,
+          // Career: a signing comes with a contract (Bosman bookkeeping).
+          ...(s.career && {
+            career: { ...s.career, meta: { ...s.career.meta, [id]: newMeta() } },
+          }),
           notice: club
             ? `Poached ${player.name} from ${club.name} for £${fee}M!`
             : `Signed ${player.name}${fee === 0 ? ' on a free transfer' : ` for £${fee}M`}!`,
@@ -982,6 +992,13 @@ export const useGameStore = create<GameState>()(
             xi: newXi,
             owned: newOwned,
             collection: addToCollection(s.collection, ...signed),
+            // Career: each free-agent signing comes on a contract.
+            ...(s.career && {
+              career: {
+                ...s.career,
+                meta: { ...s.career.meta, ...Object.fromEntries(signed.map((id) => [id, newMeta()])) },
+              },
+            }),
             notice: `Signed ${signed.length} free agent${signed.length > 1 ? 's' : ''} to complete the XI.`,
             noticeKind: 'success',
           };
@@ -1701,6 +1718,24 @@ export const useGameStore = create<GameState>()(
           };
         }),
 
+      // Renew an expiring player's contract during the between-seasons review.
+      // A toggle — tap again to cancel. Renewing keeps him; not renewing lets the
+      // deal run out and he leaves on a free (Bosman) when the season rolls over.
+      renewContract: (playerId) =>
+        set((s) => {
+          const review = s.careerReview;
+          if (!review || !s.owned.includes(playerId)) return {};
+          const on = review.renewed.includes(playerId);
+          return {
+            careerReview: {
+              ...review,
+              renewed: on
+                ? review.renewed.filter((id) => id !== playerId)
+                : [...review.renewed, playerId],
+            },
+          };
+        }),
+
       // Reinvest in the club: upgrade a facility one level (career only). Levels
       // persist across seasons; typically done from the between-seasons review.
       upgradeFacility: (id) =>
@@ -1730,9 +1765,18 @@ export const useGameStore = create<GameState>()(
 
           // Age the existing squad (youth grow, veterans decline).
           const aged = ageRoster(s.owned, prev.meta, getPlayer);
-          let owned = [...s.owned];
-          const meta = { ...aged.meta };
+          // Run contracts down a season: renewed players reset, the rest lose a
+          // year, and anyone whose deal expired (and wasn't renewed) leaves on a
+          // free (Bosman). Departed players stay in the roster overlay (registered)
+          // so they reappear in the market — they've just left YOUR club.
+          const contracts = resolveContracts(s.owned, aged.meta, new Set(review.renewed));
+          const departedSet = new Set(contracts.departed);
+          let owned = s.owned.filter((id) => !departedSet.has(id));
+          const meta = { ...contracts.meta };
           const roster = { ...prev.roster, ...aged.roster };
+          // Strip departed players from the XI / bench.
+          const xi: (string | null)[] = s.xi.map((slot) => (slot && departedSet.has(slot) ? null : slot));
+          const bench = s.bench.filter((id) => !departedSet.has(id));
 
           // Fold in the chosen academy prospect (joins at full freshness).
           const chosen = youthId ? review.youth.find((y) => y.id === youthId) : null;
@@ -1744,6 +1788,12 @@ export const useGameStore = create<GameState>()(
             collection = addToCollection(s.collection, chosen.id);
           }
           registerPlayers(Object.values(roster));
+
+          // Inbox: note any out-of-contract departures (Bosman frees).
+          const departedNames = contracts.departed.map((id) => getPlayer(id)?.name ?? 'A player');
+          const inbox = departedNames.length
+            ? pushMessages(s.inbox, [departureMessage(1, prev.season + 1, departedNames)])
+            : s.inbox;
 
           const nextSeason = prev.season + 1;
           // Apply promotion/relegation: the review already resolved which tier we
@@ -1772,6 +1822,9 @@ export const useGameStore = create<GameState>()(
             careerReview: null,
             league,
             owned,
+            xi,
+            bench,
+            inbox,
             collection,
             bankroll: s.bankroll + review.bonus,
             round: 1,
@@ -1788,9 +1841,11 @@ export const useGameStore = create<GameState>()(
             lastIncome: null,
             shop: rollSlots(owned, seed, s.pack),
             shopSeed: seed,
-            notice: chosen
-              ? `${chosen.name} joins the academy. ${move}`
-              : move,
+            notice: departedNames.length
+              ? `${departedNames.length} left on free transfers. ${chosen ? `${chosen.name} joins the academy. ` : ''}${move}`
+              : chosen
+                ? `${chosen.name} joins the academy. ${move}`
+                : move,
             noticeKind: 'info',
           };
         }),

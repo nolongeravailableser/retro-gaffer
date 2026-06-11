@@ -10,6 +10,9 @@ import {
   ageRoster,
   newMeta,
   youthMeta,
+  resolveContracts,
+  isExpiring,
+  DEFAULT_CONTRACT,
   type SeasonRecord,
 } from '@/lib/career';
 import {
@@ -136,7 +139,7 @@ describe('ageRoster', () => {
   it('clamps stats to the 10–99 range', () => {
     clearOverlay();
     registerPlayers([base('low', 12, 12)]);
-    let meta: Record<string, ReturnType<typeof newMeta>> = { low: { age: 5, growthLeft: 0 } };
+    let meta: Record<string, ReturnType<typeof newMeta>> = { low: { age: 5, growthLeft: 0, contractYears: 3 } };
     let stats = { attack: 12, defense: 12 };
     for (let i = 0; i < 5; i++) {
       registerPlayers([{ ...base('low', stats.attack, stats.defense) }]);
@@ -168,5 +171,32 @@ describe('pool overlay', () => {
     expect(getPlayer('overlay-test')).toBeUndefined();
     // Base pool lookups are unaffected by clearing the overlay.
     expect(getPlayer('zidane')).toEqual(real);
+  });
+});
+
+describe('contracts & Bosman', () => {
+  it('newMeta/youthMeta carry a contract; isExpiring flags the final year', () => {
+    expect(newMeta().contractYears).toBe(DEFAULT_CONTRACT);
+    expect(youthMeta().contractYears).toBeGreaterThan(DEFAULT_CONTRACT);
+    expect(isExpiring({ age: 0, growthLeft: 0, contractYears: 1 })).toBe(true);
+    expect(isExpiring({ age: 0, growthLeft: 0, contractYears: 2 })).toBe(false);
+    expect(isExpiring(undefined)).toBe(false); // missing → treated as a full deal
+  });
+
+  it('resolveContracts: renew resets, others count down, expiring+unrenewed leave', () => {
+    const meta = {
+      keep: { age: 1, growthLeft: 0, contractYears: 1 }, // expiring, will renew
+      walk: { age: 3, growthLeft: 0, contractYears: 1 }, // expiring, not renewed → leaves
+      stay: { age: 0, growthLeft: 0, contractYears: 3 }, // mid-deal, counts down
+    };
+    const { meta: next, departed } = resolveContracts(
+      ['keep', 'walk', 'stay'],
+      meta,
+      new Set(['keep'])
+    );
+    expect(departed).toEqual(['walk']);
+    expect(next.keep.contractYears).toBe(DEFAULT_CONTRACT); // renewed → reset
+    expect(next.stay.contractYears).toBe(2); // counted down
+    expect('walk' in next).toBe(false); // dropped from meta
   });
 });
