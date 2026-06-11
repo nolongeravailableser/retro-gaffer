@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–2 shipped; persistence v19, 233 tests — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 233 tests — see §2l)
 
 ---
 
@@ -488,11 +488,20 @@ programmatically** from existing single position (confirm before building).
 - Note: ratings/history credit the STARTING XI (subbed-on scorers are an
   unrecorded edge case). Persistence is now **v19**; tests **233**.
 
-**Remaining phases (NOT started):**
-- **Phase 3 — 2D pitch overhaul**: players are static on formation anchors
-  with only micro-drift; ball teleports between keyframes. Make it read like
-  football (off-ball movement, ball travelling through players, possession
-  shape). Pure viz layer, determinism-safe (separate `{seed}-viz` RNG).
+**Phase 3 — 2D pitch overhaul (SHIPPED 2026-06-11, commit `001f95f`):**
+- Renderer-only (`MatchPitchView.tsx`), determinism-safe — `buildVizTimeline`
+  output unchanged, matchviz tests still pass. The possessing team pushes up
+  (role-weighted), the defending team drops, both tilt toward the ball's lane;
+  the nearest attacker is **glued to the ball** (carrier — ball at his feet),
+  the nearest defender **presses** it. As the ball moves its path the carrier
+  changes → reads as passing. Dead-ball scenes hold shape.
+- `scene.shiftA/shiftB` are now unused by the renderer (still on the type).
+- Verified: 40-frame canvas probe → a kit dot on the ball every live frame
+  (min ball↔carrier dist 0.006 of width); FT frame shows real formation
+  shapes. Possible future polish: smoother scene-boundary transitions,
+  off-ball runs, distinct dribble-vs-pass ball speed.
+
+**Remaining phase (NOT started):**
 - **Phase 4 — big systems**: dynamic positions + formations (granular slots,
   out-of-position penalty), full FM finances/wages, League-Season mode +
   table, career stadium development. Each needs its own design pass +
@@ -502,9 +511,10 @@ programmatically** from existing single position (confirm before building).
 
 ## 3. Active Work & Next Directions
 
-**In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins) and 2
-(match experience) are shipped; **Phases 3–4 are the next work** (2D pitch
-overhaul → big systems). See §2l for the full plan and the locked forks.
+**In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins), 2
+(match experience) and 3 (2D pitch overhaul) are shipped; **Phase 4 is the
+remaining work** (dynamic positions/formations, FM finances/wages, League
+mode, stadium). See §2l for the full plan and the locked forks.
 
 All earlier work — planned phases (0–3), the 2026-06-10 mega-session
 (sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
