@@ -77,6 +77,22 @@ export function tierMult(tier: number): number {
 /** The tier a tier-less standalone League season is paid at (mid pyramid). */
 export const LEAGUE_NEUTRAL_TIER = Math.round((TOP_TIER + BOTTOM_TIER) / 2);
 
+/** How steeply the wage bill rises per division climbed in a Career. */
+export const WAGE_TIER_K = 1.8;
+
+/**
+ * Career wage multiplier by pyramid tier — the Premier League demands Premier
+ * League wages. Bottom tier ×1; each rung up multiplies the bill by
+ * `WAGE_TIER_K`. Without this, tier-scaled income in an open-ended career just
+ * piles up unspent (a complete squad has nothing left to buy); scaling wages
+ * keeps the FM wage-budget tension alive and bounds the economy to a plateau.
+ * Tuned against the career balance sim (`npm run sim`). Classic and standalone
+ * League are unscaled (×1).
+ */
+export function wageTierMult(tier: number): number {
+  return WAGE_TIER_K ** (BOTTOM_TIER - tier);
+}
+
 /**
  * Soft wage budget (£M/round): what the club can comfortably sustain given its
  * bankroll and division. Going over isn't blocked — you just bleed cash — but

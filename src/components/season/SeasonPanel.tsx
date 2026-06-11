@@ -13,7 +13,8 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { wageBill, divisionMult, wageBudget } from '@/lib/wages';
+import { wageBill, divisionMult, tierMult, wageTierMult, wageBudget, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { matchdayIncome } from '@/lib/stadium';
 import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -209,9 +210,13 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   }
 
   const projectedInterest = interest(bankroll);
-  // Division scaling (lower leagues pay less) + the rating-based wage bill.
-  const dm = divisionMult(round, maxRounds);
-  const wage = Math.round(wageBill(owned.map(getPlayer).filter((p): p is Player => !!p)));
+  // Income scaling: a league/career season is one division (flat tier scaling +
+  // stadium matchday income); the finite climb scales by round. Wages are the
+  // rating-based bill, tier-scaled in a career. Mirrors resolveRound/League.
+  const dm = league ? tierMult(career ? career.tier : LEAGUE_NEUTRAL_TIER) : divisionMult(round, maxRounds);
+  const matchday = league && career ? matchdayIncome(career.facilities.stadium) : 0;
+  const wageMult = career ? wageTierMult(career.tier) : 1;
+  const wage = Math.round(wageBill(owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult);
   const budget = wageBudget(bankroll, dm);
   const netLast = lastIncome
     ? lastIncome.reward +
@@ -226,7 +231,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
 
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
-  const roundIncomeNow = Math.round(config.roundIncome * dm);
+  const roundIncomeNow = Math.round(config.roundIncome * dm) + matchday;
   const base = roundIncomeNow + projectedInterest - wage;
   const winPay = Math.round(MATCH_REWARD.win * dm) + base + streakBonus(streak + 1) + wager;
   const drawPay = Math.round(MATCH_REWARD.draw * dm) + base;

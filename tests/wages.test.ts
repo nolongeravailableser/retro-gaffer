@@ -5,6 +5,8 @@ import {
   wageBill,
   divisionMult,
   tierMult,
+  wageTierMult,
+  WAGE_TIER_K,
   wageBudget,
   DIV_MULT_FLOOR,
   DIV_MULT_CEIL,
@@ -56,6 +58,16 @@ describe('wages', () => {
     // Climbing the pyramid pays progressively more.
     expect(tierMult(TOP_TIER)).toBeGreaterThan(tierMult(BOTTOM_TIER));
     expect(tierMult(BOTTOM_TIER - 1)).toBeGreaterThan(tierMult(BOTTOM_TIER));
+  });
+
+  it('wageTierMult is ×1 at the bottom tier and rises geometrically up the pyramid', () => {
+    // Bottom-tier wages are unscaled (early game unchanged); each rung up ×K.
+    expect(tierMult(BOTTOM_TIER)).toBeCloseTo(DIV_MULT_FLOOR, 5); // sanity: shares BOTTOM_TIER
+    expect(wageTierMult(BOTTOM_TIER)).toBeCloseTo(1, 5);
+    expect(wageTierMult(BOTTOM_TIER - 1)).toBeCloseTo(WAGE_TIER_K, 5);
+    expect(wageTierMult(TOP_TIER)).toBeCloseTo(WAGE_TIER_K ** (BOTTOM_TIER - TOP_TIER), 5);
+    // Strictly increasing as you climb.
+    expect(wageTierMult(TOP_TIER)).toBeGreaterThan(wageTierMult(BOTTOM_TIER));
   });
 
   it('wageBudget grows with bankroll and division', () => {

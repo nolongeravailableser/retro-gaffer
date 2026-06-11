@@ -29,7 +29,7 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { wageBill, divisionMult, tierMult, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { wageBill, divisionMult, tierMult, wageTierMult, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
@@ -522,8 +522,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const roundIncome = Math.round(config.roundIncome * dm) + matchday;
   const intr = interest(s.bankroll);
   const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
+  // Career: wages scale with the division (PL wages in the PL) so an open-ended
+  // dynasty's economy plateaus instead of running away. Standalone League ×1.
+  const wageMult = s.career ? wageTierMult(s.career.tier) : 1;
   const wage = Math.round(
-    wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p))
+    wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult
   );
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
   const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage + wagerDelta);
