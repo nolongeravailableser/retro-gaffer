@@ -567,8 +567,11 @@ programmatically** from existing single position (confirm before building).
     `startCareer` begins in the BOTTOM tier (National League); App career
     opponent = the league fixture; win = win the Premier League; sacked = the
     drop zone in the bottom tier. Persistence migration (CareerState shape).
-    DESIGN FORK to confirm: keep aging/youth + replace board-target with
-    promotion/relegation (recommended), vs a leaner league-only career.
+    DESIGN FORK — DECIDED (user, 2026-06-11): **keep aging/youth AND add the
+    pyramid** (restructure the existing Career in place; the board-target is
+    replaced by the league finish — avoid the drop, win promotion; win the
+    Premier League = the ultimate). Build is fully teed up; left for a fresh
+    focused session because it rewrites shipped Career + bumps the save shape.
 - **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
 
 ---
