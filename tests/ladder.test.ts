@@ -6,7 +6,6 @@ import {
   roundPayout,
   buildRoundOpponent,
   ladderTier,
-  wageBill,
   maxWager,
   lifeBuybackCost,
   MAX_ROUNDS,
@@ -38,12 +37,6 @@ describe('ladder economy', () => {
     const p = roundPayout('loss', 40, 0, 0);
     expect(p.streak).toBe(0);
     expect(p.total).toBe(0 + 3 + 5 + 0); // 40 → interest 5
-  });
-
-  it('wage bill taxes a bloated squad only', () => {
-    expect(wageBill(11)).toBe(0);
-    expect(wageBill(13)).toBe(0);
-    expect(wageBill(16)).toBe(3);
   });
 
   it('max wager is half the bankroll', () => {

@@ -17,12 +17,12 @@ import {
   buildRoundOpponent,
   interest,
   streakBonus,
-  wageBill,
   lifeBuybackCost,
   MAX_ROUNDS,
   STARTING_LIVES,
   ROUND_INCOME,
 } from '@/lib/ladder';
+import { wageBill, divisionMult } from '@/lib/wages';
 import { getBoss } from '@/lib/bosses';
 import { drawShop, MATCH_REWARD, sellValue, STARTING_BANKROLL } from '@/lib/economy';
 import { Rng } from '@/lib/rng';
@@ -158,12 +158,14 @@ function simulateRun(seed: number) {
     let outcome = result.outcome;
     if (boss?.suddenDeath && outcome === 'draw') outcome = 'loss';
 
-    // economy
+    // economy — division-scaled rewards + rating-based wages (Phase 4.2)
     const newStreak = outcome === 'win' ? run.streak + 1 : 0;
-    const reward = MATCH_REWARD[outcome];
+    const dm = divisionMult(round, MAX_ROUNDS);
+    const reward = Math.round(MATCH_REWARD[outcome] * dm);
+    const wage = Math.round(wageBill(run.xi.map((id) => byId.get(id)!)));
     const payout =
-      reward + ROUND_INCOME + interest(run.bankroll) +
-      (outcome === 'win' ? streakBonus(newStreak) : 0) - wageBill(run.xi.length);
+      reward + Math.round(ROUND_INCOME * dm) + interest(run.bankroll) +
+      (outcome === 'win' ? streakBonus(newStreak) : 0) - wage;
     run.bankroll = Math.max(0, run.bankroll + payout);
     run.streak = newStreak;
 

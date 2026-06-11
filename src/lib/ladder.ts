@@ -78,13 +78,8 @@ export function streakBonus(streak: number): number {
   return Math.min(6, Math.max(0, streak));
 }
 
-/** Squad slots that are wage-free. Beyond this, each owned player taxes income. */
-export const WAGE_FREE_SLOTS = 13;
-
-/** Upkeep charged each round for a bloated squad (anti-hoarding). */
-export function wageBill(ownedCount: number): number {
-  return Math.max(0, ownedCount - WAGE_FREE_SLOTS);
-}
+// Wages moved to lib/wages.ts (rating-based, FM-style) in Phase 4.2 — the old
+// flat squad-size tax is gone.
 
 /** Max stake for the pre-match Gaffer's Gamble: half your bankroll. */
 export function maxWager(bankroll: number): number {

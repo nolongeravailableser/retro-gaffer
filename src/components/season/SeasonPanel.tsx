@@ -10,10 +10,11 @@ import {
   bestLabel,
   interest,
   streakBonus,
-  wageBill,
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
+import { wageBill, divisionMult, wageBudget } from '@/lib/wages';
+import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
 import { boardWantsTitle } from '@/lib/career';
@@ -199,7 +200,10 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   }
 
   const projectedInterest = interest(bankroll);
-  const wage = wageBill(owned.length);
+  // Division scaling (lower leagues pay less) + the rating-based wage bill.
+  const dm = divisionMult(round, maxRounds);
+  const wage = Math.round(wageBill(owned.map(getPlayer).filter((p): p is Player => !!p)));
+  const budget = wageBudget(bankroll, dm);
   const netLast = lastIncome
     ? lastIncome.reward +
       lastIncome.income +
@@ -212,10 +216,11 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
 
   // Explicit win/draw/loss payouts so the stake's consequences are visible
   // BEFORE pressing Play (matches the resolveRound formula in the store).
-  const base = config.roundIncome + projectedInterest - wage;
-  const winPay = MATCH_REWARD.win + base + streakBonus(streak + 1) + wager;
-  const drawPay = MATCH_REWARD.draw + base;
-  const lossPay = MATCH_REWARD.loss + base - wager;
+  const roundIncomeNow = Math.round(config.roundIncome * dm);
+  const base = roundIncomeNow + projectedInterest - wage;
+  const winPay = Math.round(MATCH_REWARD.win * dm) + base + streakBonus(streak + 1) + wager;
+  const drawPay = Math.round(MATCH_REWARD.draw * dm) + base;
+  const lossPay = Math.round(MATCH_REWARD.loss * dm) + base - wager;
   const money = (n: number) => `${n >= 0 ? '+' : '−'}£${Math.abs(n)}M`;
   // The real cost of a loss is a life (more on some bosses), unless shielded.
   const lifeCost = shield ? 0 : boss?.lifeCost ?? 1;
@@ -378,6 +383,12 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           incl. +£{projectedInterest}M interest{wage > 0 && ` · −£${wage}M wages`}
           {streak > 0 && ` · +£${streakBonus(streak + 1)}M streak on win`}
         </p>
+        {wage > 0 && (
+          <p className={`mt-0.5 text-right text-[10px] ${wage > budget ? 'text-rose-300' : 'text-chrome-muted'}`}>
+            Wage bill £{wage}M / £{budget}M budget
+            {wage > budget && ' — over budget!'}
+          </p>
+        )}
       </div>
 
       {/* Gaffer's Gamble */}

@@ -26,10 +26,10 @@ import { getPack } from '@/lib/packs';
 import {
   interest,
   streakBonus,
-  wageBill,
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
+import { wageBill, divisionMult } from '@/lib/wages';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
@@ -619,14 +619,20 @@ export const useGameStore = create<GameState>()(
           const key = outcome === 'win' ? 'w' : outcome === 'loss' ? 'l' : 'd';
           const newStreak = outcome === 'win' ? s.streak + 1 : 0;
 
-          const reward = MATCH_REWARD[outcome];
+          // Prize money + round income scale with the division (lower leagues
+          // pay less); wages are the rating-based squad bill (FM-style).
+          const dm = divisionMult(s.round, config.maxRounds);
+          const reward = Math.round(MATCH_REWARD[outcome] * dm);
+          const roundIncome = Math.round(config.roundIncome * dm);
           const intr = interest(s.bankroll);
           const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
-          const wage = wageBill(s.owned.length);
+          const wage = Math.round(
+            wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p))
+          );
           // Gaffer's Gamble: win the stake, lose the stake, draw pushes.
           const wagerDelta =
             outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
-          const payout = reward + config.roundIncome + intr + sb - wage + wagerDelta;
+          const payout = reward + roundIncome + intr + sb - wage + wagerDelta;
           const bankroll = Math.max(0, s.bankroll + payout);
 
           // Clean-sheet shield: a win to nil banks a shield; a defeat spends it
@@ -733,7 +739,7 @@ export const useGameStore = create<GameState>()(
             peakBankroll: Math.max(s.peakBankroll, bankroll),
             lastIncome: {
               reward,
-              income: config.roundIncome,
+              income: roundIncome,
               interest: intr,
               streak: sb,
               wage,
