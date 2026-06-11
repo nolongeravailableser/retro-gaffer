@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (FM transfer market COMPLETE — Phase A (market values, free agents, +165 lower-league players, pool 668, £35M start) PUSHED to prod; Phase B (rival squads + poaching) LOCAL & unpushed. persistence v23, 275 tests. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-feel enhancements: **task 1 bidding/personal terms + task 2 incoming offers + a club Inbox** built, verified & committed LOCALLY (unpushed). persistence **v24**, **291 tests**, build green, sim unmoved. Tasks 3 (windows) + 4 (contracts/Bosman) still TODO. See §3 "START HERE")
 
 ---
 
@@ -719,27 +719,36 @@ swept values; THESE are what's shipped):**
   Classic balance harness `tests/balance.sim.ts` shares the run).
 
 **⭐ NEXT TASK — make the transfer market feel more like Football Manager
-(user-requested; Career/League only, Classic untouched). Build tasks 1 & 2 first
-(they give the biggest "FM feel" jump), then 3, then 4. Sim-gate each; push as
-one release after the user OKs.**
+(user-requested; Career/League only, Classic untouched). Tasks 1 & 2 + a club
+Inbox are DONE (local, unpushed). Tasks 3 & 4 remain. Sim-gate each; push as one
+release after the user OKs.**
 
-1. **Bidding & personal terms (highest impact).** Replace the instant "pay the
-   fee" buy with: make an offer → the selling club accepts/rejects/counters
-   (based on bid vs `marketValue`/`poachFee`) → then agree personal terms (a
-   wage demand scaled by rating, e.g. ~`wage(p)` × a factor; over-budget players
-   refuse). Free agents skip the club step (terms only). Likely a small
-   `lib/negotiation.ts` (pure: `evaluateBid`, `wageDemand`) + a negotiation
-   modal; `signPlayer` becomes the commit step.
-2. **Incoming offers for YOUR players.** Each matchweek (or between seasons),
-   rival clubs bid for your better players (seeded; bid ≈ marketValue ± noise,
-   biased toward clubs needing that role). Surface as a decision (accept = cash +
-   they leave + the buyer's squad/strength rises; reject). Makes selling a real
-   choice, not a button. State: a small `offers` list on `CareerState`/`league`
-   (→ persistence bump + migration).
-3. **Transfer windows.** Restrict signings/sales to a pre-season window (and
+1. **Bidding & personal terms — ✅ DONE (commit `439b3ec`).** `lib/negotiation.ts`
+   (pure, 7 tests): `wageDemand` (rating+division scaled), `evaluateBid`
+   (accept/counter/reject vs asking price), `termsAffordable` (wage-budget gate).
+   `NegotiationModal.tsx`: bid the selling club (skipped for free agents) → agree
+   personal terms (refuses if over the wage budget). `signPlayer(id, agreedFee?)`
+   is the commit step. No persistence change (transient pre-commit gate; the wage
+   bill is still derived). Verified live (counter at £26M on a £27M ask paid £26M).
+2. **Incoming offers for YOUR players — ✅ DONE (commit `26b4d61`), delivered via
+   the Inbox.** `lib/market.ts` `rivalBids` (pure, seeded, 4 tests): only players
+   ≥`OFFER_MIN_OVERALL` (70) draw bids; buyer biased toward clubs short in that
+   role then weighted by strength; fee ≈ marketValue ± noise; capped 2/wk; players
+   with an open bid skipped. Generated in `resolveLeagueRound` on a SEPARATE seed
+   stream (`{runSeed}-offer-{mw}`) → match/AI determinism intact. Accept banks the
+   fee + player leaves + buyer squad/strength rise; reject keeps him.
+   - **Club Inbox (the connective tissue, commit `f08a9e2`):** `lib/inbox.ts`
+     (pure, 4 tests) + top-level persisted `inbox: InboxMessage[]` (**v24** +
+     migration). `resolveLeagueRound` posts result recaps, injury notes (with
+     duration), board verdicts + the bids. Conditional **Inbox tab** (Career/League
+     only — Classic keeps 7 tabs) with an unread badge; `InboxPanel.tsx` with
+     inline Accept/Reject. Opening the tab marks all read. Store actions
+     `markInboxRead`/`acceptOffer`/`rejectOffer`.
+3. **Transfer windows — TODO.** Restrict signings/sales to a pre-season window (and
    maybe a mid-season one, e.g. matchweek 6). Gate `signPlayer`/market UI on an
-   `isWindowOpen(matchweek)` check; show "window closed" state.
-4. **Contracts & Bosman.** Per-player contract length + wage on `CareerMeta`;
+   `isWindowOpen(matchweek)` check; show "window closed" state. (Incoming offers
+   could also be window-gated.)
+4. **Contracts & Bosman — TODO.** Per-player contract length + wage on `CareerMeta`;
    expiring players become genuine free agents; renew/release in the review.
    Biggest data change (persistence + aging interplay) — do last.
 
