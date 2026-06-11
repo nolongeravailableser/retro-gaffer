@@ -13,6 +13,7 @@ import type { Player, Role } from './types';
 import { XI_SIZE, BENCH_SIZE } from './types';
 import { getFormation, roleCounts } from './formations';
 import { computeChemistry } from './chemistry';
+import { positionFit } from './positions';
 
 /** How much each stat matters per role (a striker's DEF is nearly irrelevant). */
 const ROLE_WEIGHT: Record<Role, { atk: number; def: number }> = {
@@ -76,12 +77,29 @@ export function pickBestXI(
     (p) => !suspended.has(p.id) && !availability.injuries[p.id]
   );
 
-  // Greedy: hand each slot the best remaining player of its role.
+  // Greedy: hand each slot the best remaining player of its role, PREFERRING
+  // players who actually play that slot's nominal position (positionFit), so the
+  // default XI fields in position and avoids the out-of-position penalty.
   const queue = new Map<Role, Player[]>();
   for (const role of ['GK', 'DEF', 'MID', 'FWD'] as Role[]) {
     queue.set(role, available.filter((p) => p.role === role).sort(byScoreDesc(role)));
   }
-  const xi: (Player | null)[] = formation.slots.map((role) => queue.get(role)!.shift() ?? null);
+  const xi: (Player | null)[] = new Array(XI_SIZE).fill(null);
+  formation.slots.forEach((role, i) => {
+    const poolR = queue.get(role)!;
+    if (poolR.length === 0) return;
+    const pos = formation.positions[i];
+    let best = 0;
+    let bestScore = -Infinity;
+    poolR.forEach((p, idx) => {
+      const s = roleScore(p, role) * positionFit(p, pos);
+      if (s > bestScore) {
+        bestScore = s;
+        best = idx;
+      }
+    });
+    xi[i] = poolR.splice(best, 1)[0];
+  });
   // Whatever the greedy pass didn't use is the candidate pool for refinement.
   let pool = available.filter((p) => !xi.includes(p));
 

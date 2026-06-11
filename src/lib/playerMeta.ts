@@ -23,6 +23,22 @@ export function positionLabel(position?: Position): string | null {
   return position ? POSITION_LABELS[position] : null;
 }
 
+/** Compact pitch/slot abbreviation for a position. */
+const POSITION_SHORT: Record<Position, string> = {
+  Goalkeeper: 'GK',
+  CenterBack: 'CB',
+  Fullback: 'FB',
+  Anchor: 'DM',
+  BoxToBox: 'CM',
+  Playmaker: 'AM',
+  Winger: 'W',
+  Striker: 'ST',
+};
+
+export function positionShort(position: Position): string {
+  return POSITION_SHORT[position];
+}
+
 /** Short league badge label. */
 const LEAGUE_LABELS: Record<League, string> = {
   EPL: 'Premier League',

@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
 import { X, Plus, Sparkles, Ban, HeartCrack } from 'lucide-react';
-import type { Player, Role } from '@/lib/types';
+import type { Player, Position, Role } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
+import { positionShort } from '@/lib/playerMeta';
 
 interface SlotProps {
   role: Role;
+  /** Nominal position of this slot (drives the pill label). */
+  position?: Position;
   player?: Player;
   selected: boolean;
   multiplier: number;
@@ -16,14 +19,17 @@ interface SlotProps {
   suspended?: boolean;
   /** Rounds the fielded player is injured for (0/undefined = fit). */
   injuredRounds?: number;
+  /** The fielded player is playing out of position (−10%). */
+  outOfPosition?: boolean;
   onClick: () => void;
   onRemove: () => void;
   slotIndex: number;
 }
 
-/** A single position on the 4-4-2 board. */
+/** A single position on the tactical board. */
 export default function Slot({
   role,
+  position,
   player,
   selected,
   multiplier,
@@ -31,6 +37,7 @@ export default function Slot({
   blockedTarget,
   suspended,
   injuredRounds,
+  outOfPosition,
   onClick,
   onRemove,
   slotIndex,
@@ -39,6 +46,7 @@ export default function Slot({
   const boosted = multiplier > 1;
   const boostPct = Math.round((multiplier - 1) * 100);
   const unavailable = !!player && (suspended || !!injuredRounds);
+  const label = position ? positionShort(position) : role;
 
   return (
     <div className="relative">
@@ -62,9 +70,14 @@ export default function Slot({
         {player ? (
           <>
             <span
-              className={`rounded border px-1 text-[10px] font-display ${style.text} ${style.border}`}
+              className={
+                outOfPosition
+                  ? 'rounded border px-1 text-[10px] font-display border-crt-amber/60 text-crt-amber'
+                  : `rounded border px-1 text-[10px] font-display ${style.text} ${style.border}`
+              }
+              title={outOfPosition ? 'Out of position — −10%' : undefined}
             >
-              {role}
+              {label}{outOfPosition ? ' !' : ''}
             </span>
             <span className="mt-1 line-clamp-2 font-display text-[11px] leading-tight sm:text-sm">
               {player.name}
@@ -83,7 +96,7 @@ export default function Slot({
         ) : (
           <>
             <Plus size={16} className="text-white/30" />
-            <span className={`mt-1 font-display text-xs ${style.text}`}>{role}</span>
+            <span className={`mt-1 font-display text-xs ${style.text}`}>{label}</span>
           </>
         )}
       </motion.button>

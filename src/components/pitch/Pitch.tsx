@@ -1,5 +1,6 @@
 import { useGameStore, getPlayer, isSlotEligible } from '@/store/useGameStore';
 import { getFormation } from '@/lib/formations';
+import { canPlay } from '@/lib/positions';
 import { Draggable, Droppable } from '@/components/dnd/dnd';
 import Slot from './Slot';
 
@@ -41,6 +42,7 @@ export default function Pitch({ multipliers }: PitchProps) {
               const slot = (
                 <Slot
                   role={formation.slots[slotIndex]}
+                  position={formation.positions[slotIndex]}
                   player={player}
                   selected={!!player && player.id === selectedPlayerId}
                   multiplier={player ? multipliers.get(player.id) ?? 1 : 1}
@@ -48,6 +50,7 @@ export default function Pitch({ multipliers }: PitchProps) {
                   blockedTarget={hasSelection && !eligible}
                   suspended={!!player && suspensions.includes(player.id)}
                   injuredRounds={player ? injuries[player.id] : undefined}
+                  outOfPosition={!!player && !canPlay(player, formation.positions[slotIndex])}
                   onClick={() => slotClicked(slotIndex)}
                   onRemove={() => removeFromSlot(slotIndex)}
                   slotIndex={slotIndex}
