@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v20, 252 tests — see §2l)
+> **Last updated:** 2026-06-11 (feedback roadmap through Phase 4.3 League mode + 4.4a pyramid foundation shipped & debugged; persistence v20, 255 tests. NEXT: Career→league pyramid — see §3 "START HERE")
 
 ---
 
@@ -578,18 +578,66 @@ programmatically** from existing single position (confirm before building).
 
 ## 3. Active Work & Next Directions
 
-**In flight: the user-feedback roadmap (§2l).** Phases 1 (quick wins), 2
-(match experience), 3 (2D pitch overhaul) and **4.1 (positions) + 4.2 (finances)
-formations)** are shipped; **remaining Phase 4 work**: FM finances/wages +
-league-scaled rewards, League-Season mode + table, career stadium development.
-See §2l for the full plan and the locked forks.
+### ⭐ NEXT SESSION — START HERE
+
+**Status (2026-06-11):** the user-feedback roadmap (§2l) is delivered through
+**Phase 4.3 (standalone League mode) + 4.4a (pyramid foundation)**. Phases 1, 2,
+3, 4.1, 4.2, 4.3 are all shipped AND debug-passed. Everything is **committed
+locally on `main` but NOT pushed to `origin`** (push when the user asks).
+Gates: **tsc clean · 255 tests · build green · persistence v20**.
+
+**THE NEXT TASK: Career → league pyramid** (design DECIDED — keep aging/youth +
+add promotion/relegation across the English tiers). Full plan + locked decision
+in §2l "4.3 → NEXT". In short:
+1. Extend `CareerState` (lib/career.ts) with `tier: number` + the season's
+   `league: LeagueState`. Persistence migration (bump CURRENT_VERSION to 21;
+   existing career saves → default to a sensible tier, e.g. BOTTOM_TIER).
+2. `startCareer` (store): begin in `BOTTOM_TIER` (National League),
+   `generateLeague(seed, division(tier).baseStrength)`, season 1.
+3. Career branch of `resolveRound`: resolve matchweeks via the league path
+   (mirror `resolveLeagueRound` — no lives); at season end run
+   `seasonOutcome(tier, position, 12)` → champion/promoted/stay/relegated/
+   sacked, then KEEP the existing aging/youth (ageRoster/generateYouth) in the
+   between-seasons review, and `advanceCareerSeason` starts a fresh league in
+   `nextTier(...)`.
+4. App: career opponent = the league fixture's club (same as `league` does now).
+5. UI: show the division name + the league table in career; CareerReview becomes
+   a promotion/relegation summary. RunOverModal: "sacked" only when relegated
+   from the bottom tier; "won" when you win the Premier League.
+6. Re-gate with `npm run sim` if the career economy shifts; verify a full
+   season + a promotion live.
+Then **4.4 stadium development** (career-only facilities: capacity→matchday
+income, training→youth, medical→fewer injuries).
+
+**Operational gotchas learned this session (IMPORTANT for browser testing):**
+- BEFORE any destructive browser test (New Game / startLeague / playing a
+  match), back the save up to a **localStorage key** (e.g.
+  `localStorage.setItem('gaffer-run-BACKUP', localStorage.getItem('gaffer-run'))`).
+  An in-memory (`window.__x`) snapshot is wiped by page reloads — this cost the
+  user's R7 save once. (R7 was reconstructed; a backup key habit prevents it.)
+- `import('/src/store/useGameStore.ts')` in preview_eval sometimes returns a
+  **phantom store instance** separate from the app's — reads/writes won't always
+  reflect the UI. Trust the UI + `localStorage` for ground truth, not `window.__gs`.
+- Editing the **store** file often doesn't hot-reload its action closures
+  (zustand+HMR); do a full page reload to pick up store changes.
+- `preview_console_logs` returns a **stale buffer** (fixed old `?t=` timestamps);
+  use a production `npm run build` as the authoritative "no real errors" check.
+- Match modals run out at 0.5×/Instant fast; a match completing **advances the
+  round** (resolves) — close the modal to suspend instead, or back up first.
+
+The full roadmap detail (every phase, commit hashes, files) is in §2l above.
+
+---
+
+**Earlier roadmap context.**
 
 All earlier work — planned phases (0–3), the 2026-06-10 mega-session
 (sections 2b–2i: QA fixes, FTUE, journey bar, auto-pick/auto-sign, flat nav,
 extended stats, 2D pitch view, team kits), the improvement program (§2j:
 interactive match, sound, crests, achievements, ErrorBoundary, e2e, PWA, Daily
-leaderboard) and QA audit #2 (§2k) — is shipped and deployed. Persistence is at
-**v18**; tests at **224/224** across 24 files.
+leaderboard) and QA audit #2 (§2k) — is shipped and deployed. (That baseline
+was v18 / 224 tests; the 2026-06-11 feedback roadmap took it to **v20 / 255** —
+see §2l and the "START HERE" block above for the current state.)
 
 **Former candidate next steps — now all shipped** (the 2026-06-10 PM
 improvement program + leaderboard delivered the list below; kept here as a
