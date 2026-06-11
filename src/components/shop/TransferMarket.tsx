@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Search, Users, Wand2 } from 'lucide-react';
+import { Search, Users, Wand2, Lock } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { POOL } from '@/data/pool';
 import { overall, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { transferFee, poachFee, isFreeAgent } from '@/lib/market';
-import { division } from '@/lib/league';
+import { division, isWindowOpen, nextWindowOpensAt } from '@/lib/league';
 import { computeChemistry } from '@/lib/chemistry';
 import { ROSTER_CAP } from '@/lib/economy';
 import type { Player, Role } from '@/lib/types';
@@ -37,6 +37,11 @@ export default function TransferMarket() {
 
   const tier = career?.tier ?? LEAGUE_NEUTRAL_TIER;
   const divName = career ? division(career.tier).name : 'League';
+
+  // Transfer window: signings/sales are only allowed while it's open.
+  const weeks = league ? league.clubs.length - 1 : 0;
+  const windowOpen = league ? isWindowOpen(league.matchweek, weeks) : true;
+  const reopensAt = league ? nextWindowOpensAt(league.matchweek, weeks) : null;
 
   const starters = useMemo(
     () => xi.map((id) => getPlayer(id)).filter((p): p is Player => !!p),
@@ -86,15 +91,30 @@ export default function TransferMarket() {
           <button
             type="button"
             onClick={autoFillSquad}
+            disabled={!windowOpen}
             data-testid="auto-fill"
-            title="Fill empty XI slots with the best free agents (£0) — a legal side in one tap"
-            className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1.5 text-xs font-display text-crt-green transition hover:bg-crt-green/20"
+            title={windowOpen ? 'Fill empty XI slots with the best free agents (£0) — a legal side in one tap' : 'Transfer window closed'}
+            className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1.5 text-xs font-display text-crt-green transition hover:bg-crt-green/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Wand2 size={13} />
             <span className="hidden sm:inline">Fill (free)</span>
           </button>
         </div>
       </div>
+
+      {/* Transfer-window status */}
+      {league &&
+        (windowOpen ? (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-crt-green/25 bg-crt-green/5 px-3 py-1.5 font-ticker text-[11px] text-crt-green">
+            <span className="h-1.5 w-1.5 rounded-full bg-crt-green" />
+            Transfer window open · matchweek {league.matchweek}
+          </div>
+        ) : (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-crt-amber/30 bg-crt-amber/5 px-3 py-1.5 font-ticker text-[11px] text-crt-amber" data-testid="window-closed">
+            <Lock size={12} />
+            Transfer window closed{reopensAt ? ` — reopens matchweek ${reopensAt}` : ' for the rest of the season'}. Browse now, deal then.
+          </div>
+        ))}
 
       {/* Controls */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -158,6 +178,7 @@ export default function TransferMarket() {
           const pc = withC.perPlayer.find((x) => x.player.id === p.id);
           const bonus = pc ? Math.round((pc.multiplier - 1) * 100) : 0;
           const affordable = bankroll >= fee && !full;
+          const signable = affordable && windowOpen;
           return (
             <div
               key={p.id}
@@ -182,14 +203,16 @@ export default function TransferMarket() {
               <button
                 type="button"
                 onClick={() => setNegotiating(p)}
-                disabled={!affordable}
+                disabled={!signable}
                 data-testid={`sign-${p.id}`}
                 title={
-                  full
-                    ? 'Squad full'
-                    : affordable
-                      ? atClub ? `Negotiate a poach (~£${fee}M)` : free ? 'Agree terms (free)' : `Open negotiations (~£${fee}M)`
-                      : `Need £${fee}M`
+                  !windowOpen
+                    ? 'Transfer window closed'
+                    : full
+                      ? 'Squad full'
+                      : affordable
+                        ? atClub ? `Negotiate a poach (~£${fee}M)` : free ? 'Agree terms (free)' : `Open negotiations (~£${fee}M)`
+                        : `Need £${fee}M`
                 }
                 className={[
                   'flex w-20 shrink-0 items-center justify-center rounded border px-2 py-1 font-display text-[11px] transition',
@@ -198,7 +221,7 @@ export default function TransferMarket() {
                     : free
                       ? 'border-crt-green/50 text-crt-green hover:bg-crt-green/15'
                       : 'border-crt-amber/40 text-crt-amber hover:bg-crt-amber/10',
-                  !affordable && 'cursor-not-allowed opacity-40',
+                  !signable && 'cursor-not-allowed opacity-40',
                 ].join(' ')}
               >
                 {atClub ? `£${fee}M` : free ? 'Free' : `£${fee}M`}

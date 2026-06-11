@@ -15,6 +15,10 @@ import {
   YOU,
   seasonOutcome,
   nextTier,
+  isWindowOpen,
+  nextWindowOpensAt,
+  winterWindowWeek,
+  SUMMER_WINDOW_WEEKS,
   TOP_TIER,
   BOTTOM_TIER,
   type LeagueState,
@@ -156,5 +160,27 @@ describe('table', () => {
     expect(t.find((r) => r.teamId === 'a')!.points).toBe(0);
     expect(t.find((r) => r.teamId === 'b')!.points).toBe(1);
     expect(position(st, YOU)).toBe(1);
+  });
+
+  it('transfer windows: open early (summer) + one mid-season week, closed otherwise', () => {
+    const weeks = 11;
+    // Summer window: the opening weeks are open.
+    for (let w = 1; w <= SUMMER_WINDOW_WEEKS; w++) expect(isWindowOpen(w, weeks)).toBe(true);
+    // The week just after summer is closed.
+    expect(isWindowOpen(SUMMER_WINDOW_WEEKS + 1, weeks)).toBe(false);
+    // The winter window is exactly one matchweek, after summer.
+    const winter = winterWindowWeek(weeks);
+    expect(winter).toBeGreaterThan(SUMMER_WINDOW_WEEKS);
+    expect(isWindowOpen(winter, weeks)).toBe(true);
+    expect(isWindowOpen(winter + 1, weeks)).toBe(false);
+    // The run-in is closed.
+    expect(isWindowOpen(weeks, weeks)).toBe(false);
+  });
+
+  it('nextWindowOpensAt finds the upcoming open week (or null at season end)', () => {
+    const weeks = 11;
+    expect(nextWindowOpensAt(1, weeks)).toBe(1); // already open
+    expect(nextWindowOpensAt(SUMMER_WINDOW_WEEKS + 1, weeks)).toBe(winterWindowWeek(weeks));
+    expect(nextWindowOpensAt(winterWindowWeek(weeks) + 1, weeks)).toBeNull(); // none left
   });
 });

@@ -1,5 +1,6 @@
 import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Check, X } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
+import { isWindowOpen } from '@/lib/league';
 import type { InboxKind, InboxMessage } from '@/lib/inbox';
 
 const KIND_ICON: Record<InboxKind, React.ElementType> = {
@@ -27,8 +28,11 @@ const KIND_TINT: Record<InboxKind, string> = {
  */
 export default function InboxPanel() {
   const inbox = useGameStore((s) => s.inbox);
+  const league = useGameStore((s) => s.league);
   const acceptOffer = useGameStore((s) => s.acceptOffer);
   const rejectOffer = useGameStore((s) => s.rejectOffer);
+  // Accepting a bid is a sale — only allowed while the transfer window is open.
+  const windowOpen = league ? isWindowOpen(league.matchweek, league.clubs.length - 1) : true;
 
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4" data-testid="inbox-panel">
@@ -47,7 +51,7 @@ export default function InboxPanel() {
       ) : (
         <div className="flex flex-col gap-1.5">
           {inbox.map((m) => (
-            <MessageRow key={m.id} m={m} onAccept={acceptOffer} onReject={rejectOffer} />
+            <MessageRow key={m.id} m={m} windowOpen={windowOpen} onAccept={acceptOffer} onReject={rejectOffer} />
           ))}
         </div>
       )}
@@ -57,10 +61,12 @@ export default function InboxPanel() {
 
 function MessageRow({
   m,
+  windowOpen,
   onAccept,
   onReject,
 }: {
   m: InboxMessage;
+  windowOpen: boolean;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
@@ -90,8 +96,10 @@ function MessageRow({
               <button
                 type="button"
                 onClick={() => onAccept(m.id)}
+                disabled={!windowOpen}
+                title={windowOpen ? undefined : 'Transfer window closed'}
                 data-testid={`offer-accept-${m.id}`}
-                className="flex items-center gap-1 rounded border border-crt-green/50 px-2.5 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/15"
+                className="flex items-center gap-1 rounded border border-crt-green/50 px-2.5 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/15 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check size={12} /> Accept £{m.offer!.fee}M
               </button>

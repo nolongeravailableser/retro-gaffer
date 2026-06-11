@@ -224,6 +224,34 @@ export function totalWeeks(state: LeagueState): number {
   return state.clubs.length - 1;
 }
 
+// --- Transfer windows ------------------------------------------------------
+
+/** Summer window: open for the opening matchweeks of a season (pre-season + early). */
+export const SUMMER_WINDOW_WEEKS = 3;
+
+/** The single mid-season ("winter") matchweek the window briefly reopens on. */
+export function winterWindowWeek(weeks: number): number {
+  return Math.max(SUMMER_WINDOW_WEEKS + 1, Math.round(weeks / 2));
+}
+
+/**
+ * Whether the transfer window is open for a given matchweek. Mirrors football's
+ * two windows: a long summer window over the opening weeks, then a brief winter
+ * one mid-season. Closed otherwise — you can't sign or sell until it reopens.
+ */
+export function isWindowOpen(matchweek: number, weeks: number): boolean {
+  return matchweek <= SUMMER_WINDOW_WEEKS || matchweek === winterWindowWeek(weeks);
+}
+
+/**
+ * The next matchweek (≥ the current one) on which the window is open, or null if
+ * it won't reopen before the season ends. Returns the current week if already open.
+ */
+export function nextWindowOpensAt(matchweek: number, weeks: number): number | null {
+  for (let w = matchweek; w <= weeks; w++) if (isWindowOpen(w, weeks)) return w;
+  return null;
+}
+
 /** Every pool-player id owned by an AI club (so they're excluded from free agents). */
 export function allClubOwnedIds(state: LeagueState): Set<string> {
   const ids = new Set<string>();

@@ -48,6 +48,8 @@ import {
   nextTier,
   division,
   CLUB_SQUAD_NEED,
+  isWindowOpen,
+  nextWindowOpensAt,
   BOTTOM_TIER,
   YOU,
   type LeagueState,
@@ -136,6 +138,23 @@ function marketTierOf(s: { career: CareerState | null; league: LeagueState | nul
   if (s.career) return s.career.tier;
   if (s.league) return LEAGUE_NEUTRAL_TIER;
   return null;
+}
+
+/** Whether the transfer window is open right now (market modes). Non-market
+ *  states (no league) are always "open" — they don't use windows. */
+function windowOpenFor(s: { league: LeagueState | null }): boolean {
+  if (!s.league) return true;
+  return isWindowOpen(s.league.matchweek, s.league.clubs.length - 1);
+}
+
+/** A user-facing "window closed" notice naming when it reopens. */
+function windowClosedNotice(s: { league: LeagueState | null }): string {
+  if (!s.league) return 'Transfer window closed';
+  const weeks = s.league.clubs.length - 1;
+  const at = nextWindowOpensAt(s.league.matchweek, weeks);
+  return at
+    ? `Transfer window closed — reopens matchweek ${at}.`
+    : 'Transfer window closed for the rest of the season.';
 }
 
 /** A fresh league with AI clubs' squads drafted from the pool (Phase B). */
@@ -718,11 +737,12 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   newMsgs.push(...injuryMsgs);
   if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
 
-  // Incoming bids: each matchweek (not at season end), rival clubs may bid for
-  // your better players — seeded on a SEPARATE stream so match/AI determinism is
-  // untouched. Buyers are biased toward clubs short in that role. Players who
-  // already have an open (unresolved) bid are skipped.
-  if (!done) {
+  // Incoming bids: while the window is open, rival clubs may bid for your better
+  // players — seeded on a SEPARATE stream so match/AI determinism is untouched.
+  // Stamped for the upcoming matchweek, so they only land when you can act on
+  // them. Buyers are biased toward clubs short in that role; players with an open
+  // bid are skipped.
+  if (!done && isWindowOpen(nextMw, weeks)) {
     const ownedPlayers = s.owned.map(getPlayer).filter((p): p is Player => !!p);
     const openOffers = new Set(
       s.inbox.filter((m) => m.kind === 'offer' && !m.resolved && m.offer).map((m) => m.offer!.playerId)
@@ -740,8 +760,8 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         );
         return { id: c.id, name: c.name, strength: c.strength, needsRoles };
       });
-    const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${mw}`, openOffers);
-    for (const b of bids) newMsgs.push(offerMessage(mw, b));
+    const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${nextMw}`, openOffers);
+    for (const b of bids) newMsgs.push(offerMessage(nextMw, b));
   }
 
   const inbox = pushMessages(s.inbox, newMsgs);
@@ -835,9 +855,14 @@ export const useGameStore = create<GameState>()(
       },
 
       sell: (id) => {
-        const { owned } = get();
+        const s0 = get();
         const player = getPlayer(id);
-        if (!player || !owned.includes(id)) return;
+        if (!player || !s0.owned.includes(id)) return;
+        // Career/League: selling is window-gated too (no business out of window).
+        if (marketTierOf(s0) !== null && !windowOpenFor(s0)) {
+          set({ notice: windowClosedNotice(s0), noticeKind: 'error' });
+          return;
+        }
         set((s) => {
           // Career/League sell at division-scaled market value (free agents have
           // no resale); Classic/other use the flat 80%-of-cost rule.
@@ -862,6 +887,10 @@ export const useGameStore = create<GameState>()(
         const s = get();
         const mt = marketTierOf(s);
         if (mt === null) return;
+        if (!windowOpenFor(s)) {
+          set({ notice: windowClosedNotice(s), noticeKind: 'error' });
+          return;
+        }
         const player = getPlayer(id);
         if (!player || s.owned.includes(id)) return;
         const club = s.league ? clubOf(s.league, id) : null;
@@ -928,6 +957,7 @@ export const useGameStore = create<GameState>()(
       autoFillSquad: () =>
         set((s) => {
           if (marketTierOf(s) === null) return {};
+          if (!windowOpenFor(s)) return { notice: windowClosedNotice(s), noticeKind: 'error' };
           const ownedSet = new Set(s.owned);
           // Rival-owned players aren't free agents — exclude them from the fill.
           const taken = s.league ? allClubOwnedIds(s.league) : new Set<string>();
@@ -971,6 +1001,8 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           const msg = s.inbox.find((m) => m.id === messageId);
           if (!msg?.offer || msg.resolved) return {};
+          // Selling is window-gated — you can't complete a deal out of window.
+          if (!windowOpenFor(s)) return { notice: windowClosedNotice(s), noticeKind: 'error' };
           const { playerId, clubId, fee, playerName } = msg.offer;
           if (!s.owned.includes(playerId)) {
             // The player is already gone — just retire the stale offer.

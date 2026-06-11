@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '@/store/useGameStore';
 import { BOTTOM_TIER, division, totalWeeks } from '@/lib/league';
+import { overall } from '@/lib/wages';
+import { POOL } from '@/data/pool';
 import type { MatchResult } from '@/lib/types';
 
 /**
@@ -153,5 +155,24 @@ describe('career pyramid', () => {
     const highReward = useGameStore.getState().lastIncome!.reward;
     expect(highReward).toBeGreaterThan(lowReward);
     expect(division(tier).name).toBe('League One');
+  });
+
+  it('signings are gated to the transfer window', () => {
+    // A free agent (overall < 64) costs nothing — a clean signing to test the gate.
+    const freeAgent = POOL.find((p) => overall(p) < 64)!;
+    // Matchweek 1 (summer window open): the signing goes through.
+    expect(useGameStore.getState().league!.matchweek).toBe(1);
+    useGameStore.getState().signPlayer(freeAgent.id);
+    expect(useGameStore.getState().owned).toContain(freeAgent.id);
+
+    // Jump to a closed week — a new signing is blocked with an error notice.
+    const league = useGameStore.getState().league!;
+    useGameStore.setState({ league: { ...league, matchweek: 4 } });
+    const other = POOL.find((p) => overall(p) < 64 && p.id !== freeAgent.id)!;
+    const before = useGameStore.getState().owned.length;
+    useGameStore.getState().signPlayer(other.id);
+    expect(useGameStore.getState().owned.length).toBe(before); // no-op
+    expect(useGameStore.getState().noticeKind).toBe('error');
+    expect(useGameStore.getState().notice).toMatch(/window closed/i);
   });
 });
