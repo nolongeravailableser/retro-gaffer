@@ -83,6 +83,36 @@ const GOAL_LINES = [
   '{p} rises highest and heads it home! GOAL!',
   'Route one — {p} bundles it over the line! GOAL!',
   '{p} curls a free-kick into the postage stamp! GOAL!',
+  '{p} dummies the keeper and rolls it in. GOAL!',
+  'A thunderbolt from {p} — the net nearly comes off! GOAL!',
+  '{p} pounces on the rebound and taps in. GOAL!',
+  '{p} slaloms past two and slots it home. GOAL!',
+  'Cheeky panenka from {p} from the spot! GOAL!',
+  '{p} volleys it first time — unstoppable! GOAL!',
+  'A slick one-two and {p} sweeps it in. GOAL!',
+  '{p} nods in at the back post from the corner. GOAL!',
+];
+
+// Context-flavoured goal pools — chosen deterministically (no extra RNG), then
+// the same single rng.int draw picks the line, so match scores are unchanged.
+const LATE_GOAL_LINES = [
+  'Drama at the death! {p} snatches it late! GOAL!',
+  '{p} with a winner in the dying seconds! GOAL!',
+  'Heartbreak for the other end — {p} strikes late! GOAL!',
+  '{p} pops up in the 90th to settle it! GOAL!',
+];
+
+const EQUALIZER_LINES = [
+  'Game on! {p} levels it up! GOAL!',
+  '{p} hauls them back into it — all square! GOAL!',
+  'Right on cue, {p} equalises! GOAL!',
+  '{p} answers straight back! It\'s level! GOAL!',
+];
+
+const OPENER_LINES = [
+  '{p} breaks the deadlock! GOAL!',
+  'First blood — {p} opens the scoring! GOAL!',
+  '{p} draws first blood with a tidy finish! GOAL!',
 ];
 
 const CHANCE_LINES = [
@@ -92,6 +122,12 @@ const CHANCE_LINES = [
   '{p} skies it over from six yards — he should score!',
   '{p} rattles the crossbar! So close.',
   '{p} wriggles into the box but the last-ditch tackle is in.',
+  '{p} forces a fingertip save from the keeper!',
+  'Goalmouth scramble — {p} can\'t quite poke it home!',
+  '{p} hits the side-netting and claims it was in!',
+  'The flag is up — {p} had timed his run a fraction early.',
+  '{p} curls one onto the roof of the net.',
+  'Heroic block denies {p} from point-blank range!',
 ];
 
 const YELLOW_LINES = [
@@ -99,17 +135,24 @@ const YELLOW_LINES = [
   'Reckless challenge from {p}. The book comes out.',
   '{p} argues the toss and picks up a booking.',
   'Cynical foul from {p} — straight into the referee\'s notebook.',
+  '{p} drags his man down on the break. Booked.',
+  'A clumsy lunge from {p} earns a yellow.',
+  '{p} is booked for time-wasting — the crowd jeers.',
+  'Shirt-pull from {p} and the referee reaches for his pocket.',
 ];
 
 const SECOND_YELLOW_LINES = [
   '{p} goes in again — second yellow, and he\'s off! Ten men!',
   'Stupid tackle from {p}. Already on a yellow. He\'s off! Ten men.',
+  '{p} dives in — second booking, an early bath. Ten men!',
 ];
 
 const RED_LINES = [
   'STRAIGHT RED for {p}! Horrific challenge — off he goes!',
   '{p} sees red for a last-man foul. Ten men.',
   'The referee shows {p} the red card — dangerous play, no arguments.',
+  'Studs up from {p} — the referee has no choice. Red!',
+  '{p} loses his head and gets his marching orders. Red card!',
 ];
 
 const INJURY_LINES = [
@@ -117,7 +160,18 @@ const INJURY_LINES = [
   'Worrying scenes as {p} can\'t continue — a stretcher is called.',
   '{p} pulls up clutching his hamstring. He\'s done for the day.',
   '{p} limps off after a heavy challenge. Fingers crossed it\'s nothing serious.',
+  '{p} rolls an ankle in the turf and can\'t run it off.',
+  '{p} takes a knock and signals to the bench — he can\'t carry on.',
+  'The physio is on for {p}, and it\'s not looking good.',
 ];
+
+/** Choose the goal-line pool from match context (no RNG consumed). */
+function goalPool(minute: number, scoredFor: number, scoredAgainst: number): string[] {
+  if (minute >= 85) return LATE_GOAL_LINES;
+  if (scoredFor === 1 && scoredAgainst === 0) return OPENER_LINES;
+  if (scoredFor === scoredAgainst) return EQUALIZER_LINES; // just drew level
+  return GOAL_LINES;
+}
 
 // Exported so presentation layers (sound, 2D viz) can recognise the canonical
 // whistle beats by TEXT — a driver-inserted flavour event (substitution, team
@@ -355,12 +409,15 @@ export function simulateSegment(
         const assister = pickAssister(seed, minute, side, team.squad, scorer?.id, inf);
         if (side === 'A') carry.goalsA++;
         else carry.goalsB++;
+        const sFor = side === 'A' ? carry.goalsA : carry.goalsB;
+        const sAgainst = side === 'A' ? carry.goalsB : carry.goalsA;
+        const pool = goalPool(minute, sFor, sAgainst);
         events.push({
           minute,
           side,
           kind: 'goal',
           text:
-            `${team.name}: ${GOAL_LINES[rng.int(0, GOAL_LINES.length - 1)].replace('{p}', scorerName)}` +
+            `${team.name}: ${pool[rng.int(0, pool.length - 1)].replace('{p}', scorerName)}` +
             (assister ? ` Teed up by ${assister.name}.` : ''),
           playerName: scorerName,
           playerId: scorer?.id,
