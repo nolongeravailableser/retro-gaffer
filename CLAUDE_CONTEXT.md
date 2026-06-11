@@ -538,13 +538,20 @@ programmatically** from existing single position (confirm before building).
     `simAiResult`/`simAiWeek` (light xG sim for non-player fixtures),
     `table`/`position` (3-1-0, sorted points→GD→GF→name). Pure/deterministic.
     Tests: league.test.ts (5).
-  - **Integration NOT started** (the large part): a `league` mode in modes.ts;
-    `league: LeagueState|null` in the store (persist v20 + migration + saveSlice
-    + freshRun reset); a league resolve path (record player result → simAiWeek →
-    advance matchweek → champion=won, no lives); App wiring (opponent = the
-    matchweek fixture's club via generateOpponent from its strength); a League
-    Table UI + New Run "League" card. Reuse finances/positions. Design call to
-    confirm: champion-only = won, or top-N promotion.
+  - **4.3b standalone League mode (SHIPPED, commit `7793212`):** `league`
+    ModeConfig (12 teams, 11 matchweeks, no lives/bosses); `league` store state
+    (persist **v20** + migration + saveSlice + freshRun reset); `startLeague`;
+    `resolveRound` early branch → `resolveLeagueRound` (record player result +
+    `simAiWeek`, advance matchweek, champion=won, reuse FM finances + player
+    history). App: matchweek opponent = the fixture's club (`generateOpponent`
+    from its strength, club name). `LeagueTable.tsx` on the Season tab; New Run
+    "League Season" card; SeasonPanel loss note = "no points" in a league.
+    Verified live end-to-end (won MW1 → table updated, you 2nd; MW advanced).
+    Win = champion (1st).
+  - **NEXT (user's expanded vision): Career = a league PYRAMID mirroring
+    English football** — promotion/relegation across tiers (National League →
+    … → Premier League), climbing seasons. This restructures the current
+    board-target Career to use the league engine + division tiers. Not started.
 - **Remaining (NOT started):** career stadium development. Forks in §2l preamble.
 
 ---
