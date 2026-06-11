@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, ChevronsRight, Trophy, Ban, HeartCrack, Tv, AlignLeft, Volume2, VolumeX,
-  Megaphone, ArrowLeftRight,
+  Megaphone, ArrowLeftRight, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import {
   simulateSegment,
@@ -28,6 +28,8 @@ import { playCue, isMuted, setMuted, type SoundCue } from '@/lib/sound';
 import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
+import MatchReport from './MatchReport';
+import type { RatingContext } from '@/lib/ratings';
 import CrestBadge from '@/components/ui/CrestBadge';
 import type { MatchResult, MatchEvent, Player } from '@/lib/types';
 
@@ -148,6 +150,7 @@ export default function MatchView({
   const [speed, setSpeed] = useState<Speed>(1);
   /** 2D pitch view (default) vs. the full text ticker. */
   const [pitchMode, setPitchMode] = useState(true);
+  const [ratingsOpen, setRatingsOpen] = useState(true);
   const [muted, setMutedState] = useState(isMuted);
   const completedRef = useRef(false);
   const tickerRef = useRef<HTMLDivElement>(null);
@@ -385,6 +388,14 @@ export default function MatchView({
     playerTeam.squad.find((p) => p.id === id)?.name ??
     id;
 
+  // Ratings read from the events shown SO FAR (so they update live). The outcome
+  // is provisional until full-time, derived from the score on screen.
+  const ratingCtx: RatingContext = {
+    goalsConceded: scoreB,
+    outcome: scoreA > scoreB ? 'win' : scoreA < scoreB ? 'loss' : 'draw',
+    seed: live.seed,
+  };
+
   // Substitution candidates: same role, fit, not already on the pitch.
   const injuredPlayer =
     pauseActive?.type === 'injury'
@@ -522,6 +533,29 @@ export default function MatchView({
                 </motion.p>
               ))}
 
+          {/* Live player ratings — visible during play, collapsible. */}
+          {!finished && shown > 1 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setRatingsOpen((o) => !o)}
+                className="mb-1 flex w-full items-center justify-between rounded-md border border-white/10 bg-pitch-900/60 px-2 py-1 text-[11px] text-chrome-muted transition hover:text-chrome"
+              >
+                <span className="font-display uppercase tracking-wide">Live player ratings</span>
+                {ratingsOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              </button>
+              {ratingsOpen && (
+                <MatchReport
+                  events={visible}
+                  squad={live.teamA.squad}
+                  ctx={ratingCtx}
+                  teamAName={live.teamA.name}
+                  finished={false}
+                />
+              )}
+            </div>
+          )}
+
           {/* ── Decision windows ── */}
           <AnimatePresence>
             {pauseActive?.type === 'halftime' && (
@@ -631,6 +665,15 @@ export default function MatchView({
                     </div>
                   ))}
                 </div>
+
+                {/* Key-events timeline + player ratings */}
+                <MatchReport
+                  events={events}
+                  squad={live.teamA.squad}
+                  ctx={{ goalsConceded: result.score.b, outcome: result.outcome, seed: live.seed }}
+                  teamAName={live.teamA.name}
+                  finished
+                />
 
                 {/* Round payout — the full economic outcome, not just the reward */}
                 {ladder && lastIncome && (
