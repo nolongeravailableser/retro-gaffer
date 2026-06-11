@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 233 tests — see §2l)
+> **Last updated:** 2026-06-11 (Compete tab + leaderboard live + feedback roadmap Phases 1–3 shipped; persistence v19, 243 tests — see §2l)
 
 ---
 
@@ -501,11 +501,26 @@ programmatically** from existing single position (confirm before building).
   shapes. Possible future polish: smoother scene-boundary transitions,
   off-ball runs, distinct dribble-vs-pass ball speed.
 
-**Remaining phase (NOT started):**
-- **Phase 4 — big systems**: dynamic positions + formations (granular slots,
-  out-of-position penalty), full FM finances/wages, League-Season mode +
-  table, career stadium development. Each needs its own design pass +
-  balance re-gating.
+**Phase 4 — big systems (IN PROGRESS):**
+- **4.1 dynamic positions + formations (SHIPPED, commits `393570e`…`8879ad8`):**
+  - `src/lib/positions.ts` — `eligiblePositions` infers playable positions from
+    the one authored position via real-life adjacency (crosses Role lines:
+    Fullback↔Winger etc.); `canFillSlot` (same-role OR eligible), `positionFit`
+    (1 / 0.9), `OUT_OF_POSITION_MULT`. `POSITION_TO_ROLE` moved here.
+  - Formations carry `positions[]` (granular); `slots[]` (Role) derived → codec
+    /chemistry unchanged, original four byte-identical (save-safe). +4 formations
+    (3-4-3, 5-3-2, 4-1-4-1, 4-1-3-2 diamond) = 8. `slotPosition()`,
+    `FORMATION_IDS` is curated order.
+  - Placement (`isSlotEligible`/`placeInSlot`) position-aware (cross-role moves
+    allowed; out-of-position warned). `effectiveStrength` takes a per-player
+    `posMult`; App feeds it from XI×formation (out-of-position starter at 90%).
+    Subs keep their Phase-2.4 clone.
+  - `pickBestXI` greedy is position-aware (fields in position → no penalty by
+    default). Pitch slots show position (CB/FB/DM/CM/AM/W/ST) + amber "!" when
+    out of position. Sim still 39.0%. Tests: positions(6)+formations(4) → 243.
+- **Remaining (NOT started):** full FM finances/wages + league-scaled rewards
+  (needs sim re-gate), League-Season mode + table (new mode alongside),
+  career stadium development. Forks locked in the §2l preamble.
 
 ---
 
