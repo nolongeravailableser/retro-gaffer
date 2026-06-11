@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-11 (4.8 FM transfer market — Phase A — SHIPPED locally: browsable market + free agents + market valuations for Career/League, +165 lower-league players (pool 668), economy retuned. persistence v23, 274 tests. Phases 1–4.7 PUSHED to prod; only the 4.8 commits are local & unpushed. NEXT: Phase B rival squads. See §3 "START HERE")
+> **Last updated:** 2026-06-11 (FM transfer market COMPLETE — Phase A (market values, free agents, +165 lower-league players, pool 668, £35M start) PUSHED to prod; Phase B (rival squads + poaching) LOCAL & unpushed. persistence v23, 275 tests. See §3 "START HERE")
 
 ---
 
@@ -656,9 +656,23 @@ programmatically** from existing single position (confirm before building).
       minus owned; **rival squads are Phase B**).
     - Sim: reaches PL ~94%, champ ~53%, sacked ~4%; Classic 36.8%. Cult £2-9M,
       stars £20-41M+, galáctico PL squad ~£500M. tsc · 274 tests · build green.
-    - **NEXT — Phase B:** rival clubs own seeded squads → poach/sell-to-clubs +
-      market dynamics (the third leg of the FM-market ask). Persistence bump
-      (squads in `LeagueState`).
+  - **4.8 FM transfer market — Phase B (LOCAL, commit `767ba13`; NOT pushed):**
+    rival clubs own real squads → a living market with poaching.
+    - `lib/league.ts`: `LeagueClub.squad?` + `assignClubSquads(clubs, pool)`
+      (clubs draft strongest-first into role-balanced 14-man squads — favourites
+      own the galácticos, minnows get journeymen; no overlap); `allClubOwnedIds`,
+      `clubOf`. `lib/market.ts`: `poachFee` (×`POACH_PREMIUM`=1.4).
+    - store: `leagueWithSquads()` drafts squads at start/advance/rehydrate
+      (idempotent — never undoes poaching; squad is additive + runtime-backfilled,
+      **no persistence bump**). `signPlayer` poaches (pays premium, removes from
+      the rival, dents their `strength`); free agents / `autoFillSquad` exclude
+      club-owned. TransferMarket: "At clubs" filter + ↪club tags + poach buttons.
+    - Market tiers: **free agents** (unowned <64, £0) · **open-market** (unowned
+      ≥64) · **poach targets** (rival-owned, premium, weakens them). Tests +1 →
+      **275**. `generateLeague` unchanged → sim/Classic unaffected. Verified live
+      (poached Messi £28M → club strength 839→677).
+    - **Remaining polish (optional):** sell-to-clubs flavour; rivals re-signing
+      after a poach; transfer windows/bidding. Cup competitions still parked.
   - **4.7 Money sink + title flourish (SHIPPED + PUSHED, commit `faec112`):**
     - **Facility upkeep** (`facilityUpkeep` in stadium.ts, `UPKEEP_PER_LEVEL`=1.0):
       a recurring £/matchweek running cost = totalLevels × per-level × tierMult,
@@ -692,13 +706,16 @@ unpushed:** the **4.8 FM transfer-market Phase A** commits (`4b524c5`, `6e35ab8`
 verified — safe to push as one release when the user OKs (it's a big balance
 change they've been steering, so confirm before prod).
 
-**NEXT — Phase B of the transfer market (the user's third ask, "market
-dynamics"):** give the 11 rival league clubs real seeded squads (store in
-`LeagueState` → persistence bump + migration), so the market = free agents +
-players listed by rivals; add **poaching** (a fee premium) and **selling to
-clubs that need a role**. Optional later: bidding/negotiation, transfer windows.
-Then: cup competitions (parked idea). Calibrate any economy shift via
-`tests/career.sim.ts` (the career sim already drafts at `transferFee`).
+**Push state:** prod is live through **4.8 Phase A** (`78eb2a7` — market values,
+free agents, +165 lower-league players, £35M start, economy retune). **Local &
+unpushed: only Phase B** (`767ba13` — rival squads + poaching), which is
+additive/low-risk (generateLeague unchanged → sim/Classic untouched). tsc · 275
+tests · build green; safe to push.
+
+**NEXT (optional, none queued):** transfer-market polish (sell-to-clubs flavour,
+rivals re-signing after a poach, transfer windows/bidding); **cup competitions**
+(parked idea); or fresh requests. Calibrate any economy shift via
+`tests/career.sim.ts`.
 
 **Career recap (just shipped — §2l 4.4b/4.4c/4.5):** Career reuses the top-level
 `s.league`; `CareerState` holds `tier` (division), `facilities` (club upgrades),
