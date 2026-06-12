@@ -40,6 +40,7 @@ import FeaturedBanner from '@/components/shop/FeaturedBanner';
 import SquadList from '@/components/squad/SquadList';
 import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
+import FixtureHero from '@/components/home/FixtureHero';
 import LeagueTable from '@/components/league/LeagueTable';
 import EventBanner from '@/components/season/EventBanner';
 import MatchView from '@/components/match/MatchView';
@@ -369,14 +370,20 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="flex flex-col gap-4">
             <EventBanner />
-            <AvailabilityStrip />
-            <SeasonPanel
-              roundOpponent={roundOpponent}
-              canPlay={ready}
-              filled={filled}
-              hidePlay={showJourney && journey.stage === 'play'}
-              onPlay={playRound}
-            />
+            <AvailabilityStrip hideWhenClear />
+            {runStatus === 'playing' ? (
+              // The fixture hero — the JourneyBar above owns the kick-off CTA.
+              <FixtureHero roundOpponent={roundOpponent} playerTeam={playerTeam} />
+            ) : (
+              // Dismissed-RunOverModal fallback: the end-of-run summary card.
+              <SeasonPanel
+                roundOpponent={roundOpponent}
+                canPlay={ready}
+                filled={filled}
+                hidePlay
+                onPlay={playRound}
+              />
+            )}
             {league && <LeagueTable />}
             {cup && <CupBracket />}
             {showInbox && <InboxPanel />}
