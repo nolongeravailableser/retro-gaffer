@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
-import { X, Plus, Sparkles, Ban, HeartCrack } from 'lucide-react';
+import { X, Plus, Ban, HeartCrack } from 'lucide-react';
 import type { Player, Position, Role } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { positionShort } from '@/lib/playerMeta';
+import { overall } from '@/lib/wages';
+import OvrBadge from '@/components/ui/OvrBadge';
 
 interface SlotProps {
   role: Role;
@@ -82,16 +84,9 @@ export default function Slot({
             <span className="mt-1 line-clamp-2 font-display text-[11px] leading-tight sm:text-sm">
               {player.name}
             </span>
-            <span className="mt-0.5 flex items-center gap-1 font-display text-[10px] sm:mt-1 sm:gap-1.5 sm:text-[11px]">
-              <span className="text-rose-300">{player.stats.attack}</span>
-              <span className="text-chrome-muted">/</span>
-              <span className="text-sky-300">{player.stats.defense}</span>
+            <span className="mt-1">
+              <OvrBadge value={overall(player)} />
             </span>
-            {boosted && (
-              <span className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold text-crt-green">
-                <Sparkles size={9} />+{boostPct}%
-              </span>
-            )}
           </>
         ) : (
           <>
@@ -113,6 +108,16 @@ export default function Slot({
         >
           <X size={12} />
         </button>
+      )}
+
+      {/* Chemistry pip — the link bonus, readable at slot scale. */}
+      {player && boosted && (
+        <span
+          title={`Chemistry +${boostPct}%`}
+          className="absolute -bottom-1.5 -right-1.5 rounded-full bg-tier-elite px-1.5 py-px font-data text-[9px] font-bold text-pitch-950"
+        >
+          +{boostPct}%
+        </span>
       )}
 
       {/* Unavailable badge — this starter can't actually take the field. */}

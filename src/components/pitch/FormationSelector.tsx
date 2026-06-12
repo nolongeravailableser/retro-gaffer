@@ -12,7 +12,7 @@ export default function FormationSelector() {
       <span className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-chrome-muted">
         <LayoutGrid size={14} /> Formation
       </span>
-      <div className="flex gap-1 rounded-lg border border-white/10 bg-pitch-900/70 p-1">
+      <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-white/10 bg-pitch-900/70 p-1">
         {FORMATION_IDS.map((id) => {
           const active = id === formation;
           return (
@@ -23,7 +23,7 @@ export default function FormationSelector() {
               data-testid={`formation-${id}`}
               aria-pressed={active}
               className={[
-                'rounded-md px-2.5 py-1 font-display text-sm transition',
+                'shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 font-display text-sm transition',
                 active
                   ? 'bg-crt-green/20 text-crt-green shadow-glow'
                   : 'text-chrome-muted hover:text-chrome hover:bg-white/5',

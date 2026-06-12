@@ -391,16 +391,28 @@ export default function App() {
         )}
 
         {activeTab === 'squad' && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_288px]">
-            {/* Squad list — first on mobile (immediately visible), right column on desktop */}
-            <div className="order-first lg:order-last lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem] flex flex-col gap-3">
-              <AvailabilityStrip hideWhenClear />
-              <SquadList multipliers={multipliers} />
-            </div>
-            {/* Pitch — below squad list on mobile, left column on desktop */}
-            <div className="order-last lg:order-first flex flex-col gap-4 min-w-0">
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(320px,1fr)]">
+            {/* Pitch FIRST on every viewport — it's the decision surface.
+                New signings are handled by auto-assign + the toast, not by
+                reordering the whole screen (design-mockups/02-squad.html). */}
+            <div className="flex min-w-0 flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
                 <FormationSelector />
+                {/* Live team strength — feedback at the moment of the decision */}
+                <span className="flex items-center gap-1.5 font-data text-[11px] text-chrome-muted">
+                  <span className="rounded-full border border-white/10 bg-surface-1 px-2 py-0.5">
+                    ATK <span className="text-chrome">{playerTeam?.attack ?? 0}</span>
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-surface-1 px-2 py-0.5">
+                    DEF <span className="text-chrome">{playerTeam?.defense ?? 0}</span>
+                  </span>
+                  <span
+                    className="rounded-full border border-crt-green/30 bg-crt-green/10 px-2 py-0.5 text-crt-green"
+                    title="Active chemistry links — starters sharing a tag"
+                  >
+                    ⚡ {chemistry.synergies.length} link{chemistry.synergies.length !== 1 ? 's' : ''}
+                  </span>
+                </span>
               </div>
               <Pitch multipliers={multipliers} />
               <Bench />
@@ -411,6 +423,11 @@ export default function App() {
                 defense={playerTeam?.defense}
               />
               {(career || league) && <TrainingPanel />}
+            </div>
+            {/* Roster — right column on desktop, below the pitch on mobile */}
+            <div className="flex flex-col gap-3 lg:sticky lg:top-[3.5rem] lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
+              <AvailabilityStrip hideWhenClear />
+              <SquadList multipliers={multipliers} />
             </div>
           </div>
         )}
