@@ -10,10 +10,11 @@
 > division economy table + NEW sponsorship (local + global/TV) & disciplinary fines,
 > calibrated net-neutral). Standard == today; sim preserved (Classic **36.8%**, career
 > champ ~66% / sacked ~1% / PL median £526M / max £1462M). persistence **v28**,
-> **359 tests**, build green. P3 unknown-pool start ALSO shipped (a new career
-> begins with grey generated journeymen). NEXT + LAST: Pillar 2 (Start Menu +
-> difficulty picker + mode demotion + the consolidated live verification). See §3
-> "START HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
+> **367 tests**, build green. P3 unknown-pool start shipped. NEW PILLAR 5 (Manager
+> career — "a sacking is NOT game over; apply for jobs matching reputation"):
+> ENGINE shipped (`lib/jobs.ts`), wiring + UI next. Remaining: Pillar 2 (Start Menu,
+> approved mock) + Pillar 5 wiring/screen + the consolidated live verification. See
+> §3 "START HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
 
 ---
 
@@ -800,7 +801,32 @@ make the game a "world-class" FM. We discussed architecture before building; the
   non-empty new squad to Tactics → you land on your grey XI; every real signing is an
   upgrade (decision #3). No persistence change. Sim drafts directly → untouched.
   career.test (3) + careerLeague (1). Live visual check batched into Pillar 2.
-- **Pillar 2 — Start Menu + mode demotion (NEXT + LAST).** A real front door (Resume
+- **Pillar 5 — Manager career / job market (NEW, user-requested mid-session).** "When
+  a manager is sacked they should apply for other jobs in the game world — only jobs
+  matching their reputation — it shouldn't be game over." Reframes the career into a
+  MANAGER's journey across clubs. **Locked design (user):** inherit the new club's
+  REAL squad (FM-authentic, reuses `assignClubSquads`); **NEVER game over** (always
+  ≥1 vacancy); **ceiling-down** reach (a title-winner can still land mid-table after a
+  low sacking — titles open doors). The persistent identity is the MANAGER (name,
+  reputation, one trophy cabinet across all clubs); new career = your OWN club (custom
+  name/kit) from the bottom w/ unknowns, sacking = take over an ESTABLISHED club. Keep
+  your kit as your managerial "brand".
+  - **✅ ENGINE shipped (commit `246729b`):** `lib/jobs.ts` (pure, 8 tests) —
+    `managerReputation(honours)` 0–100 (peak tier + titles/promotions + tenure −
+    relegations), `reputationCeilingTier` (~20 rep/rung), `reputationLabel`,
+    `generateVacancies(rep, seed)` (always ≥1, ceiling→base biased to ceiling, seeded).
+  - **REMAINING (next):** store flow — the Pillar-4 sacking exits (`runStatus='lost'`
+    from bottom-tier relegation + Hardcore board-sack) now open a **Job Market** instead
+    of ending the run; an `applyForJob`/`takeJob` action that assembles the inherited
+    squad (draft real players to the club's `strength` via assignClubSquads-style logic),
+    sets the new club's tier/name/budget/facilities, logs the move, and CONTINUES the
+    career (season counter + history persist across clubs). Persist a pending
+    job-market state (a reload mid-decision must not lose it → persistence bump +
+    migration). UI: a `JobMarket.tsx` screen (vacancy cards: club, division, stature,
+    "Apply"); RunOverModal/flow updated so champion-of-England stays the triumph WIN
+    but sacking → job market. Difficulty ties in (Hardcore: harsher rep hit, fewer
+    offers). Champion (top-tier win) still ends gloriously.
+- **Pillar 2 — Start Menu + mode demotion (mock APPROVED, build pending).** A real front door (Resume
   one-click / New Career w/ **difficulty picker** + club identity / Quick Classic /
   Tutorial), branching on the existing `onboarded` flag + a resumable-save check.
   Demote (don't delete) the extra modes behind a "More ways to play" entry (decision
