@@ -838,9 +838,14 @@ make the game a "world-class" FM. We discussed architecture before building; the
       (League One) with a real inherited squad (Cureton/Mellor/Kinkladze/Hopkin/
       Cattermole…), season 4→5, history carried, £48M, no console errors; restored the
       R7 backup clean.
-    - **Optional future polish:** difficulty tie-in (Hardcore = harsher rep hit / fewer
-      offers — currently difficulty-agnostic); a unified cross-club trophy cabinet view;
-      reputation shown in the Career Hub.
+    - **Follow-up polish ✅ DONE (commit `56311a9`):** (1) difficulty-aware job market —
+      `DifficultyConfig.jobOffers` (Easy 5/Standard 4/Hardcore 2) + `repPenaltyOnSack`
+      (Hardcore docks 15 rep → humbler clubs); applied in resolveLeagueRound; Standard
+      unchanged → sim untouched. (2) Manager trophy cabinet spanning clubs —
+      `SeasonRecord.club` (optional, recorded at season-end) + `careerHonours.clubsManaged`;
+      CareerHub shows "Clubs managed" + names the club per season in the history timeline.
+      (3) Reputation meter in the Career Hub (managerReputation + label). Live-verified on
+      a 3-club career. No persistence bump.
 - **Pillar 2 — Start Menu + mode demotion ✅ SHIPPED + LIVE-VERIFIED (commit `f206b06`).**
   `components/run/StartMenu.tsx` (App-level, z-55, shown on load, hidden during a
   match): one-click **Resume** hero that reads the live run back (mode/career division +
