@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '@/store/useGameStore';
 import { BOTTOM_TIER, division, totalWeeks } from '@/lib/league';
 import { overall } from '@/lib/wages';
+import { reviewBonus } from '@/lib/career';
+import { PLEDGE_BONUS } from '@/lib/board';
 import { POOL } from '@/data/pool';
 import type { MatchResult } from '@/lib/types';
 
@@ -229,5 +231,21 @@ describe('career pyramid', () => {
     const replacement = rivalAfter.squad!.find((id) => !rival.squad!.includes(id))!;
     expect(replacement).toBeDefined();
     expect(after.owned).not.toContain(replacement);
+  });
+
+  it('a board pledge is remembered and pays off at season end', () => {
+    // Accept the board's opening-season challenge (the pledgeable expectation).
+    const pledgeMsg = useGameStore.getState().inbox.find((m) => m.id === 'board-expect-1');
+    expect(pledgeMsg?.pledgeable).toBe(true);
+    useGameStore.getState().respondToBoard('board-expect-1', 'accept');
+    expect(useGameStore.getState().inbox.find((m) => m.id === 'board-expect-1')!.pledge).toBe('accept');
+
+    // Win the division (promoted = expectation met) → bonus includes the pledge reward.
+    playSeason('win');
+    const s = useGameStore.getState();
+    expect(s.careerReview!.outcome).toBe('promoted');
+    expect(s.careerReview!.bonus).toBe(reviewBonus('promoted') + PLEDGE_BONUS);
+    // The board posts a payoff note it "remembered".
+    expect(s.inbox.some((m) => m.id === 'board-payoff-1')).toBe(true);
   });
 });

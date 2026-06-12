@@ -118,10 +118,17 @@ import {
   expectationMessage,
   confidenceWarning,
   signingMessage,
+  pledgePayoffMessage,
   type InboxMessage,
 } from '@/lib/inbox';
 import { morale as playerMorale, moraleBand } from '@/lib/morale';
-import { boardConfidence, confidenceBand, boardExpectation } from '@/lib/board';
+import {
+  boardConfidence,
+  confidenceBand,
+  boardExpectation,
+  metExpectation,
+  pledgePayoff,
+} from '@/lib/board';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
 import {
@@ -401,6 +408,8 @@ interface GameState {
   autoFillSquad: () => void;
   /** Set the weekly training focus (Career/League). */
   setTraining: (focus: TrainingFocus) => void;
+  /** Respond to the board's pre-season pledge (accept the challenge / temper it). */
+  respondToBoard: (messageId: string, choice: 'accept' | 'temper') => void;
   /** Mark every inbox message as read (called when the Inbox tab is opened). */
   markInboxRead: () => void;
   /** Accept an incoming transfer bid (inbox `offer` message): cash in + player leaves. */
@@ -725,10 +734,18 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   let seasonNote: string | null = null;
   let careerOut: CareerState | undefined;
 
+  // Board pledge payoff (the inbox remembers your pre-season promise).
+  const pledgeMsgs: InboxMessage[] = [];
+
   if (done && career) {
     // CAREER: a finished season climbs/drops the pyramid.
     const outcomeSeason = seasonOutcome(career.tier, pos, clubs);
     const divName = division(career.tier).name;
+    // Resolve any pledge you made when the board set its expectation.
+    const pledge = s.inbox.find((m) => m.id === `board-expect-${career.season}`)?.pledge;
+    const met = metExpectation(career.tier, outcomeSeason);
+    const payoff = pledgePayoff(pledge, met);
+    if (pledge) pledgeMsgs.push(pledgePayoffMessage(nextMw, career.season, pledge, met));
     // Log the just-finished season for the history timeline + honours.
     careerOut = {
       ...career,
@@ -757,7 +774,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         fromTier: career.tier,
         toTier: nextTier(career.tier, outcomeSeason),
         outcome: outcomeSeason,
-        bonus: reviewBonus(outcomeSeason),
+        bonus: Math.max(0, reviewBonus(outcomeSeason) + payoff),
         youth: generateYouth(
           `${s.runSeed}-youth-${career.season}`,
           YOUTH_INTAKE + youthBonus(career.facilities.academy)
@@ -811,6 +828,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   }
   newMsgs.push(...injuryMsgs);
   if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
+  newMsgs.push(...pledgeMsgs); // board remembers your pre-season pledge
 
   // Incoming bids: while the window is open, rival clubs may bid for your better
   // players — seeded on a SEPARATE stream so match/AI determinism is untouched.
@@ -1235,6 +1253,22 @@ export const useGameStore = create<GameState>()(
         }),
 
       setTraining: (focus) => set({ training: focus }),
+
+      respondToBoard: (messageId, choice) =>
+        set((s) => {
+          const msg = s.inbox.find((m) => m.id === messageId);
+          if (!msg?.pledgeable || msg.pledge) return {};
+          return {
+            inbox: s.inbox.map((m) =>
+              m.id === messageId ? { ...m, pledge: choice, read: true } : m
+            ),
+            notice:
+              choice === 'accept'
+                ? 'You accepted the board\'s challenge — deliver and reap the reward.'
+                : 'You tempered the board\'s expectations — a safer path.',
+            noticeKind: 'info',
+          };
+        }),
 
       markInboxRead: () =>
         set((s) =>

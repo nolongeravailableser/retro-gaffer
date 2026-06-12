@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + living transfer-market AI + fan/finance loop DONE & PUSHED**. persistence **v27**, **332 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Last Future-Edge item: memory-carrying inbox interactions. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap **COMPLETE** — both tiers shipped & pushed. Final Future-Edge item, **memory-carrying inbox (board pledges)**, DONE. persistence **v27**, **335 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Remaining: optional polish only (lightweight player dynamics). See §3 "START HERE")
 
 ---
 
@@ -769,9 +769,24 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
   fan/finance loop) — all ride the Inbox + retro-minimal UI.
 - **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**;
   **living transfer-market AI — ✅ DONE** (rivals re-sign after a poach + AI clubs
-  sign over the season); **fan/finance reinvestment loop — ✅ DONE** (see below);
-  memory-carrying inbox interactions (the press-conference killer) — TODO;
-  lightweight player dynamics — TODO. All ride the **Inbox** + retro-minimal UI.
+  sign over the season); **fan/finance reinvestment loop — ✅ DONE**;
+  **memory-carrying inbox (the press-conference killer) — ✅ DONE** (see below);
+  lightweight player dynamics — optional polish, the only thing left. All ride the
+  **Inbox** + retro-minimal UI.
+
+**Future-Edge: memory-carrying inbox / board pledges — ✅ DONE (Career).** The
+board's pre-season expectation is now an INTERACTIVE message you respond to and
+the inbox REMEMBERS, paying off at season end. `lib/board.ts`: `metExpectation`
+(lower tiers must promote, top flight must survive), `pledgePayoff` (`accept` =
+±`PLEDGE_BONUS`/`PLEDGE_PENALTY` gamble · `temper` = `TEMPER_BONUS`/0 safe · no
+pledge = 0, the sim's baseline). `InboxMessage` gained `pledgeable`/`pledge`;
+`expectationMessage` is pledgeable; `pledgePayoffMessage` is the season-end note.
+Store `respondToBoard(id, choice)`; `resolveLeagueRound` reads the season's pledge,
+adjusts `careerReview.bonus` by the payoff (floored at 0) + posts the payoff note.
+`InboxPanel` renders Accept-the-challenge / Temper buttons + the remembered choice.
+**Sim-safe** (the sim never pledges → neutral → Classic 36.8%, career unchanged).
+board(6)+careerLeague(+1) tests. Verified live: accepted → remembered; payoff
+integration-tested (win → promoted → bonus = reviewBonus + PLEDGE_BONUS + a note).
 
 **Future-Edge: fan/finance loop — ✅ DONE (Career).** `lib/stadium.ts`:
 `STADIUM_CAPACITY` per level + `attendanceFill(streak)` (form-driven, bounded

@@ -33,6 +33,7 @@ export default function InboxPanel() {
   const league = useGameStore((s) => s.league);
   const acceptOffer = useGameStore((s) => s.acceptOffer);
   const rejectOffer = useGameStore((s) => s.rejectOffer);
+  const respondToBoard = useGameStore((s) => s.respondToBoard);
   // Accepting a bid is a sale — only allowed while the transfer window is open.
   const windowOpen = league ? isWindowOpen(league.matchweek, totalWeeks(league)) : true;
 
@@ -53,7 +54,7 @@ export default function InboxPanel() {
       ) : (
         <div className="flex flex-col gap-1.5">
           {inbox.map((m) => (
-            <MessageRow key={m.id} m={m} windowOpen={windowOpen} onAccept={acceptOffer} onReject={rejectOffer} />
+            <MessageRow key={m.id} m={m} windowOpen={windowOpen} onAccept={acceptOffer} onReject={rejectOffer} onPledge={respondToBoard} />
           ))}
         </div>
       )}
@@ -66,15 +67,18 @@ function MessageRow({
   windowOpen,
   onAccept,
   onReject,
+  onPledge,
 }: {
   m: InboxMessage;
   windowOpen: boolean;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  onPledge: (id: string, choice: 'accept' | 'temper') => void;
 }) {
   const Icon = KIND_ICON[m.kind];
   const tint = KIND_TINT[m.kind];
   const actionable = m.kind === 'offer' && !m.resolved;
+  const pledgeable = m.pledgeable && !m.pledge;
   return (
     <div
       data-testid={`inbox-msg-${m.id}`}
@@ -118,6 +122,32 @@ function MessageRow({
           {m.kind === 'offer' && m.resolved && (
             <p className="mt-1 font-ticker text-[10px] text-chrome-muted">
               {m.resolved === 'accepted' ? '✓ Sold' : '✗ Bid rejected'}
+            </p>
+          )}
+
+          {pledgeable && (
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => onPledge(m.id, 'accept')}
+                data-testid={`pledge-accept-${m.id}`}
+                className="flex items-center gap-1 rounded border border-crt-amber/50 px-2.5 py-1 font-display text-[11px] text-crt-amber transition hover:bg-crt-amber/10"
+              >
+                <Check size={12} /> Accept the challenge
+              </button>
+              <button
+                type="button"
+                onClick={() => onPledge(m.id, 'temper')}
+                data-testid={`pledge-temper-${m.id}`}
+                className="flex items-center gap-1 rounded border border-white/15 px-2.5 py-1 font-display text-[11px] text-chrome-muted transition hover:bg-white/5"
+              >
+                Temper expectations
+              </button>
+            </div>
+          )}
+          {m.pledge && (
+            <p className="mt-1 font-ticker text-[10px] text-crt-amber">
+              {m.pledge === 'accept' ? '✓ You accepted the challenge' : '~ You tempered expectations'}
             </p>
           )}
         </div>

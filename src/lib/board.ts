@@ -11,7 +11,7 @@
  * later (a "final warning" gate) without re-architecting.
  */
 
-import { TOP_TIER, BOTTOM_TIER } from './league';
+import { TOP_TIER, BOTTOM_TIER, type SeasonOutcome } from './league';
 
 export type ConfidenceBand = 'secure' | 'stable' | 'shaky' | 'under-pressure';
 
@@ -57,4 +57,31 @@ export function boardExpectation(tier: number): string {
   if (tier === TOP_TIER) return 'compete near the top and chase the title';
   if (tier === BOTTOM_TIER) return 'mount a promotion challenge';
   return 'finish in the top half and push for promotion';
+}
+
+// --- Pledges: an interactive promise the board remembers -------------------
+
+export type Pledge = 'accept' | 'temper';
+
+/** Did the season's finish meet the board's pre-season ask? */
+export function metExpectation(tier: number, outcome: SeasonOutcome): boolean {
+  if (outcome === 'promoted' || outcome === 'champion') return true;
+  if (tier === TOP_TIER && outcome === 'stay') return true; // survived the top flight
+  return false;
+}
+
+/** Stakes you take on by accepting the board's challenge vs tempering it. */
+export const PLEDGE_BONUS = 15; // delivered on a bold promise
+export const PLEDGE_PENALTY = 12; // promised big and fell short
+export const TEMPER_BONUS = 7; // quietly over-delivered on a managed expectation
+
+/**
+ * The end-of-season bonus delta (£m) from a pledge and whether it was met.
+ * No pledge → 0 (the neutral baseline the balance sim always sees). Accepting is
+ * a real gamble (bigger reward, real downside); tempering is the safe play.
+ */
+export function pledgePayoff(pledge: Pledge | undefined, met: boolean): number {
+  if (pledge === 'accept') return met ? PLEDGE_BONUS : -PLEDGE_PENALTY;
+  if (pledge === 'temper') return met ? TEMPER_BONUS : 0;
+  return 0;
 }

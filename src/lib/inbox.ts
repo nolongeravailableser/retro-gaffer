@@ -41,6 +41,10 @@ export interface InboxMessage {
   offer?: OfferPayload;
   /** Resolution of an actionable message once the player has decided. */
   resolved?: 'accepted' | 'rejected';
+  /** A board message you can respond to (accept the challenge / temper it). */
+  pledgeable?: boolean;
+  /** Your remembered response to a pledgeable message. */
+  pledge?: 'accept' | 'temper';
 }
 
 /** Keep the inbox bounded — the freshest messages, newest first. */
@@ -111,14 +115,40 @@ export function boardMessage(week: number, title: string, body: string): InboxMe
   return { id: `board-${week}`, week, kind: 'board', title, body, read: false };
 }
 
-/** The board's pre-season expectation (once per season). */
+/** The board's pre-season expectation — an interactive pledge (once per season). */
 export function expectationMessage(week: number, season: number, expectation: string): InboxMessage {
   return {
     id: `board-expect-${season}`,
     week,
     kind: 'board',
     title: 'The board sets out its expectations',
-    body: `The owner expects you to ${expectation} this season. Deliver, and your job is safe.`,
+    body: `The owner expects you to ${expectation} this season. Will you accept the challenge, or temper their expectations?`,
+    read: false,
+    pledgeable: true,
+  };
+}
+
+/** End-of-season payoff when you made a pledge (the board remembers). */
+export function pledgePayoffMessage(
+  week: number,
+  season: number,
+  pledge: 'accept' | 'temper',
+  met: boolean
+): InboxMessage {
+  const body =
+    pledge === 'accept'
+      ? met
+        ? 'You accepted the board\'s challenge and delivered — the owner is delighted and the bonus reflects it.'
+        : 'You accepted the board\'s challenge and fell short. The owner is unimpressed; the bonus is docked and patience is wearing thin.'
+      : met
+        ? 'You tempered expectations and quietly over-delivered — the board is pleasantly surprised.'
+        : 'You managed expectations and a tough season was accepted without fuss.';
+  return {
+    id: `board-payoff-${season}`,
+    week,
+    kind: 'board',
+    title: met ? 'The board is pleased' : 'The board takes stock',
+    body,
     read: false,
   };
 }
