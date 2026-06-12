@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap **FULLY COMPLETE** — both tiers + the optional **player dynamics (captain + dressing room)** all shipped & pushed. persistence **v27**, **339 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Nothing left on the roadmap — open for new direction / playtest feedback. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap COMPLETE + a **full-season integration QA pass** that found & **fixed a real soft-lock** (auto-pick now fields out of position when the window's shut and a role is short). persistence **v27**, **340 tests**, build green, Classic 36.8%. Played a National-League season to MW14 clean (£113M, 9-1-3); economy/income/inbox all healthy. See §3 "START HERE")
 
 ---
 
@@ -694,11 +694,17 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
-**Status (2026-06-12):** the user-feedback roadmap (§2l), the FM transfer market
-(4.8 A+B) AND the **FM-feel enhancements (tasks 1–4 + a club Inbox)** are all
-shipped and **PUSHED to prod**. Gates: **tsc clean · 299 tests · build green ·
-persistence v25.** Sim unmoved (Classic 36.8% · career champ 53%/sacked 4%/PL
-94%). Working tree clean. **Nothing is unpushed.** The FM transfer system now has:
+**Status (2026-06-12):** the **entire FM-core roadmap is shipped & PUSHED** — the
+FM-feel transfer batch (tasks 1–4 + Inbox) AND both roadmap tiers: Next-Up
+(home-and-away, training/fatigue, morale, Cup) + Future-Edge (board confidence &
+pledges, living transfer-market AI, fan/finance loop, player dynamics). Then a
+**full-season integration QA** found & fixed a real **auto-pick soft-lock**
+(commit `bf698b6`). Gates: **tsc clean · 340 tests · build green · persistence
+v27 · Classic 36.8% · career economy preserved.** Nothing left on the roadmap;
+the loop is feature-complete. Full per-feature detail in §2l below. _(Older lines
+in this block referencing v25/299 tests are historical — current is v27/340.)_
+
+The FM transfer system has:
 negotiated bidding + personal terms (marquee wage gate), incoming offers, transfer
 windows, contracts/Bosman, and an Inbox tying results/injuries/board/bids/
 departures together. Next candidates are the **Parked** list under ⭐ below.
