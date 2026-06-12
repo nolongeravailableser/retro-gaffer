@@ -9,6 +9,7 @@ import { division } from '@/lib/league';
 import { getMode } from '@/lib/modes';
 import { DIFFICULTIES, type DifficultyId } from '@/lib/difficulty';
 import CrestBadge from '@/components/ui/CrestBadge';
+import RecordsPanel from '@/components/records/RecordsPanel';
 import { DEFAULT_KIT } from '@/lib/kits';
 import type { Tab } from '@/components/nav/TabNav';
 
@@ -54,7 +55,7 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
   const startCareer = useGameStore((s) => s.startCareer);
   const startRun = useGameStore((s) => s.startRun);
 
-  const [view, setView] = useState<'main' | 'difficulty'>('main');
+  const [view, setView] = useState<'main' | 'difficulty' | 'records'>('main');
   const [picked, setPicked] = useState<DifficultyId>(difficulty);
 
   const hasRun =
@@ -73,7 +74,7 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 220, damping: 24 }}
-        className="w-full max-w-lg"
+        className={`w-full ${view === 'records' ? 'max-w-2xl' : 'max-w-lg'}`}
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -137,13 +138,25 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
               <button type="button" onClick={onTutorial} className="flex items-center gap-1.5 transition hover:text-crt-green">
                 <HelpCircle size={15} /> How to play
               </button>
-              <button type="button" onClick={() => onEnter('records')} className="flex items-center gap-1.5 transition hover:text-crt-green">
+              <button type="button" onClick={() => setView('records')} className="flex items-center gap-1.5 transition hover:text-crt-green">
                 <Award size={15} /> Records
               </button>
             </div>
             <p className="px-1 text-[11px] text-chrome-muted/70">
               More ways to play → Endless · Cup · Scenarios · Daily Gauntlet
             </p>
+          </div>
+        ) : view === 'records' ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setView('main')} aria-label="Back" className="text-chrome-muted hover:text-chrome">
+                <ChevronLeft size={20} />
+              </button>
+              <p className="font-display text-sm text-chrome">Records</p>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-crt-dim bg-pitch-900/50 p-3">
+              <RecordsPanel />
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

@@ -118,7 +118,7 @@ export const ENDLESS: ModeConfig = {
 export const LEAGUE: ModeConfig = {
   id: 'league',
   name: 'League Season',
-  blurb: 'A 12-team division, 11 matchweeks, a real table. Win the title.',
+  blurb: 'A 12-team division, home and away, a real table. Win the title.',
   scored: false,
   maxRounds: LEAGUE_WEEKS,
   startingLives: 1, // unused (no elimination); the season always completes

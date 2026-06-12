@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Trophy, Sparkles, ShoppingCart, Users, Swords, CalendarDays,
+  Trophy, Sparkles, ShoppingCart, Users, TrendingUp, Briefcase,
   ArrowRight, ArrowLeft, Dice5, Play,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
@@ -33,9 +33,14 @@ interface Card {
 
 const CARDS: Card[] = [
   {
+    icon: Trophy,
+    title: 'Two ways to play',
+    body: 'Career is the deep one: take a club from the bottom of the English pyramid and build a dynasty over many seasons. Classic is a quick 12-round climb in one sitting. Pick either from the start menu.',
+  },
+  {
     icon: ShoppingCart,
-    title: 'Draft your squad',
-    body: 'Sign players in the Transfers tab from rotating themed packs. Refresh for new offers, scout for a specific role, and grab the discounted Featured Free Agent each day.',
+    title: 'Build your squad',
+    body: 'A new Career starts you with unknown journeymen — so signing a real player in the Transfers market is always an upgrade. Search the market, grab free agents, or poach a rival’s star for a premium.',
   },
   {
     icon: Users,
@@ -43,14 +48,14 @@ const CARDS: Card[] = [
     body: 'Pick a formation and field your XI in Tactics. Players sharing a tag — club, nation or playing style — form synergies: each active tag adds +10% attack and defence to the whole side.',
   },
   {
-    icon: Swords,
-    title: 'Climb the season',
-    body: 'Each round is a tougher rival. Win to bank prize money, interest and streak bonuses; lose and you drop a life. Run out of lives and you are sacked. Watch for the bosses at rounds 4, 8 and 12.',
+    icon: TrendingUp,
+    title: 'Climb the pyramid',
+    body: 'Each Career season is a league. Finish high to win promotion, finish in the drop zone to fall. Win the Premier League to be Champions of England. Difficulty (Easy / Standard / Hardcore) sets how ruthless your board is.',
   },
   {
-    icon: CalendarDays,
-    title: 'Modes & the Daily',
-    body: 'Beyond Classic there is Endless, optional run mutators, authored Scenarios, a multi-season Career, and a shared Daily Gauntlet everyone plays on the same seed. Find them under New Game and Daily.',
+    icon: Briefcase,
+    title: 'A manager’s career',
+    body: 'Get sacked? It’s not game over. Apply for jobs that match your reputation and take over a new club — your reputation and trophy cabinet follow you wherever you manage.',
   },
 ];
 
