@@ -430,8 +430,9 @@ describe('career balance — facility-upkeep sweep', () => {
     const N = 250;
     const lines = ['\n=== CAREER WAGE×UPKEEP COMBO SWEEP (market pricing ON) ===',
       'wageK  upkeep  champ%  sack%  PL%   avgS  medT3    medT2     medT1     maxBank'];
+    // Anchored on the SHIPPED (1.4, 0.85); neighbours bound the top-tier plateau.
     const combos: [number, number][] = [
-      [1.0, 0], [1.0, 0.5], [1.2, 0.5], [1.3, 0.75], [1.5, 1.0],
+      [1.3, 0.75], [1.4, 0.85], [1.45, 0.9], [1.5, 1.0],
     ];
     for (const [k, u] of combos) {
       const r = runSweep(N, k, u);
