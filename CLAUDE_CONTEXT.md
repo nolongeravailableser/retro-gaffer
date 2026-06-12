@@ -15,7 +15,10 @@
 > Array (P1), Unknown-pool start (P3), Manager career/job market (P5, "a sacking is
 > NOT game over"), and the Start Menu front door + difficulty picker (P2) are
 > shipped & live-verified. Classic 36.8% + career economy preserved throughout.
-> Nothing pushed. See §3 "START HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
+> **QA SWEEP PASSED** (multi-season dynasty test + live Hardcore match; no functional
+> bugs; fixed a pre-existing HUD/CTA matchweek-count cosmetic). **372 tests.** Nothing
+> pushed — ready to push to prod on your word. See §3 "START HERE" → "⭐⭐⭐ STRATEGIC
+> RE-FOUNDATION".)
 
 ---
 
