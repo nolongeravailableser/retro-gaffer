@@ -898,9 +898,21 @@ round-robin league** (11 matchweeks) → finish 1st to win.
   sim) → one-pass `reserveCost` + lazy `aiPick` (snappy). **Difficulty-scaled rivals:**
   AI budget = `AI_DRAFT_BUDGET(120)/startBankrollMult` (weaker clubs on Easy, richer on
   Hardcore) → clean curve: Easy champ 15%/top3 48%, Std 13%/30%, Hard 4%/18%.
-- **REMAINING:** (1) vestigial bankroll/economy during the league season (cosmetic —
-  no spending post-draft). (2) the Transfers tab for a post-draft classic-league run may
-  still show the gacha shop (unused — you play from Tactics/Season).
+- **✅ CLOSED-TOURNAMENT + FREE-PICK REWORK (commit `32383c0`, playtest feedback):**
+  Now a proper closed tournament with a real draft board.
+  - **Draft board** (`DraftRoom.tsx`): FREE picking from pick 1 (any affordable role —
+    no role-first; killed the "pool changes after 11 picks" jank). `pickableInDraft`
+    reserves your final picks for any still-missing required roles + a last-resort
+    cheapest, so a legal XI ALWAYS completes. Surfaces the full pool (≤200) with
+    position tabs + name search + Value/Rating sort (asc/desc) + Affordable filter.
+    Clear attributes per card: overall (tier-coloured) + ATK/DEF.
+  - **Closed tournament:** 16-man squad (`DRAFT_SQUAD_SIZE`=16 — XI + 5 subs). Bank
+    LOCKED at £0 (`resolveLeagueRound` gates ALL economy/inbox/offers/morale for
+    `draftLeague = mode==='classic' && !career`); no transfers in/out (sell blocked).
+    Hidden UI: bank HUD, lives-hearts, and the Transfers/Inbox/Challenges/Compete/
+    Records tabs (only Tactics/Season/Club via TabNav `hiddenTabs`).
+  - Sim re-gated: still 0/360 stranded; curve holds (Easy avgPos 5.5/top3 33%, Hard
+    8.3/11%). Live-verified end-to-end; pushed.
 
 ---
 
