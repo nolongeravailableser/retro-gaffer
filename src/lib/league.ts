@@ -198,6 +198,22 @@ export function roundRobin(teamIds: string[]): Fixture[] {
   return fixtures;
 }
 
+/**
+ * Home-and-away: a single round-robin (first half) followed by the same fixtures
+ * with venues reversed (second half), so every pair meets twice — once at each
+ * ground. For n teams → 2(n-1) matchweeks. This is the real league format.
+ */
+export function doubleRoundRobin(teamIds: string[]): Fixture[] {
+  const first = roundRobin(teamIds);
+  const firstWeeks = first.reduce((m, f) => Math.max(m, f.matchweek), 0);
+  const second = first.map((f) => ({
+    matchweek: f.matchweek + firstWeeks,
+    home: f.away, // swap venues for the return leg
+    away: f.home,
+  }));
+  return [...first, ...second];
+}
+
 /** Build a fresh league: the player (YOU) + (size-1) seeded AI clubs. */
 export function generateLeague(
   seed: string | number,
@@ -216,12 +232,31 @@ export function generateLeague(
     const factor = 0.7 + rng.next() * 0.6; // 0.7×–1.3×
     clubs.push({ id: `ai${i}`, name, strength: Math.round(playerStrength * factor) });
   }
-  const fixtures = roundRobin(clubs.map((c) => c.id));
+  const fixtures = doubleRoundRobin(clubs.map((c) => c.id));
   return { clubs, fixtures, results: {}, matchweek: 1 };
 }
 
+/**
+ * Matchweeks in a season — derived from the fixtures (the highest matchweek), so
+ * it's correct for both home-and-away (new) and single round-robin (legacy saves
+ * created before home-and-away). No migration needed: an in-progress old league
+ * keeps its 11-week length; new leagues run 22.
+ */
 export function totalWeeks(state: LeagueState): number {
-  return state.clubs.length - 1;
+  const max = state.fixtures.reduce((m, f) => Math.max(m, f.matchweek), 0);
+  return max || state.clubs.length - 1;
+}
+
+/**
+ * Per-matchweek economy normalizer. A home-and-away season has twice the
+ * matchweeks of a single round-robin, so each game pays proportionally less —
+ * keeping a SEASON's economy invariant to the fixture count (the tuned balance
+ * holds for any season length). (clubs−1)/weeks → 0.5 for home-and-away, 1 for a
+ * legacy single round-robin. Apply to per-game income AND costs alike.
+ */
+export function seasonScale(state: LeagueState): number {
+  const weeks = totalWeeks(state);
+  return weeks > 0 ? (state.clubs.length - 1) / weeks : 1;
 }
 
 // --- Transfer windows ------------------------------------------------------

@@ -1,6 +1,6 @@
 import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Check, X } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { isWindowOpen } from '@/lib/league';
+import { isWindowOpen, totalWeeks } from '@/lib/league';
 import type { InboxKind, InboxMessage } from '@/lib/inbox';
 
 const KIND_ICON: Record<InboxKind, React.ElementType> = {
@@ -32,7 +32,7 @@ export default function InboxPanel() {
   const acceptOffer = useGameStore((s) => s.acceptOffer);
   const rejectOffer = useGameStore((s) => s.rejectOffer);
   // Accepting a bid is a sale — only allowed while the transfer window is open.
-  const windowOpen = league ? isWindowOpen(league.matchweek, league.clubs.length - 1) : true;
+  const windowOpen = league ? isWindowOpen(league.matchweek, totalWeeks(league)) : true;
 
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4" data-testid="inbox-panel">

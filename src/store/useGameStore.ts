@@ -43,6 +43,7 @@ import {
   simAiWeek,
   position as leaguePosition,
   totalWeeks as leagueTotalWeeks,
+  seasonScale as leagueSeasonScale,
   fixtureKey,
   seasonOutcome,
   nextTier,
@@ -147,13 +148,13 @@ function marketTierOf(s: { career: CareerState | null; league: LeagueState | nul
  *  states (no league) are always "open" — they don't use windows. */
 function windowOpenFor(s: { league: LeagueState | null }): boolean {
   if (!s.league) return true;
-  return isWindowOpen(s.league.matchweek, s.league.clubs.length - 1);
+  return isWindowOpen(s.league.matchweek, leagueTotalWeeks(s.league));
 }
 
 /** A user-facing "window closed" notice naming when it reopens. */
 function windowClosedNotice(s: { league: LeagueState | null }): string {
   if (!s.league) return 'Transfer window closed';
-  const weeks = s.league.clubs.length - 1;
+  const weeks = leagueTotalWeeks(s.league);
   const at = nextWindowOpensAt(s.league.matchweek, weeks);
   return at
     ? `Transfer window closed — reopens matchweek ${at}.`
@@ -595,23 +596,27 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const outcome = result.outcome;
   const newStreak = outcome === 'win' ? s.streak + 1 : 0;
   const weeks = leagueTotalWeeks(league);
+  // Season-length normalizer: a home-and-away season has 2× the matchweeks, so
+  // each game's economy is scaled so a SEASON nets the same as the old single
+  // round-robin (the tuned balance is invariant to fixture count).
+  const scale = leagueSeasonScale(league);
   const dm = tierMult(s.career ? s.career.tier : LEAGUE_NEUTRAL_TIER);
-  const reward = Math.round(MATCH_REWARD[outcome] * dm);
+  const reward = Math.round(MATCH_REWARD[outcome] * dm * scale);
   // Career-only facilities: the stadium adds flat matchday income (folded into
   // the round income figure the UI already shows).
   const matchday = s.career ? matchdayIncome(s.career.facilities.stadium) : 0;
-  const roundIncome = Math.round(config.roundIncome * dm) + matchday;
-  const intr = interest(s.bankroll);
-  const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
+  const roundIncome = Math.round((config.roundIncome * dm + matchday) * scale);
+  const intr = Math.round(interest(s.bankroll) * scale);
+  const sb = outcome === 'win' ? Math.round(streakBonus(newStreak) * scale) : 0;
   // Career: wages scale with the division (PL wages in the PL) so an open-ended
   // dynasty's economy plateaus instead of running away. Standalone League ×1.
   const wageMult = s.career ? wageTierMult(s.career.tier) : 1;
   const wage = Math.round(
-    wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult
+    wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p)) * wageMult * scale
   );
   // Career: facility running costs — the money sink that keeps wealth meaningful
   // at the top (a big club costs real cash to run every week).
-  const upkeep = s.career ? facilityUpkeep(s.career.facilities, dm) : 0;
+  const upkeep = s.career ? Math.round(facilityUpkeep(s.career.facilities, dm) * scale) : 0;
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
   const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep + wagerDelta);
 

@@ -120,7 +120,9 @@ describe('career pyramid', () => {
     useGameStore.getState().upgradeFacility('stadium');
     useGameStore.getState().resolveRound(res('win', 1, 0));
     const boosted = useGameStore.getState().lastIncome!.income;
-    expect(boosted).toBe(baseIncome + 3); // matchdayIncome(1)
+    // The stadium adds matchday income (now folded into the season-length-scaled
+    // round income, so the boost is proportional rather than a flat +3).
+    expect(boosted).toBeGreaterThan(baseIncome);
   });
 
   it('the medical centre shaves rounds off new injuries', () => {

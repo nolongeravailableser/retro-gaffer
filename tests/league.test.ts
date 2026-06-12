@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   generateLeague,
   roundRobin,
+  doubleRoundRobin,
   table,
   simAiResult,
   simAiWeek,
@@ -52,9 +53,21 @@ describe('generateLeague', () => {
     expect(a.clubs).toHaveLength(12);
     expect(a.clubs[0].id).toBe(YOU);
     expect(a.clubs.filter((c) => c.id !== YOU)).toHaveLength(11);
-    expect(totalWeeks(a)).toBe(11);
+    // Home-and-away: 12 teams → 2×(12−1) = 22 matchweeks.
+    expect(totalWeeks(a)).toBe(22);
     // the player has exactly one fixture each week
-    for (let w = 1; w <= 11; w++) expect(playerFixture(a, w)).not.toBeNull();
+    for (let w = 1; w <= 22; w++) expect(playerFixture(a, w)).not.toBeNull();
+  });
+
+  it('doubleRoundRobin: every pair meets twice with reversed venues', () => {
+    const ids = ['a', 'b', 'c', 'd'];
+    const fixtures = doubleRoundRobin(ids);
+    expect(fixtures.reduce((m, f) => Math.max(m, f.matchweek), 0)).toBe(6); // 2×(4−1)
+    // Each ordered (home, away) pairing appears, and so does its reverse.
+    const keys = new Set(fixtures.map((f) => `${f.home}-${f.away}`));
+    for (const f of fixtures) expect(keys.has(`${f.away}-${f.home}`)).toBe(true);
+    // 4 teams → 6 unordered pairs × 2 legs = 12 fixtures.
+    expect(fixtures).toHaveLength(12);
   });
 });
 

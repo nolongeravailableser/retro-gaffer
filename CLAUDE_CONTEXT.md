@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-feel enhancements **COMPLETE** — tasks 1–4 (bidding/personal terms + marquee wage gate, incoming offers, transfer windows, contracts/Bosman) + a club **Inbox** all built, verified live, gated, and **PUSHED to prod**. persistence **v25**, **299 tests**, build green, sim unmoved (Classic 36.8% · career champ 53%/sacked 4%/PL 94%). See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-feel batch (tasks 1–4 + Inbox) shipped & pushed; then the **FM-core roadmap** kicked off — **#1 home-and-away fixtures DONE** (22-match seasons via `doubleRoundRobin`, economy normalized by `seasonScale`). persistence **v25**, **300 tests**, build green, sim re-gated (Classic 36.8% · career solvent/climbs, easier: champ 67%/sacked 1.3%). Roadmap + next items in §3 "START HERE")
 
 ---
 
@@ -758,6 +758,37 @@ Career/League only; Classic untouched. Commits `439b3ec`…`d28306c` (see git lo
 re-signing after a poach/Bosman, AI clubs bidding against each other); contract
 WAGES were kept derived (the wage *bill* still uses `wage(p)`, not a stored agreed
 wage) to avoid an economy re-tune — revisit if per-player negotiated wages are wanted.
+
+**⭐⭐ FM-CORE ROADMAP (2026-06-12, user-approved):** strategic feature-map after
+the FM-transfer batch. The engine (`engine.ts`+`stats.ts`: attribute-driven,
+segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
+- **Next Up (core loop):** (1) home-and-away fixtures — **✅ DONE**, see below;
+  (2) **training & match sharpness** (`lib/training.ts`: a weekly team focus →
+  bounded stat drift + decaying sharpness — the missing weekly decision);
+  (3) **morale/form** (derived from `playerHistory` + minutes + results, surfaced
+  in the Inbox); (4) **cumulative fatigue → rotation** (gives squad depth a point,
+  pairs with training); (5) **cup competition** (`lib/cup.ts` knockout). Recommended
+  order: 1 → 2+4 → 3 → 5.
+- **Future Edge (the "FM killers"):** living board confidence, memory-carrying
+  inbox interactions (the press-conference killer), living transfer-market AI,
+  lightweight player dynamics, fan/finance reinvestment loop. All ride the **Inbox**
+  (our anti-bloat surface) + the retro-minimal UI (our moat). Hold until the weekly
+  loop feels complete.
+- **Anti-bloat principles** (already how the codebase works): derive don't store;
+  one pure `lib/` module + thin UI per feature; the Inbox is the default UI surface;
+  stay seeded/deterministic; don't fork the engine, add a bounded lever.
+
+**#1 home-and-away fixtures — ✅ DONE (user chose "everywhere").** `lib/league.ts`
+`doubleRoundRobin` (single RR + reversed-venue return legs → 2(n−1)=22 matchweeks
+for 12 clubs). `generateLeague` uses it for League AND Career. `totalWeeks` now
+derives from the fixtures (legacy single-RR saves keep 11 weeks → **no migration**).
+New `seasonScale(state)` = (clubs−1)/weeks (0.5 for home-and-away) normalizes the
+per-matchweek economy in BOTH `resolveLeagueRound` and the career sim, so a season
+nets the same as the old 11-game one (balance invariant to fixture count). Window
+helpers + UI already read `totalWeeks`, so they adapted free. **Sim re-gated:**
+Classic 36.8% (untouched); career economy preserved (PL median ~£550M, solvent,
+climbs). Note the longer season lowers variance → **easier career** (champ
+53%→67%, sacked 4%→1.3%) — accepted as the cost of a legitimate league.
 
 **Implementation anchors:** market logic in `lib/market.ts`; league/club state
 + squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);

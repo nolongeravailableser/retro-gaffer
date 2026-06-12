@@ -24,7 +24,7 @@ import { matchdayIncome, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId
 import { ageRoster, newMeta, reviewBonus, type CareerMeta } from '@/lib/career';
 import {
   generateLeague, simAiWeek, position, seasonOutcome, nextTier,
-  division, totalWeeks, playerFixture, fixtureKey, BOTTOM_TIER, TOP_TIER, YOU,
+  division, totalWeeks, seasonScale, playerFixture, fixtureKey, BOTTOM_TIER, TOP_TIER, YOU,
   type LeagueState, type LeagueResult,
 } from '@/lib/league';
 import { drawShop, MATCH_REWARD } from '@/lib/economy';
@@ -188,16 +188,17 @@ function playMatchweek(c: Career, league: LeagueState, mw: number, results: Reco
       ? { home: result.score.a, away: result.score.b }
       : { home: result.score.b, away: result.score.a };
 
-    // Economy — mirrors resolveLeagueRound exactly.
+    // Economy — mirrors resolveLeagueRound exactly (incl. the season-length scale).
     const outcome = result.outcome;
     c.streak = outcome === 'win' ? c.streak + 1 : 0;
+    const scale = seasonScale(league);
     const dm = tierMult(c.tier);
-    const reward = Math.round(MATCH_REWARD[outcome] * dm);
-    const income = Math.round(ROUND_INCOME * dm) + matchdayIncome(c.facilities.stadium);
-    const intr = interest(c.bankroll);
-    const sb = outcome === 'win' ? streakBonus(c.streak) : 0;
-    const wage = Math.round(wageBill(c.owned.map((id) => cur(c, id))) * wageTierMult(c.tier));
-    const upkeep = upkeepFor(c);
+    const reward = Math.round(MATCH_REWARD[outcome] * dm * scale);
+    const income = Math.round((ROUND_INCOME * dm + matchdayIncome(c.facilities.stadium)) * scale);
+    const intr = Math.round(interest(c.bankroll) * scale);
+    const sb = outcome === 'win' ? Math.round(streakBonus(c.streak) * scale) : 0;
+    const wage = Math.round(wageBill(c.owned.map((id) => cur(c, id))) * wageTierMult(c.tier) * scale);
+    const upkeep = Math.round(upkeepFor(c) * scale);
     c.bankroll = Math.max(0, c.bankroll + reward + income + intr + sb - wage - upkeep);
   }
   Object.assign(results, simAiWeek(league, mw, c.seed));
