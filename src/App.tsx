@@ -19,6 +19,7 @@ import { playerFixture, YOU } from '@/lib/league';
 import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
+import { focusModifiers, conditionModifiers } from '@/lib/training';
 import { slotPosition } from '@/lib/formations';
 import { positionFit } from '@/lib/positions';
 import { relicModifiers } from '@/lib/relics';
@@ -48,6 +49,7 @@ import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
 import TransferMarket from '@/components/shop/TransferMarket';
 import InboxPanel from '@/components/inbox/InboxPanel';
+import TrainingPanel from '@/components/training/TrainingPanel';
 import { unreadCount } from '@/lib/inbox';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
@@ -82,6 +84,9 @@ export default function App() {
   const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
+  const training = useGameStore((s) => s.training);
+  const sharpness = useGameStore((s) => s.sharpness);
+  const fatigue = useGameStore((s) => s.fatigue);
   const inbox = useGameStore((s) => s.inbox);
   const markInboxRead = useGameStore((s) => s.markInboxRead);
   const clubName = useGameStore((s) => s.clubName);
@@ -139,14 +144,23 @@ export default function App() {
       const p = id ? getPlayer(id) : null;
       if (p) posMult[p.id] = positionFit(p, slotPosition(formation, slot));
     });
-    const mods = mergeModifiers(roundMods, relicModifiers(relics));
+    let mods = mergeModifiers(roundMods, relicModifiers(relics));
+    // Career/League: fold in the weekly training focus + each starter's
+    // sharpness/fatigue condition (bounded, subtle). Classic is untouched.
+    if (career || league) {
+      mods = mergeModifiers(mods, focusModifiers(training));
+      mods = mergeModifiers(
+        mods,
+        conditionModifiers(starters.map((p) => p.id), sharpness, fatigue)
+      );
+    }
     const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods, posMult);
     const playerTeam: MatchTeam | null =
       starters.length > 0
         ? { name: clubName ?? 'Your XI', attack, defense, squad: starters }
         : null;
     return { chemistry, multipliers, filled: starters.length, playerTeam };
-  }, [xi, formation, roundMods, relics, clubName]);
+  }, [xi, formation, roundMods, relics, clubName, career, league, training, sharpness, fatigue]);
 
   const config = useMemo(
     () => runConfig({ scenario, mode, mutator }),
@@ -357,6 +371,7 @@ export default function App() {
                 attack={playerTeam?.attack}
                 defense={playerTeam?.defense}
               />
+              {(career || league) && <TrainingPanel />}
             </div>
           </div>
         )}

@@ -144,6 +144,17 @@ describe('migrations', () => {
     expect((migrateSave(validSave({ career: null }), 24) as Record<string, unknown>).career).toBeNull();
   });
 
+  it('adds training focus + empty condition maps to a pre-training save (v26)', () => {
+    const migrated = migrateSave(validSave(), 25) as Record<string, unknown>;
+    expect(migrated.training).toBe('balanced');
+    expect(migrated.sharpness).toEqual({});
+    expect(migrated.fatigue).toEqual({});
+    // Existing values are preserved.
+    const kept = migrateSave(validSave({ training: 'attacking', sharpness: { p1: 80 }, fatigue: {} }), 25) as Record<string, unknown>;
+    expect(kept.training).toBe('attacking');
+    expect(kept.sharpness).toEqual({ p1: 80 });
+  });
+
   it('round-trips club identity (name + manager + onboarded)', () => {
     const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
     const r = decodeSave(encodeSave(save));

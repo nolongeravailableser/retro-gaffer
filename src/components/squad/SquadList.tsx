@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser } from 'lucide-react';
+import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser, BatteryLow, Snowflake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
 import { marketSellValue } from '@/lib/market';
+import { sharpnessBand, fatigueBand } from '@/lib/training';
 import { LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { avgRating } from '@/lib/ratings';
 import { Draggable } from '@/components/dnd/dnd';
@@ -31,6 +32,8 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const clubName = useGameStore((s) => s.clubName);
   const careerTier = useGameStore((s) => s.career?.tier ?? null);
   const inLeague = useGameStore((s) => s.league !== null);
+  const sharpness = useGameStore((s) => s.sharpness);
+  const fatigue = useGameStore((s) => s.fatigue);
   // Career/League sell at market value (free agents fetch nothing); else 80% of cost.
   const saleValue = (p: Parameters<typeof sellValue>[0]) => {
     if (careerTier !== null) return marketSellValue(p, careerTier);
@@ -236,6 +239,17 @@ export default function SquadList({ multipliers }: SquadListProps) {
                           {injuredRounds && !isSuspended && (
                             <span className="flex items-center gap-0.5 text-[9px] text-orange-300 font-display shrink-0">
                               <HeartCrack size={8} /> {injuredRounds}R
+                            </span>
+                          )}
+                          {/* Condition (Career/League): flag only the notable states. */}
+                          {inLeague && !unavailable && fatigueBand(fatigue[id]) === 'tired' && (
+                            <span className="flex items-center gap-0.5 text-[9px] text-rose-300 font-display shrink-0" title="Tired — rest him to recover">
+                              <BatteryLow size={9} /> TIRED
+                            </span>
+                          )}
+                          {inLeague && !unavailable && sharpnessBand(sharpness[id]) === 'rusty' && (
+                            <span className="flex items-center gap-0.5 text-[9px] text-sky-300 font-display shrink-0" title="Match-rusty — needs games to sharpen up">
+                              <Snowflake size={9} /> RUSTY
                             </span>
                           )}
                         </div>

@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 25;
+export const CURRENT_VERSION = 26;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -167,6 +167,16 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
         ? { ...(review as object), renewed: [] }
         : review;
     return { ...s, career: { ...(career as object), meta: nextMeta }, careerReview: nextReview };
+  },
+  // Training/fatigue: default focus + empty condition maps for existing saves.
+  26: (s) => {
+    const o = s as { training?: unknown; sharpness?: unknown; fatigue?: unknown };
+    return {
+      ...s,
+      training: typeof o.training === 'string' ? o.training : 'balanced',
+      sharpness: o.sharpness && typeof o.sharpness === 'object' ? o.sharpness : {},
+      fatigue: o.fatigue && typeof o.fatigue === 'object' ? o.fatigue : {},
+    };
   },
 };
 

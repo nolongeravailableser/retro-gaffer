@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-feel batch (tasks 1–4 + Inbox) shipped & pushed; then the **FM-core roadmap** kicked off — **#1 home-and-away fixtures DONE** (22-match seasons via `doubleRoundRobin`, economy normalized by `seasonScale`). persistence **v25**, **300 tests**, build green, sim re-gated (Classic 36.8% · career solvent/climbs, easier: champ 67%/sacked 1.3%). Roadmap + next items in §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap in progress — **#1 home-and-away fixtures** (22-match seasons) + **#2/#4 training, sharpness & fatigue** both DONE. persistence **v26**, **311 tests**, build green. Classic byte-identical (sim 36.8%); training is a player-skill layer the sim doesn't model. Next: #3 morale, #5 cup. See §3 "START HERE")
 
 ---
 
@@ -762,13 +762,11 @@ wage) to avoid an economy re-tune — revisit if per-player negotiated wages are
 **⭐⭐ FM-CORE ROADMAP (2026-06-12, user-approved):** strategic feature-map after
 the FM-transfer batch. The engine (`engine.ts`+`stats.ts`: attribute-driven,
 segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
-- **Next Up (core loop):** (1) home-and-away fixtures — **✅ DONE**, see below;
-  (2) **training & match sharpness** (`lib/training.ts`: a weekly team focus →
-  bounded stat drift + decaying sharpness — the missing weekly decision);
-  (3) **morale/form** (derived from `playerHistory` + minutes + results, surfaced
-  in the Inbox); (4) **cumulative fatigue → rotation** (gives squad depth a point,
-  pairs with training); (5) **cup competition** (`lib/cup.ts` knockout). Recommended
-  order: 1 → 2+4 → 3 → 5.
+- **Next Up (core loop):** (1) home-and-away — **✅ DONE**; (2)+(4) **training,
+  sharpness & fatigue** — **✅ DONE** (`lib/training.ts`, see below); (3)
+  **morale/form** — TODO (derive from `playerHistory` + minutes + results, surface
+  in the Inbox); (5) **cup competition** — TODO (`lib/cup.ts` knockout). Order
+  done: 1 → 2+4; next 3 → 5.
 - **Future Edge (the "FM killers"):** living board confidence, memory-carrying
   inbox interactions (the press-conference killer), living transfer-market AI,
   lightweight player dynamics, fan/finance reinvestment loop. All ride the **Inbox**
@@ -789,6 +787,27 @@ helpers + UI already read `totalWeeks`, so they adapted free. **Sim re-gated:**
 Classic 36.8% (untouched); career economy preserved (PL median ~£550M, solvent,
 climbs). Note the longer season lowers variance → **easier career** (champ
 53%→67%, sacked 4%→1.3%) — accepted as the cost of a legitimate league.
+
+**#2+#4 training, sharpness & fatigue — ✅ DONE (Career/League; user chose
+SUBTLE drift + GENTLE bite).** `lib/training.ts` (pure, 11 tests):
+- **Sharpness** (0–100, `nextSharpness`): +8 starting, −6 benched; `sharpnessMult`
+  = 1.0 when sharp (≥70), down to 0.95 rusty. Rewards a settled XI.
+- **Fatigue** (0–100, `nextFatigue`): +18 starting, recovers a fraction each week
+  (25%, fitness focus 40%); `fatigueMult` 1.0 until 55 then down to 0.95. A regular
+  starter settles ~72 (≈neutral), so the SYSTEM is near net-neutral for a fixed XI
+  → **the career sim (which doesn't model it) stays valid**; it's a skill layer.
+- **Training focus** (`TrainingFocus`: attacking/balanced/defensive/fitness):
+  `focusModifiers` tilts via `MatchModifiers.role` (attacking → +FWD/MID, etc.);
+  fitness speeds recovery. `conditionModifiers` folds each starter's
+  sharpness×fatigue into `MatchModifiers.player`.
+- **Wiring:** App's `playerTeam` merges `focusModifiers` + `conditionModifiers`
+  into the existing modifier pipeline **only when `career||league`** (Classic
+  byte-identical, no engine change). `resolveLeagueRound` updates sharpness/fatigue
+  from who started (pruned to the squad). Store: `training`/`sharpness`/`fatigue`
+  (persist **v26** + migration), `setTraining`. UI: `TrainingPanel` (Tactics tab,
+  focus selector + "N rusty · N tired" summary) + TIRED/RUSTY badges in SquadList.
+- Verified live: focus persists; a played MW set starter sharpness 70→78,
+  fatigue 0→18; injected extremes showed the badges + summary. Sim unmoved.
 
 **Implementation anchors:** market logic in `lib/market.ts`; league/club state
 + squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);
