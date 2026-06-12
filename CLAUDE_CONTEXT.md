@@ -15,10 +15,13 @@
 > Array (P1), Unknown-pool start (P3), Manager career/job market (P5, "a sacking is
 > NOT game over"), and the Start Menu front door + difficulty picker (P2) are
 > shipped & live-verified. Classic 36.8% + career economy preserved throughout.
-> **QA SWEEP PASSED** (multi-season dynasty test + live Hardcore match; no functional
-> bugs; fixed a pre-existing HUD/CTA matchweek-count cosmetic). **372 tests.** Nothing
-> pushed — ready to push to prod on your word. See §3 "START HERE" → "⭐⭐⭐ STRATEGIC
-> RE-FOUNDATION".)
+> **QA SWEEP PASSED**, then PUSHED to prod. POST-PUSH polish (all live): manager-career
+> follow-ups (difficulty-aware job market, manager trophy cabinet spanning clubs,
+> reputation in the Hub) + Start-Menu bug fixes (More-ways-to-play z-index, tutorial
+> rewrite, Records sub-view). **NEW — Classic reworked into a DRAFT LEAGUE** (committed,
+> NOT yet pushed): snake-draft a squad vs 11 AI clubs (difficulty-scaled budget) → a
+> single round-robin league. `lib/draft.ts` (+14 tests), `DraftRoom.tsx`, persistence
+> **v30**. **384 tests**, build green. See §3 "START HERE" → "Classic Draft League".)
 
 ---
 
@@ -863,6 +866,34 @@ make the game a "world-class" FM. We discussed architecture before building; the
 **Anti-bloat principle reaffirmed:** the codebase is v28 / 347 tests — the lever is
 CONSOLIDATION (declarative tables, reuse overlay/ModeConfig/persistence patterns), not
 parallel systems. Mode demotion is the one move that genuinely cuts surface area.
+
+### ⭐ CLASSIC DRAFT LEAGUE (2026-06-12, user-requested rework — committed, NOT pushed)
+
+The user reworked Classic from the gacha ladder into a **snake-draft league**. Quick
+Classic → **pick difficulty** → **draft** a 14-man squad against 11 AI clubs (your
+budget scales with difficulty; AI budgets seeded) → the drafted squads form a **single
+round-robin league** (11 matchweeks) → finish 1st to win.
+- `lib/draft.ts` (pure, 14 tests): `snakeOrder`, `generateDraft`, `canPick` (reserve
+  guard — never spend so you can't fill required roles), **`pickableInDraft`** (ROLE-
+  FIRST for the player + a last-resort so a legal XI is ALWAYS completable, even on a
+  depleted market), `aiPick` (role-first + safety net), `leagueFromDraft`,
+  `CLASSIC_DRAFT_BUDGET`=150.
+- store: `draft: DraftState|null` (persisted, **v30**); `startClassicDraft(difficulty)`,
+  `draftPick(id)` (your pick → AI picks around you → on completion builds the league +
+  fields your XI). Season runs the existing league path (`s.league` set, `s.career`
+  null → 1st = champions). `components/run/DraftRoom.tsx` (z-65 board).
+- Entry points: StartMenu Quick Classic (difficulty pick), NewRunModal Classic card,
+  RunOverModal Classic replay — all route to the draft (mode-checked BEFORE `league`).
+- **Graceful migration:** existing ladder-Classic saves keep playing as a ladder; only
+  NEW Classic runs are draft leagues. The old ladder resolve path is still intact.
+- **Live-verified:** drafted Grobbelaar/Pirlo/Guardiola/Ronaldinho/Giggs (str 1909 vs
+  AI 1953-1964), played MW1, table + AI fixtures resolved, no console errors.
+- **REMAINING / follow-ups:** (1) no Monte-Carlo balance sim for the draft-league
+  economy yet (draft engine is unit-tested; `CLASSIC_DRAFT_BUDGET` could be tuned).
+  (2) HUD lives-hearts + bankroll are vestigial chrome for a league (cosmetic). (3) the
+  Transfers tab for a post-draft classic-league run may still show the gacha shop
+  (unused in play — you play from Tactics/Season). (4) Not pushed — user may want to
+  play it first.
 
 ---
 
