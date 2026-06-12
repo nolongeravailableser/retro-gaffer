@@ -17,6 +17,9 @@ describe('difficulty matrix', () => {
     // The board gets harsher (higher sack threshold = fires you sooner).
     expect(easy.sackThreshold).toBeLessThanOrEqual(standard.sackThreshold);
     expect(standard.sackThreshold).toBeLessThan(hardcore.sackThreshold);
+    // The competition stiffens: a softer division on Easy, a brutal one on Hardcore.
+    expect(easy.aiStrengthMult).toBeLessThan(standard.aiStrengthMult);
+    expect(standard.aiStrengthMult).toBeLessThan(hardcore.aiStrengthMult);
     // The market gets more hostile.
     expect(hardcore.agentInflation).toBeGreaterThan(easy.agentInflation);
     expect(hardcore.rivalAggression).toBeGreaterThan(easy.rivalAggression);
@@ -27,13 +30,15 @@ describe('difficulty matrix', () => {
     expect(easy.repPenaltyOnSack).toBe(0);
   });
 
-  it('standard reproduces today’s behaviour exactly (×1, relegation-only)', () => {
+  it('standard keeps a neutral economy/market + relegation-only board, but a contested pitch', () => {
     const s = DIFFICULTIES.standard;
     expect(s.startBankrollMult).toBe(1.0);
     expect(s.wageBudgetMult).toBe(1.0);
     expect(s.agentInflation).toBe(1.0);
     expect(s.rivalAggression).toBe(1.0);
     expect(s.sackThreshold).toBe(0); // never fired on form
+    // The one non-neutral lever: the competition is tuned for a real contest.
+    expect(s.aiStrengthMult).toBeGreaterThan(1.0);
     expect(DEFAULT_DIFFICULTY).toBe('standard');
   });
 
@@ -57,11 +62,11 @@ describe('difficulty matrix', () => {
     });
 
     it('hardcore respects the grace period, then bites below the threshold', () => {
-      const hc = DIFFICULTIES.hardcore; // grace 1 season, threshold 35
-      expect(canSack(hc, 10, 1)).toBe(false); // immune in the grace window
-      expect(canSack(hc, 10, 2)).toBe(true); // past grace, dreadful form → sacked
-      expect(canSack(hc, 34, 5)).toBe(true); // just under threshold
-      expect(canSack(hc, 35, 5)).toBe(false); // at threshold → safe
+      const hc = DIFFICULTIES.hardcore; // grace 2 seasons, threshold 22
+      expect(canSack(hc, 10, 2)).toBe(false); // immune in the grace window
+      expect(canSack(hc, 10, 3)).toBe(true); // past grace, dreadful form → sacked
+      expect(canSack(hc, 21, 5)).toBe(true); // just under threshold
+      expect(canSack(hc, 22, 5)).toBe(false); // at threshold → safe
       expect(canSack(hc, 80, 5)).toBe(false); // flying → safe
     });
   });

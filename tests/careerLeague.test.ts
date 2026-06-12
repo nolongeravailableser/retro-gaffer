@@ -362,21 +362,25 @@ describe('career difficulty — board teeth', () => {
   });
 
   it('Hardcore fires you for a relegation past the grace period; Standard survives it', () => {
-    // Standard: climb to League Two (S2), then a disastrous season → relegated,
+    // Standard: climb to League One (S3), then a disastrous season → relegated,
     // but the board keeps you on (a between-seasons review, run still playing).
     useGameStore.getState().startCareer('standard');
     playSeason('win'); // S1 won → promoted
     useGameStore.getState().advanceCareerSeason(null); // now S2, tier 4
+    playSeason('win'); // S2 won → promoted
+    useGameStore.getState().advanceCareerSeason(null); // now S3, tier 3
     playSeason('loss'); // dead last → relegated (not the bottom tier)
     const std = useGameStore.getState();
     expect(std.runStatus).toBe('playing');
     expect(std.careerReview?.outcome).toBe('relegated');
 
-    // Hardcore, identical path: past the 1-season grace, the same collapse gets
+    // Hardcore, identical path: past the 2-season grace, the same collapse gets
     // you sacked — but a manager's career isn't over: the JOB MARKET opens.
     useGameStore.getState().startCareer('hardcore');
     playSeason('win'); // S1 won (grace season) → promoted
     useGameStore.getState().advanceCareerSeason(null); // now S2, tier 4
+    playSeason('win'); // S2 won (grace season) → promoted
+    useGameStore.getState().advanceCareerSeason(null); // now S3, tier 3
     playSeason('loss'); // dead last, confidence floored → board sacks you
     const hc = useGameStore.getState();
     expect(hc.runStatus).toBe('playing'); // NOT game over
@@ -386,8 +390,10 @@ describe('career difficulty — board teeth', () => {
   });
 
   it('applying for a job continues the manager career at a new club', () => {
-    // Get sacked on Hardcore → the job market opens.
+    // Get sacked on Hardcore → the job market opens (past the 2-season grace).
     useGameStore.getState().startCareer('hardcore');
+    playSeason('win');
+    useGameStore.getState().advanceCareerSeason(null);
     playSeason('win');
     useGameStore.getState().advanceCareerSeason(null);
     playSeason('loss');

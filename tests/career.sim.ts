@@ -19,7 +19,9 @@ import { computeChemistry } from '@/lib/chemistry';
 import { simulateMatch, type MatchTeam } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { interest, streakBonus, ROUND_INCOME } from '@/lib/ladder';
-import { wageBill, tierMult, WAGE_TIER_K } from '@/lib/wages';
+import { wageBill, tierMult, WAGE_TIER_K, wageBudget } from '@/lib/wages';
+import { boardConfidence } from '@/lib/board';
+import { DIFFICULTIES, getDifficulty, canSack, wageCap, type DifficultyConfig } from '@/lib/difficulty';
 import { matchdayIncomeFor, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId } from '@/lib/stadium';
 import { ageRoster, newMeta, reviewBonus, type CareerMeta } from '@/lib/career';
 import {
@@ -49,6 +51,9 @@ interface Career {
   season: number;
   streak: number;
   seed: number;
+  diff: DifficultyConfig;
+  /** This season's player record, for board-confidence sacking (Hardcore). */
+  record: { w: number; d: number; l: number };
 }
 
 const cur = (c: Career, id: string): Player => c.roster.get(id) ?? byId.get(id)!;
@@ -108,7 +113,14 @@ function draft(c: Career) {
         const weakest = sameRole[0];
         if (weakest && fitScore(c, p) > value(c, weakest.id) + 6) {
           const net = price - marketSellValue(cur(c, weakest.id), c.tier);
-          if (net <= c.bankroll - reserve) {
+          // Hard wage ceiling (the difficulty budget lever): an upgrade that would
+          // push the wage bill over the cap is refused — galáctico-stacking is
+          // gated tighter on Hardcore, looser on Easy. Mirrors store.signPlayer.
+          const cap = wageCap(wageBudget(c.bankroll - net, tierMult(c.tier)), c.diff);
+          const newBill = wageBill(
+            c.owned.filter((id) => id !== weakest.id).map((id) => cur(c, id)).concat(p)
+          );
+          if (net <= c.bankroll - reserve && newBill <= cap) {
             const gain = fitScore(c, p) - value(c, weakest.id);
             if (!best || gain > best.gain) best = { p, gain, sellId: weakest.id };
           }
@@ -192,6 +204,9 @@ function playMatchweek(c: Career, league: LeagueState, mw: number, results: Reco
     // Economy — mirrors resolveLeagueRound exactly (incl. the season-length scale).
     const outcome = result.outcome;
     c.streak = outcome === 'win' ? c.streak + 1 : 0;
+    if (outcome === 'win') c.record.w++;
+    else if (outcome === 'draw') c.record.d++;
+    else c.record.l++;
     const scale = seasonScale(league);
     const dm = tierMult(c.tier);
     const reward = Math.round(MATCH_REWARD[outcome] * dm * scale);
@@ -227,11 +242,13 @@ interface CareerResult {
   promoBy: Record<number, { played: number; promoted: number; relegated: number }>;
 }
 
-function simulateCareer(seed: number): CareerResult {
+function simulateCareer(seed: number, diff: DifficultyConfig = DIFFICULTIES.standard): CareerResult {
   const c: Career = {
-    bankroll: CAREER_STARTING_BANKROLL, owned: [], roster: new Map(), meta: {},
+    bankroll: Math.round(CAREER_STARTING_BANKROLL * diff.startBankrollMult),
+    owned: [], roster: new Map(), meta: {},
     facilities: { stadium: 0, academy: 0, medical: 0 },
-    tier: BOTTOM_TIER, season: 1, streak: 0, seed,
+    tier: BOTTOM_TIER, season: 1, streak: 0, seed, diff,
+    record: { w: 0, d: 0, l: 0 },
   };
   const bankrollByTier: CareerResult['bankrollByTier'] = {};
   const promoBy: CareerResult['promoBy'] = {};
@@ -243,11 +260,14 @@ function simulateCareer(seed: number): CareerResult {
     // Season sponsorship is banked up front (mirrors startCareer /
     // advanceCareerSeason) — part of the budget you draft + develop against.
     c.bankroll += seasonSponsorship(c.tier);
+    c.record = { w: 0, d: 0, l: 0 };
     draft(c);
     developClub(c);
     if (c.owned.length < 11) { return finish('sacked'); } // couldn't field a side (shouldn't happen)
 
-    const league = generateLeague(`${seed}-s${c.season}`, division(c.tier).baseStrength, LEAGUE_TEAMS);
+    // The division base scales with difficulty (Hardcore faces tougher clubs).
+    const aiBase = Math.round(division(c.tier).baseStrength * c.diff.aiStrengthMult);
+    const league = generateLeague(`${seed}-s${c.season}`, aiBase, LEAGUE_TEAMS);
     const results: Record<string, LeagueResult> = {};
     const weeks = totalWeeks(league);
     for (let mw = 1; mw <= weeks; mw++) {
@@ -256,7 +276,13 @@ function simulateCareer(seed: number): CareerResult {
     }
     const finalLeague: LeagueState = { ...league, results, matchweek: weeks + 1 };
     const pos = position(finalLeague, YOU);
-    const outcome = seasonOutcome(c.tier, pos, LEAGUE_TEAMS);
+    let outcome = seasonOutcome(c.tier, pos, LEAGUE_TEAMS);
+    // Board teeth (Hardcore): a season of sustained low confidence gets you
+    // sacked even without relegation (mirrors resolveLeagueRound).
+    const endConf = boardConfidence(pos, LEAGUE_TEAMS, c.record);
+    if (outcome !== 'promoted' && outcome !== 'champion' && canSack(c.diff, endConf, c.season)) {
+      outcome = 'sacked';
+    }
 
     (bankrollByTier[c.tier] ??= []).push(c.bankroll);
     const pb = (promoBy[c.tier] ??= { played: 0, promoted: 0, relegated: 0 });
@@ -317,6 +343,65 @@ function runSweep(N: number, k: number, upkeep = 0) {
     N,
   };
 }
+
+/** Per-difficulty climb + failure profile (the tension report). */
+function runDiffSweep(N: number, diff: DifficultyConfig) {
+  WAGE_K = WAGE_TIER_K;       // shipped economy …
+  UPKEEP_LEVEL = UPKEEP_PER_LEVEL; // … so tension is read against the real money model
+  const results = Array.from({ length: N }, (_, i) => simulateCareer((i * 2654435761) >>> 0, diff));
+  const champ = results.filter((r) => r.outcome === 'champion').length;
+  const sacked = results.filter((r) => r.outcome === 'sacked').length;
+  const reachedPL = results.filter((r) => r.reachedPL).length;
+  const avgSeasons = results.reduce((s, r) => s + r.seasons, 0) / N;
+  // Per-tier promotion% (T1 = title%).
+  const promo: Record<number, { played: number; up: number }> = {};
+  for (const r of results) for (const t of [5, 4, 3, 2, 1]) {
+    if (!r.promoBy[t]) continue;
+    (promo[t] ??= { played: 0, up: 0 });
+    promo[t].played += r.promoBy[t].played;
+    promo[t].up += r.promoBy[t].promoted;
+  }
+  const pct = (t: number) => (promo[t]?.played ? (100 * promo[t].up) / promo[t].played : 0);
+  return {
+    champ: (100 * champ) / N, sacked: (100 * sacked) / N, reachedPL: (100 * reachedPL) / N,
+    avgSeasons, t5: pct(5), t4: pct(4), t3: pct(3), t2: pct(2), t1: pct(1),
+  };
+}
+
+describe('career balance — difficulty sweep', () => {
+  it('reports the climb + failure profile per difficulty', () => {
+    const N = 250;
+    const lines = ['\n=== CAREER DIFFICULTY SWEEP (climb + tension) ===',
+      'diff       champ%  sack%  PL%   avgS  T5up%  T4up%  T3up%  T2up%  title%'];
+    const by: Record<string, ReturnType<typeof runDiffSweep>> = {};
+    for (const id of ['easy', 'standard', 'hardcore'] as const) {
+      const d = getDifficulty(id);
+      const r = runDiffSweep(N, d);
+      by[id] = r;
+      lines.push(
+        `${id.padEnd(9)}  ${r.champ.toFixed(0).padStart(5)}%  ${r.sacked.toFixed(0).padStart(4)}%  ` +
+        `${r.reachedPL.toFixed(0).padStart(3)}%  ${r.avgSeasons.toFixed(1).padStart(4)}  ` +
+        `${r.t5.toFixed(0).padStart(4)}%  ${r.t4.toFixed(0).padStart(4)}%  ${r.t3.toFixed(0).padStart(4)}%  ` +
+        `${r.t2.toFixed(0).padStart(4)}%  ${r.t1.toFixed(0).padStart(5)}%`
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'));
+    // Guard the tuning: the dial must produce a real tension gradient.
+    // Winning gets monotonically harder, sacking monotonically more likely.
+    expect(by.easy.champ).toBeGreaterThan(by.standard.champ);
+    expect(by.standard.champ).toBeGreaterThan(by.hardcore.champ);
+    expect(by.hardcore.sacked).toBeGreaterThan(by.standard.sacked);
+    // Standard is a genuine contest (not the old near-guaranteed climb) but still
+    // winnable for a dedicated dynasty, and the climb is contested at the top.
+    expect(by.standard.champ).toBeGreaterThan(20);
+    expect(by.standard.champ).toBeLessThan(55);
+    expect(by.standard.t2).toBeLessThan(60); // Championship → PL is hard-won
+    // Hardcore is brutal but not hopeless — the PL is still reachable.
+    expect(by.hardcore.sacked).toBeGreaterThan(50);
+    expect(by.hardcore.reachedPL).toBeGreaterThan(20);
+  });
+});
 
 describe('career balance — wage-scaling sweep', () => {
   it('compares wage-tier multipliers to bound the economy', () => {

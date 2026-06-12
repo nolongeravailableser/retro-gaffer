@@ -239,6 +239,17 @@ function leagueWithSquads(seed: string | number, strength: number): LeagueState 
   return lg;
 }
 
+/**
+ * The AI strength base for a Career division, scaled by difficulty. Easy softens
+ * the competition (a gentler climb), Hardcore stiffens it (contested promotions,
+ * real relegation risk) — the lever that makes the difficulty dial bite on the
+ * PITCH, not just the budget. Standard ≈ today (×1.07). Standalone League uses the
+ * neutral `LEAGUE_BASE_STRENGTH` and is unaffected.
+ */
+function careerLeagueBase(tier: number, difficultyId: string | null | undefined): number {
+  return Math.round(division(tier).baseStrength * getDifficulty(difficultyId).aiStrengthMult);
+}
+
 /** Run AI draft picks until it's the player's turn (team 0) or the draft ends. */
 function advanceAiDraft(draft: DraftState): DraftState {
   let d = draft;
@@ -2196,7 +2207,7 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           const fresh = freshRun(null, 'league', null);
           const tier = BOTTOM_TIER;
-          const league = leagueWithSquads(fresh.runSeed, division(tier).baseStrength);
+          const league = leagueWithSquads(fresh.runSeed, careerLeagueBase(tier, difficulty ?? s.difficulty));
           // Difficulty dictates the opening kitty: Easy starts richer, Hardcore
           // leaner. Defaults to the current top-level setting (start-menu pick).
           const diffId = difficulty ?? s.difficulty;
@@ -2295,7 +2306,7 @@ export const useGameStore = create<GameState>()(
           // New club, new division: AI clubs at the division's level, a fresh
           // tier-scaled budget + season sponsorship. Facilities start bare — every
           // job is a rebuild project.
-          const league = leagueWithSquads(seed, division(tier).baseStrength);
+          const league = leagueWithSquads(seed, careerLeagueBase(tier, s.difficulty));
           const sponsorship = seasonSponsorship(tier);
           const budget = Math.round(CAREER_STARTING_BANKROLL * tierMult(tier)) + sponsorship;
           const nextSeason = s.career.season + 1;
@@ -2443,7 +2454,7 @@ export const useGameStore = create<GameState>()(
           ]);
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
-          const league = leagueWithSquads(seed, division(tier).baseStrength);
+          const league = leagueWithSquads(seed, careerLeagueBase(tier, s.difficulty));
           const divName = division(tier).name;
           const move =
             review.outcome === 'promoted'
@@ -2472,6 +2483,11 @@ export const useGameStore = create<GameState>()(
             round: 1,
             lives: startLives,
             streak: 0,
+            // Board confidence reads the CURRENT campaign — wipe last season's
+            // W/D/L so a new season is judged on its own form (not propped up by
+            // an old promotion, nor doomed by an old collapse). takeJob resets it
+            // too; together these keep `record` per-season everywhere.
+            record: { w: 0, d: 0, l: 0 },
             runStatus: 'playing' as const,
             suspensions: [],
             injuries: {},
@@ -2536,7 +2552,7 @@ export const useGameStore = create<GameState>()(
         // A legacy (pre-pyramid) career has a tier but no league yet — generate
         // one for its division so the league-resolve path has state to work with.
         if (state.career && !state.league) {
-          state.league = leagueWithSquads(state.runSeed, division(state.career.tier).baseStrength);
+          state.league = leagueWithSquads(state.runSeed, careerLeagueBase(state.career.tier, state.difficulty));
           state.round = state.league.matchweek;
         }
         // A pre-Phase-B league has clubs but no squads — draft them so the
