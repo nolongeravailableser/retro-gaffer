@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + rivals-re-sign-after-poach + AI clubs sign over the season (living market) DONE & PUSHED**. persistence **v27**, **330 tests**, build green, Classic byte-identical (sim 36.8%). Next Future-Edge: memory-carrying inbox, fan/finance loop. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + living transfer-market AI + fan/finance loop DONE & PUSHED**. persistence **v27**, **332 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Last Future-Edge item: memory-carrying inbox interactions. See §3 "START HERE")
 
 ---
 
@@ -769,9 +769,20 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
   fan/finance loop) — all ride the Inbox + retro-minimal UI.
 - **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**;
   **living transfer-market AI — ✅ DONE** (rivals re-sign after a poach + AI clubs
-  sign over the season); memory-carrying inbox interactions (the press-conference
-  killer) — TODO; lightweight player dynamics — TODO; fan/finance reinvestment
-  loop — TODO. All ride the **Inbox** + retro-minimal UI.
+  sign over the season); **fan/finance reinvestment loop — ✅ DONE** (see below);
+  memory-carrying inbox interactions (the press-conference killer) — TODO;
+  lightweight player dynamics — TODO. All ride the **Inbox** + retro-minimal UI.
+
+**Future-Edge: fan/finance loop — ✅ DONE (Career).** `lib/stadium.ts`:
+`STADIUM_CAPACITY` per level + `attendanceFill(streak)` (form-driven, bounded
+0.6–1.0, averages ≈`REFERENCE_FILL`=0.8 so the economy is neutral), `attendance`
+(capacity × fill), and `matchdayIncomeFor(level, streak)` — matchday income now
+FLEXES with the crowd (a winning run packs the ground → more income; a slump
+empties it), replacing the old flat `matchdayIncome` in `resolveLeagueRound` +
+the career sim. The loop made visible: FacilitiesPanel shows "🎟 6,000 / 8,000 ·
+75% full" and the live matchday £. Calibrated zero-sum (neutral streak = the old
+flat figure) → **sim preserved** (Classic 36.8%, PL median £546M vs £550M, hoarders
+84.7%). 5 stadium tests. Verified live.
 
 **Future-Edge: AI clubs sign over the season (living market) — ✅ DONE.**
 `lib/market.ts` `aiClubSigning` (pure, seeded, 3 tests): each matchweek (window

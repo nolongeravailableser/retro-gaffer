@@ -65,9 +65,45 @@ export function isMaxed(level: number): boolean {
   return level >= MAX_LEVEL;
 }
 
-/** Flat matchday income (£m/matchweek) from the stadium level. */
+/** Base matchday income (£m/matchweek) at a typical full-ish crowd. */
 export function matchdayIncome(stadiumLevel: number): number {
   return stadiumLevel * 3;
+}
+
+// --- Fans & attendance: the finance loop, made visible ---------------------
+
+/** Ground capacity (thousands) by stadium level — bigger ground, bigger crowd. */
+export const STADIUM_CAPACITY = [8, 18, 35, 60];
+
+/** Reference fill the base `matchdayIncome` is calibrated to. */
+export const REFERENCE_FILL = 0.8;
+
+export function stadiumCapacity(stadiumLevel: number): number {
+  return (STADIUM_CAPACITY[stadiumLevel] ?? STADIUM_CAPACITY[STADIUM_CAPACITY.length - 1]) * 1000;
+}
+
+/**
+ * What fraction of the ground turns up — driven by form. A neutral run sits near
+ * the reference fill; a winning streak packs it out; a slump empties it. Bounded
+ * so it averages ≈ REFERENCE_FILL over a season (the economy stays balanced).
+ */
+export function attendanceFill(streak: number): number {
+  const v = REFERENCE_FILL + (Math.min(Math.max(streak, 0), 5) - 1) * 0.05;
+  return Math.max(0.6, Math.min(1, v));
+}
+
+/** Actual heads through the gate this matchweek (capacity × fill). */
+export function attendance(stadiumLevel: number, streak: number): number {
+  return Math.round(stadiumCapacity(stadiumLevel) * attendanceFill(streak));
+}
+
+/**
+ * Matchday income (£m/matchweek) responsive to the crowd: the base capacity
+ * income scaled by how full the ground is. A packed house pays more; an empty
+ * one less. Calibrated so a neutral crowd ≈ the flat `matchdayIncome`.
+ */
+export function matchdayIncomeFor(stadiumLevel: number, streak: number): number {
+  return Math.round((matchdayIncome(stadiumLevel) * attendanceFill(streak)) / REFERENCE_FILL);
 }
 
 /** Extra academy prospects offered per intake from the academy level. */

@@ -20,7 +20,7 @@ import { simulateMatch, type MatchTeam } from '@/lib/engine';
 import { generateOpponent } from '@/lib/opponent';
 import { interest, streakBonus, ROUND_INCOME } from '@/lib/ladder';
 import { wageBill, tierMult, WAGE_TIER_K } from '@/lib/wages';
-import { matchdayIncome, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId } from '@/lib/stadium';
+import { matchdayIncomeFor, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId } from '@/lib/stadium';
 import { ageRoster, newMeta, reviewBonus, type CareerMeta } from '@/lib/career';
 import {
   generateLeague, simAiWeek, position, seasonOutcome, nextTier,
@@ -194,7 +194,7 @@ function playMatchweek(c: Career, league: LeagueState, mw: number, results: Reco
     const scale = seasonScale(league);
     const dm = tierMult(c.tier);
     const reward = Math.round(MATCH_REWARD[outcome] * dm * scale);
-    const income = Math.round((ROUND_INCOME * dm + matchdayIncome(c.facilities.stadium)) * scale);
+    const income = Math.round((ROUND_INCOME * dm + matchdayIncomeFor(c.facilities.stadium, c.streak)) * scale);
     const intr = Math.round(interest(c.bankroll) * scale);
     const sb = outcome === 'win' ? Math.round(streakBonus(c.streak) * scale) : 0;
     const wage = Math.round(wageBill(c.owned.map((id) => cur(c, id))) * wageTierMult(c.tier) * scale);

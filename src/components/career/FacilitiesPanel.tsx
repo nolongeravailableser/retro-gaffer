@@ -2,9 +2,12 @@ import { Building2, Dumbbell, HeartPulse, Hammer } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import {
   FACILITIES, FACILITY_IDS, MAX_LEVEL, upgradeCost, isMaxed,
-  matchdayIncome, youthBonus, injuryReduction, facilityUpkeep, type FacilityId,
+  matchdayIncomeFor, youthBonus, injuryReduction, facilityUpkeep,
+  stadiumCapacity, attendance, attendanceFill, type FacilityId,
 } from '@/lib/stadium';
 import { tierMult } from '@/lib/wages';
+
+const fmt = (n: number) => n.toLocaleString('en-GB');
 
 const FACILITY_ICON: Record<FacilityId, typeof Building2> = {
   stadium: Building2,
@@ -13,8 +16,8 @@ const FACILITY_ICON: Record<FacilityId, typeof Building2> = {
 };
 
 /** The current in-season effect of a facility, phrased for the player. */
-function effectLabel(id: FacilityId, level: number): string {
-  if (id === 'stadium') return `+£${matchdayIncome(level)}M matchday income`;
+function effectLabel(id: FacilityId, level: number, streak: number): string {
+  if (id === 'stadium') return `+£${matchdayIncomeFor(level, streak)}M matchday income`;
   if (id === 'academy') {
     const extra = youthBonus(level);
     return extra > 0 ? `+${extra} academy prospect${extra > 1 ? 's' : ''}` : 'standard intake';
@@ -36,6 +39,7 @@ export default function FacilitiesPanel({ bare = false }: FacilitiesPanelProps) 
   const facilities = useGameStore((s) => s.career?.facilities ?? null);
   const tier = useGameStore((s) => s.career?.tier ?? null);
   const bankroll = useGameStore((s) => s.bankroll);
+  const streak = useGameStore((s) => s.streak);
   const upgradeFacility = useGameStore((s) => s.upgradeFacility);
   if (!facilities || tier === null) return null;
 
@@ -66,9 +70,15 @@ export default function FacilitiesPanel({ bare = false }: FacilitiesPanelProps) 
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="font-display text-sm text-chrome">{info.name}</p>
-                  <span className="font-ticker text-[10px] text-crt-amber">{effectLabel(id, level)}</span>
+                  <span className="font-ticker text-[10px] text-crt-amber">{effectLabel(id, level, streak)}</span>
                 </div>
                 <p className="truncate text-[11px] text-chrome-muted">{info.blurb}</p>
+                {id === 'stadium' && (
+                  <p className="font-ticker text-[10px] text-chrome-muted" data-testid="attendance">
+                    🎟 {fmt(attendance(level, streak))} / {fmt(stadiumCapacity(level))} ·{' '}
+                    {Math.round(attendanceFill(streak) * 100)}% full
+                  </p>
+                )}
                 <div className="mt-1 flex items-center gap-1">
                   {Array.from({ length: MAX_LEVEL }, (_, i) => (
                     <span

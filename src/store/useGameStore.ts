@@ -82,7 +82,7 @@ import {
   newFacilities,
   upgradeCost,
   isMaxed,
-  matchdayIncome,
+  matchdayIncomeFor,
   youthBonus,
   injuryReduction,
   facilityUpkeep,
@@ -651,9 +651,10 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const scale = leagueSeasonScale(league);
   const dm = tierMult(s.career ? s.career.tier : LEAGUE_NEUTRAL_TIER);
   const reward = Math.round(MATCH_REWARD[outcome] * dm * scale);
-  // Career-only facilities: the stadium adds flat matchday income (folded into
-  // the round income figure the UI already shows).
-  const matchday = s.career ? matchdayIncome(s.career.facilities.stadium) : 0;
+  // Career-only facilities: the stadium adds matchday income that flexes with the
+  // crowd — a winning run packs the ground (fans → income loop). Folded into the
+  // round income figure the UI shows.
+  const matchday = s.career ? matchdayIncomeFor(s.career.facilities.stadium, newStreak) : 0;
   const roundIncome = Math.round((config.roundIncome * dm + matchday) * scale);
   const intr = Math.round(interest(s.bankroll) * scale);
   const sb = outcome === 'win' ? Math.round(streakBonus(newStreak) * scale) : 0;
