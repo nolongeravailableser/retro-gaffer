@@ -21,7 +21,9 @@ import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { focusModifiers, conditionModifiers } from '@/lib/training';
-import { moraleModifiers } from '@/lib/morale';
+import { moraleModifiers, morale as playerMorale } from '@/lib/morale';
+import { captainOf, leadershipModifiers } from '@/lib/squad';
+import { overall } from '@/lib/wages';
 import { avgRating } from '@/lib/ratings';
 import { slotPosition } from '@/lib/formations';
 import { positionFit } from '@/lib/positions';
@@ -157,14 +159,16 @@ export default function App() {
       const ids = starters.map((p) => p.id);
       mods = mergeModifiers(mods, focusModifiers(training));
       mods = mergeModifiers(mods, conditionModifiers(ids, sharpness, fatigue));
+      const ratingOf = (id: string) => { const h = playerHistory[id]; return h ? avgRating(h) : null; };
       mods = mergeModifiers(
         mods,
-        moraleModifiers(
-          ids,
-          (id) => { const h = playerHistory[id]; return h ? avgRating(h) : null; },
-          (id) => sharpness[id]
-        )
+        moraleModifiers(ids, ratingOf, (id) => sharpness[id])
       );
+      // Captain (most influential starter) leads the dressing room — his mood
+      // lifts or drags the whole side a touch.
+      const captain = captainOf(starters, overall);
+      const captainMorale = captain ? playerMorale(ratingOf(captain.id), sharpness[captain.id]) : null;
+      mods = mergeModifiers(mods, leadershipModifiers(captainMorale));
     }
     const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods, posMult);
     const playerTeam: MatchTeam | null =

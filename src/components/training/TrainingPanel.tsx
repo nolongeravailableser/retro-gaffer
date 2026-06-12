@@ -1,4 +1,4 @@
-import { Dumbbell, Sword, Shield, Scale, HeartPulse } from 'lucide-react';
+import { Dumbbell, Sword, Shield, Scale, HeartPulse, Armchair, Star } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import {
   TRAINING_FOCI,
@@ -6,6 +6,10 @@ import {
   fatigueBand,
   type TrainingFocus,
 } from '@/lib/training';
+import { morale as playerMorale } from '@/lib/morale';
+import { captainOf, dressingRoomMood, moodLabel } from '@/lib/squad';
+import { overall } from '@/lib/wages';
+import { avgRating } from '@/lib/ratings';
 import type { Player } from '@/lib/types';
 
 const FOCUS_ICON: Record<TrainingFocus, React.ElementType> = {
@@ -26,10 +30,21 @@ export default function TrainingPanel() {
   const owned = useGameStore((s) => s.owned);
   const sharpness = useGameStore((s) => s.sharpness);
   const fatigue = useGameStore((s) => s.fatigue);
+  const playerHistory = useGameStore((s) => s.playerHistory);
 
   const squad = owned.map(getPlayer).filter((p): p is Player => !!p);
   const tired = squad.filter((p) => fatigueBand(fatigue[p.id]) === 'tired').length;
   const rusty = squad.filter((p) => sharpnessBand(sharpness[p.id]) === 'rusty').length;
+
+  // Dressing-room dynamics: a captain (squad leader) + the collective mood.
+  const moraleOf = (p: Player) => {
+    const h = playerHistory[p.id];
+    return playerMorale(h ? avgRating(h) : null, sharpness[p.id]);
+  };
+  const captain = captainOf(squad, overall);
+  const mood = dressingRoomMood(squad.map(moraleOf));
+  const moodTone =
+    mood === 'buzzing' ? 'text-crt-green' : mood === 'settled' ? 'text-chrome' : mood === 'tense' ? 'text-crt-amber' : 'text-rose-300';
 
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4" data-testid="training-panel">
@@ -68,6 +83,22 @@ export default function TrainingPanel() {
           );
         })}
       </div>
+
+      {/* Dressing room: captain + collective mood */}
+      {squad.length > 0 && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-pitch-950/40 px-3 py-2" data-testid="dressing-room">
+          <span className="flex items-center gap-1.5 font-ticker text-[11px] text-chrome-muted">
+            <Armchair size={13} /> Dressing room:{' '}
+            <span className={`font-display ${moodTone}`}>{moodLabel(mood)}</span>
+          </span>
+          {captain && (
+            <span className="flex items-center gap-1 font-ticker text-[11px] text-chrome-muted">
+              <Star size={12} className="text-crt-amber" /> Captain:{' '}
+              <span className="text-chrome">{captain.name}</span>
+            </span>
+          )}
+        </div>
+      )}
 
       <p className="mt-2.5 font-ticker text-[11px] text-chrome-muted">
         {TRAINING_FOCI.find((f) => f.id === training)?.blurb} A settled XI stays sharp; rest tired

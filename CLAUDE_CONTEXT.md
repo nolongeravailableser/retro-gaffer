@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap **COMPLETE** — both tiers shipped & pushed. Final Future-Edge item, **memory-carrying inbox (board pledges)**, DONE. persistence **v27**, **335 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Remaining: optional polish only (lightweight player dynamics). See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap **FULLY COMPLETE** — both tiers + the optional **player dynamics (captain + dressing room)** all shipped & pushed. persistence **v27**, **339 tests**, build green, Classic byte-identical (sim 36.8%; career economy preserved). Nothing left on the roadmap — open for new direction / playtest feedback. See §3 "START HERE")
 
 ---
 
@@ -770,9 +770,19 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
 - **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**;
   **living transfer-market AI — ✅ DONE** (rivals re-sign after a poach + AI clubs
   sign over the season); **fan/finance reinvestment loop — ✅ DONE**;
-  **memory-carrying inbox (the press-conference killer) — ✅ DONE** (see below);
-  lightweight player dynamics — optional polish, the only thing left. All ride the
-  **Inbox** + retro-minimal UI.
+  **memory-carrying inbox (the press-conference killer) — ✅ DONE**; **lightweight
+  player dynamics — ✅ DONE** (see below). **The whole FM-core roadmap is now
+  delivered.** All ride the **Inbox** + retro-minimal UI.
+
+**Future-Edge: player dynamics (captain + dressing room) — ✅ DONE (Career/League;
+DERIVED → no persistence).** `lib/squad.ts` (pure, 4 tests): `captainOf` (highest-
+rated fit starter, the squad leader), `dressingRoomMood` (buzzing/settled/tense/
+fractured from the squad's aggregate morale), `leadershipMult`/`leadershipModifiers`
+(the captain's mood swings the whole XI ±`LEADERSHIP_SWING`=2.5% via
+`MatchModifiers.teamMult` — a happy leader lifts everyone). App folds it in
+alongside training/morale (career/league only). UI: TrainingPanel shows
+"Dressing room: settled · Captain: Tony Coton". Sim-safe (the harness has no
+morale → neutral → Classic 36.8%, career unchanged). Verified live.
 
 **Future-Edge: memory-carrying inbox / board pledges — ✅ DONE (Career).** The
 board's pre-season expectation is now an INTERACTIVE message you respond to and
