@@ -13,7 +13,7 @@ import type { Player, Role } from './types';
 import { XI_SIZE, BENCH_SIZE } from './types';
 import { getFormation, roleCounts } from './formations';
 import { computeChemistry } from './chemistry';
-import { positionFit } from './positions';
+import { positionFit, canFillSlot } from './positions';
 
 /** How much each stat matters per role (a striker's DEF is nearly irrelevant). */
 const ROLE_WEIGHT: Record<Role, { atk: number; def: number }> = {
@@ -127,6 +127,25 @@ export function pickBestXI(
       }
     }
     if (!improved) break;
+  }
+
+  // Crisis cover: availability gaps (injuries/suspensions) can leave a slot's
+  // role unfillable — e.g. both fit forwards out. Rather than field a man short
+  // (which can soft-lock when the transfer window is shut), fill any still-empty
+  // slot with the best remaining available player, OUT OF POSITION if need be.
+  // The match applies the out-of-position penalty (positionFit) — a body in the
+  // shirt beats an empty slot. Prefers position-eligible cover, then raw quality.
+  for (let i = 0; i < XI_SIZE; i++) {
+    if (xi[i] || pool.length === 0) continue;
+    const role = formation.slots[i];
+    const pos = formation.positions[i];
+    pool.sort(
+      (a, b) =>
+        (canFillSlot(b, pos) ? 1 : 0) - (canFillSlot(a, pos) ? 1 : 0) ||
+        roleScore(b, role) - roleScore(a, role) ||
+        a.id.localeCompare(b.id)
+    );
+    xi[i] = pool.shift()!;
   }
 
   // Bench: best leftovers first; unavailable (injured/suspended) players go

@@ -97,6 +97,20 @@ describe('pickBestXI', () => {
     const b = pickBestXI(squad.map((p) => p.id), '442', NO_UNAVAIL, resolver(squad));
     expect(a).toEqual(b);
   });
+
+  it('fills out of position rather than leave a man short (no soft-lock)', () => {
+    // 4-4-2 needs 2 FWD, but only ONE fit forward — the other two are injured.
+    // With 12 fit players overall, it must still field a full 11 (a MID covers FWD).
+    const squad = fullSquad(); // 2 GK, 5 DEF, 5 MID, 3 FWD
+    const injuries = { fwd1: 2, fwd2: 1 }; // two forwards out
+    const r = pickBestXI(squad.map((p) => p.id), '442', { suspensions: [], injuries }, resolver(squad));
+    expect(r.filled).toBe(11); // a full XI, not 10
+    // No injured player was fielded.
+    expect(r.xi).not.toContain('fwd1');
+    expect(r.xi).not.toContain('fwd2');
+    // The one fit forward starts; an out-of-position outfielder fills the gap.
+    expect(r.xi).toContain('fwd0');
+  });
 });
 
 describe('roleScore', () => {
