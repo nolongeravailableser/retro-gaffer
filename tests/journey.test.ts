@@ -51,11 +51,29 @@ describe('journeyFor', () => {
     expect(journeyFor(legalSquad(), '442', 11).stage).toBe('play');
   });
 
-  it('gaps depend on the formation', () => {
-    // 4-3-3 wants 3 FWD; a 4-4-2-shaped squad (2 FWD) is one striker short.
-    const j = journeyFor(legalSquad(), '433', 0);
+  it('a maldistributed but full squad fields any formation out of position', () => {
+    // A 4-4-2-shaped squad (4 MID, 2 FWD) can legally field a 4-3-3 — a midfielder
+    // plays the third forward out of position (at a penalty). It is NOT a signing
+    // problem, so the journey moves to pick/play, never "sign a FWD". Legality is
+    // keeper-line based (1 GK + 10 outfielders), so it's formation-independent.
+    expect(journeyFor(legalSquad(), '433', 0).stage).toBe('pick');
+    expect(journeyFor(legalSquad(), '352', 0).stage).toBe('pick');
+    expect(journeyFor(legalSquad(), '433', 11).stage).toBe('play');
+  });
+
+  it('only signs when a keeper line is genuinely short (not on maldistribution)', () => {
+    // 1 GK + 9 outfielders (one short of eleven) → must sign an outfielder,
+    // whatever the distribution. The hint points at the most-deficient role.
+    const nineOutfield = [
+      mk('gk0', 'GK'),
+      ...[0, 1, 2, 3, 4].map((i) => mk(`def${i}`, 'DEF')),
+      ...[0, 1, 2, 3].map((i) => mk(`mid${i}`, 'MID')),
+    ];
+    const j = journeyFor(nineOutfield, '442', 0);
     expect(j.stage).toBe('sign');
-    expect(j.missing).toEqual({ FWD: 1 });
+    expect(Object.values(j.missing).reduce((a, b) => a + (b ?? 0), 0)).toBe(1);
+    // No keeper at all → sign a GK regardless of outfield depth.
+    expect(journeyFor(legalSquad().filter((p) => p.role !== 'GK'), '442', 0).missing.GK).toBe(1);
   });
 
   it('extra depth beyond requirements does not block stages', () => {

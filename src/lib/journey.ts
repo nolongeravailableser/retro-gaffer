@@ -44,13 +44,31 @@ export function journeyFor(
   const have: Record<Role, number> = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
   for (const p of fieldablePlayers) have[p.role]++;
 
-  const missing: Partial<Record<Role, number>> = {};
-  for (const role of ROLES) {
-    const gap = required[role] - have[role];
-    if (gap > 0) missing[role] = gap;
-  }
+  // Legality is keeper-line based, NOT per-role: any outfielder can play any
+  // outfield slot (out of position, at a penalty), so a maldistributed-but-
+  // numerous squad (e.g. 5 DEF / 3 MID / 3 FWD for a 4-4-2) can still field a
+  // legal XI. You only need to SIGN when a keeper line is genuinely short:
+  // too few keepers, or too few outfielders in total. This stops the journey
+  // demanding "sign a MID" — sometimes impossible (window shut) — when you can
+  // already field eleven (Auto-Pick covers the gap out of position).
+  const outfieldRoles: Role[] = ['DEF', 'MID', 'FWD'];
+  const gkGap = required.GK - have.GK;
+  const outfieldReq = outfieldRoles.reduce((n, r) => n + required[r], 0);
+  const outfieldHave = outfieldRoles.reduce((n, r) => n + have[r], 0);
+  const outfieldGap = outfieldReq - outfieldHave;
 
-  if (Object.keys(missing).length > 0) {
+  if (gkGap > 0 || outfieldGap > 0) {
+    // Report where you're nominally short for sensible "sign a …" guidance: the
+    // GK gap, plus the outfield shortfall attributed to the most-deficient
+    // outfield roles (any outfielder closes it — this is just a helpful hint).
+    const missing: Partial<Record<Role, number>> = {};
+    if (gkGap > 0) missing.GK = gkGap;
+    let remaining = Math.max(0, outfieldGap);
+    for (const role of outfieldRoles) {
+      if (remaining <= 0) break;
+      const roleGap = Math.min(remaining, Math.max(0, required[role] - have[role]));
+      if (roleGap > 0) { missing[role] = roleGap; remaining -= roleGap; }
+    }
     return { stage: 'sign', missing, missingText: formatMissing(missing) };
   }
   if (filled < XI_SIZE) return { stage: 'pick', missing: {}, missingText: '' };

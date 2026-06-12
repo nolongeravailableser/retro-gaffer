@@ -135,17 +135,28 @@ export function pickBestXI(
   // slot with the best remaining available player, OUT OF POSITION if need be.
   // The match applies the out-of-position penalty (positionFit) — a body in the
   // shirt beats an empty slot. Prefers position-eligible cover, then raw quality.
+  //
+  // The keeper line is UNCROSSABLE: a GK can't cover outfield (and a high-DEF
+  // keeper would otherwise win a midfield slot on raw roleScore) and an
+  // outfielder can't go in goal. Only same-line cover is considered — better to
+  // leave the slot empty (the journey then flags the genuine shortage) than to
+  // park a keeper in midfield.
   for (let i = 0; i < XI_SIZE; i++) {
-    if (xi[i] || pool.length === 0) continue;
+    if (xi[i]) continue;
     const role = formation.slots[i];
     const pos = formation.positions[i];
-    pool.sort(
+    const isGkSlot = role === 'GK';
+    const cover = pool.filter((p) => (p.role === 'GK') === isGkSlot);
+    if (cover.length === 0) continue;
+    cover.sort(
       (a, b) =>
         (canFillSlot(b, pos) ? 1 : 0) - (canFillSlot(a, pos) ? 1 : 0) ||
         roleScore(b, role) - roleScore(a, role) ||
         a.id.localeCompare(b.id)
     );
-    xi[i] = pool.shift()!;
+    const chosen = cover[0];
+    xi[i] = chosen;
+    pool = pool.filter((p) => p.id !== chosen.id);
   }
 
   // Bench: best leftovers first; unavailable (injured/suspended) players go
