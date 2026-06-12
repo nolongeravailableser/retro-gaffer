@@ -399,6 +399,7 @@ describe('career difficulty — board teeth', () => {
     playSeason('loss');
     const sacked = useGameStore.getState();
     expect(sacked.jobMarket).not.toBeNull();
+    expect(sacked.jobMarket).toHaveLength(2); // Hardcore offers fewer jobs
     const seasonBefore = sacked.career!.season;
     const historyLen = sacked.career!.history.length; // includes the sacked season
 

@@ -40,6 +40,9 @@ export interface SeasonRecord {
   clubs: number;
   /** The season's verdict. */
   outcome: SeasonOutcome;
+  /** The club managed that season (Manager career spans clubs). Optional — legacy
+   *  records predate it. */
+  club?: string;
 }
 
 export interface CareerState {
@@ -68,9 +71,12 @@ export interface CareerHonours {
   seasonsPlayed: number;
   /** Best (lowest-numbered) tier ever competed in. */
   highestTier: number;
+  /** Distinct clubs managed across the career (Manager career spans clubs). */
+  clubsManaged: number;
 }
 
 export function careerHonours(history: readonly SeasonRecord[]): CareerHonours {
+  const clubs = new Set(history.map((r) => r.club).filter((c): c is string => !!c));
   return {
     divisionTitles: history.filter((r) => r.finishPos === 1).length,
     championOfEngland: history.some((r) => r.outcome === 'champion'),
@@ -78,6 +84,9 @@ export function careerHonours(history: readonly SeasonRecord[]): CareerHonours {
     relegations: history.filter((r) => r.outcome === 'relegated' || r.outcome === 'sacked').length,
     seasonsPlayed: history.length,
     highestTier: history.length ? Math.min(...history.map((r) => r.tier)) : Number.POSITIVE_INFINITY,
+    // At least the current club once a season's been played, even on legacy
+    // records that predate the per-season club field.
+    clubsManaged: Math.max(clubs.size, history.length ? 1 : 0),
   };
 }
 

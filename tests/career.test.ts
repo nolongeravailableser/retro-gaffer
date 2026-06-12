@@ -98,6 +98,19 @@ describe('careerHonours', () => {
     expect(h.seasonsPlayed).toBe(0);
     expect(h.championOfEngland).toBe(false);
     expect(h.highestTier).toBe(Number.POSITIVE_INFINITY);
+    expect(h.clubsManaged).toBe(0);
+  });
+
+  it('counts distinct clubs managed across the career', () => {
+    const history: SeasonRecord[] = [
+      rec({ season: 1, club: 'Crimson Casuals' }),
+      rec({ season: 2, club: 'Crimson Casuals' }),
+      rec({ season: 3, club: 'Oakvale City' }), // moved clubs after a sacking
+      rec({ season: 4, club: 'Tarnby FC' }),
+    ];
+    expect(careerHonours(history).clubsManaged).toBe(3);
+    // Legacy records with no club field still credit at least the one club.
+    expect(careerHonours([rec({ season: 1 })]).clubsManaged).toBe(1);
   });
 });
 

@@ -797,7 +797,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       ...career,
       history: [
         ...career.history,
-        { season: career.season, tier: career.tier, finishPos: pos, clubs, outcome: outcomeSeason },
+        { season: career.season, tier: career.tier, finishPos: pos, clubs, outcome: outcomeSeason, club: s.clubName ?? undefined },
       ],
     };
     // Board teeth (difficulty-gated): on Hardcore, a season of sustained low
@@ -826,8 +826,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         outcomeSeason === 'sacked'
           ? `Relegated from the ${divName} — the board has sacked you. Time to find a new club.`
           : `The board lost patience after ${ordinal(pos)} in the ${divName} — you're sacked. Time to find a new club.`;
+      // Difficulty shapes the job hunt: a harsh regime damages your standing
+      // (humbler clubs call) and offers fewer vacancies.
       const rep = managerReputation(careerHonours(careerOut.history));
-      jobMarket = generateVacancies(rep, `${s.runSeed}-jobs-${career.season}`);
+      const effRep = Math.max(0, rep - diffCfg.repPenaltyOnSack);
+      jobMarket = generateVacancies(effRep, `${s.runSeed}-jobs-${career.season}`, diffCfg.jobOffers);
     } else {
       // Promoted / stayed / relegated (but survived) → between-seasons review.
       careerBest = Math.max(s.careerBest, career.season);

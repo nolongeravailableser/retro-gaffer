@@ -3,6 +3,7 @@ import {
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { careerHonours, type SeasonRecord } from '@/lib/career';
+import { managerReputation, reputationLabel } from '@/lib/jobs';
 import {
   division, position as leaguePosition, table as leagueTable, totalWeeks,
   PROMOTION_SPOTS, RELEGATION_SPOTS, TOP_TIER, BOTTOM_TIER, YOU,
@@ -46,6 +47,7 @@ export default function CareerHub() {
   const div = division(career.tier);
   const honours = careerHonours(career.history);
   const bestTier = Math.min(career.tier, honours.highestTier);
+  const rep = managerReputation(honours);
 
   // Live current-season outlook from the table.
   let pos = 0;
@@ -92,6 +94,17 @@ export default function CareerHub() {
               <span className="ml-1.5 text-crt-amber">· Champions of England 🏆</span>
             )}
           </p>
+          {/* Manager reputation — the standing that follows you across clubs and
+              gates which jobs you can take after a sacking. */}
+          <div className="mt-2" data-testid="manager-reputation">
+            <div className="mb-1 flex justify-between font-ticker text-[10px] text-chrome-muted">
+              <span>Manager reputation</span>
+              <span className="text-crt-amber">{reputationLabel(rep)} · {rep}/100</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-crt-amber" style={{ width: `${rep}%` }} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -168,7 +181,7 @@ export default function CareerHub() {
             { Icon: Crown, label: 'Div. titles', value: honours.divisionTitles, color: 'text-crt-amber' },
             { Icon: ArrowUpCircle, label: 'Promotions', value: honours.promotions, color: 'text-crt-green' },
             { Icon: Star, label: 'Top tier', value: division(bestTier).name, color: 'text-chrome' },
-            { Icon: Briefcase, label: 'Seasons', value: career.season, color: 'text-chrome' },
+            { Icon: Briefcase, label: 'Clubs managed', value: honours.clubsManaged, color: 'text-chrome' },
           ].map((h) => (
             <div key={h.label} className="rounded-lg border border-white/10 bg-white/[0.02] p-2 text-center">
               <h.Icon size={16} className={`mx-auto ${h.color}`} />
@@ -212,7 +225,12 @@ export default function CareerHub() {
                     S{rec.season}
                   </span>
                   <span className="flex-1 truncate font-display text-xs text-chrome">
-                    {division(rec.tier).name}
+                    {rec.club ?? division(rec.tier).name}
+                    {rec.club && (
+                      <span className="ml-1 font-ticker text-[10px] text-chrome-muted">
+                        {division(rec.tier).name}
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 font-ticker text-[11px] text-chrome-muted">
                     {ord(rec.finishPos)}/{rec.clubs}

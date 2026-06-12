@@ -45,6 +45,13 @@ export interface DifficultyConfig {
   agentInflation: number;
   /** How hard rivals poach you + bid for your stars (scales bid pressure). */
   rivalAggression: number;
+
+  // --- the job market (after a sacking) ------------------------------------
+  /** How many vacancies you're offered when sacked (more = easier to land well). */
+  jobOffers: number;
+  /** Reputation docked when generating those offers — a harsh regime damages your
+   *  standing more, so the clubs that come calling are humbler. */
+  repPenaltyOnSack: number;
 }
 
 export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
@@ -64,6 +71,8 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
     wageBudgetMult: 1.4,
     agentInflation: 0.9,
     rivalAggression: 0.5,
+    jobOffers: 5,
+    repPenaltyOnSack: 0,
   },
   standard: {
     id: 'standard',
@@ -80,6 +89,8 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
     wageBudgetMult: 1.0,
     agentInflation: 1.0,
     rivalAggression: 1.0,
+    jobOffers: 4,
+    repPenaltyOnSack: 0,
   },
   hardcore: {
     id: 'hardcore',
@@ -89,6 +100,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
       'The board sacks you for a season of sustained low confidence',
       'Lean opening budget (×0.7) and a hard wage ceiling',
       'Agents drive a hard bargain; rivals circle your best players',
+      'Fewer job offers after a sacking — humbler clubs come calling',
     ],
     graceSeasons: 1,
     sackThreshold: 35,
@@ -96,6 +108,8 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
     wageBudgetMult: 0.75,
     agentInflation: 1.2,
     rivalAggression: 1.5,
+    jobOffers: 2,
+    repPenaltyOnSack: 15,
   },
 };
 

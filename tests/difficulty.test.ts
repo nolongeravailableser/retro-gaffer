@@ -20,6 +20,11 @@ describe('difficulty matrix', () => {
     // The market gets more hostile.
     expect(hardcore.agentInflation).toBeGreaterThan(easy.agentInflation);
     expect(hardcore.rivalAggression).toBeGreaterThan(easy.rivalAggression);
+    // The job market after a sacking gets harsher: fewer offers, a bigger rep hit.
+    expect(easy.jobOffers).toBeGreaterThan(standard.jobOffers);
+    expect(standard.jobOffers).toBeGreaterThan(hardcore.jobOffers);
+    expect(hardcore.repPenaltyOnSack).toBeGreaterThan(standard.repPenaltyOnSack);
+    expect(easy.repPenaltyOnSack).toBe(0);
   });
 
   it('standard reproduces today’s behaviour exactly (×1, relegation-only)', () => {
