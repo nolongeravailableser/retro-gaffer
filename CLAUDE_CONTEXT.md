@@ -4,10 +4,18 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
-> live-playtest QA + a trap fix it surfaced. COMMITTED locally, HEAD `762452b`, **NOT
-> pushed** (working tree clean). Everything before `54dc692` is SHIPPED & PUSHED. Gates:
-> **387 tests + balance sims**, tsc + build green, persistence **v30** (no bump — all
-> derived), **Classic ladder 36.8%** preserved.
+> live-playtest QA + a trap fix + a **career economy retighten**. Difficulty rebalance +
+> trap fix are SHIPPED & PUSHED (`e5bf90f`); the economy retighten is COMMITTED locally
+> (HEAD ~`aaecdaa`), **NOT pushed** yet. Working tree clean. Gates: **387 tests + balance
+> sims**, tsc + build green, persistence **v30** (no bump — all derived), **Classic
+> ladder 36.8%** preserved.
+>
+> **Economy retighten (commit `aaecdaa`, not pushed):** the harder climb lengthened
+> careers → an inflated top-tier hoard (T1 median £618M, 91% hoarding >£400M). Bumped the
+> two career-only post-match sinks together (re-swept in `career.sim.ts`): `WAGE_TIER_K`
+> 1.3→**1.4** (finance.ts), `UPKEEP_PER_LEVEL` 0.75→**0.85** (stadium.ts). Result: T1
+> median **£155M**, max £1125M, hoarders **37%**; champ/sacked/PL unchanged (post-match
+> levers, not strength). Classic untouched (36.8%), Draft 0-stranded.
 >
 > **Live playthrough QA (this session):** played a full Hardcore season end-to-end —
 > verified tougher AI (youStrength 1062 = 900×1.18), contested matches (MW1 lost 1-2,
@@ -782,16 +790,18 @@ programmatically** from existing single position (confirm before building).
 > (`git push origin main` auto-deploys to prod).
 >
 > Today I want to: **[PICK ONE — fill this in]**
->   (a) **push** the three local commits to prod (difficulty rebalance + trap fix);
+>   (a) **push** the economy-retighten commit (`aaecdaa`) to prod (difficulty rebalance +
+>       trap fix already live as `e5bf90f`);
 >   (a′) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
 >       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
 >   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
 >       international call-ups, set-piece/tactics depth;
 >   (d) a **full QA sweep** (draft tournament + a multi-season manager career w/ a
 >       sacking & job switch + a standalone League/Cup run);
->   (e) **economy retighten** — the harder climb nudged T1 median bankroll £526M→£618M
->       (longer careers accumulate more; still bounded, no runaway). A quick wage/upkeep
->       sweep in `career.sim.ts` could pull it back if it bothers you.
+>   (e) **deeper money-matters work** — the retighten lowered the plateau, but the root
+>       is "nothing to spend on once the squad is complete" (a content gap). Could add a
+>       spend sink: squad rotation/fatigue forcing depth buys, contract-renewal wage
+>       negotiation, or a youth-academy money pit.
 > If I haven't said, recommend one and proceed.
 
 ### ⭐ CAREER DIFFICULTY REBALANCE (2026-06-12, committed `54dc692`, NOT pushed)
@@ -1038,14 +1048,17 @@ swept values; THESE are what's shipped):**
 - `lib/market.ts`: `VALUE_DIV`=45, `VALUE_EXP`=5, `MARKET_TIER_K`=1.2,
   `MARKET_SELL_RATE`=0.85, `FREE_AGENT_MAX_OVERALL`=64, `POACH_PREMIUM`=1.4,
   `CAREER_STARTING_BANKROLL`=35.
-- `lib/wages.ts`: `WAGE_TIER_K`=**1.3**. `lib/stadium.ts`: `UPKEEP_PER_LEVEL`=**0.75**.
+- `finance.ts`: `WAGE_TIER_K`=**1.4** (was 1.3). `lib/stadium.ts`:
+  `UPKEEP_PER_LEVEL`=**0.85** (was 0.75). Bumped together 2026-06-12 to tame the
+  top-tier hoard the difficulty rebalance inflated (career-only → Classic untouched).
 - Career sim (`tests/career.sim.ts`, run via `npm run sim`) — CURRENT (post
-  home-and-away, 22-match seasons): reaches PL **~98%**, champion **~67%** over 20
-  seasons, sacked **~1.3%**, PL median bankroll ~£546M; **Classic completion 36.8%**
-  (the Classic balance harness `tests/balance.sim.ts` shares the run). The longer
-  season lowers variance → an easier/less-tense career than the old 11-match one
-  (a known, accepted trade for a legitimate home-and-away league). Persistence
-  **v27**. **340 tests**, build green. Everything is pushed; working tree clean.
+  difficulty rebalance + economy retighten): **Standard** reaches PL **~97%**,
+  champion **~42%** over 20 seasons (was ~67% — now a real contest), sacked **~1%**,
+  **PL median bankroll ~£155M** (was £546-618M), hoarders (>£400M) **~37%** (was
+  91%); Easy ~77% champ / Hardcore ~8% champ, ~80% sacked. **Classic completion
+  36.8%** (the Classic balance harness `tests/balance.sim.ts` shares the run; career
+  levers are post-match/career-only so Classic is untouched). Persistence **v30**.
+  **387 tests**, build green.
 
 **⭐ FM-FEEL ENHANCEMENTS — COMPLETE & PUSHED (tasks 1–4 + Inbox).** All
 Career/League only; Classic untouched. Commits `439b3ec`…`d28306c` (see git log).
