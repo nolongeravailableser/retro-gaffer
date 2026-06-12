@@ -4,18 +4,20 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
-> live-playtest QA + a trap fix + a **career economy retighten**. Difficulty rebalance +
-> trap fix are SHIPPED & PUSHED (`e5bf90f`); the economy retighten is COMMITTED locally
-> (HEAD ~`aaecdaa`), **NOT pushed** yet. Working tree clean. Gates: **387 tests + balance
+> live-playtest QA + a trap fix + a **career economy retighten** + **contract-renewal
+> money sink**. All career-only/economy; Classic untouched. Gates: **389 tests + balance
 > sims**, tsc + build green, persistence **v30** (no bump — all derived), **Classic
-> ladder 36.8%** preserved.
+> ladder 36.8%** preserved. (HEAD `46fd64e` + a docs commit; pushing as a batch.)
 >
-> **Economy retighten (commit `aaecdaa`, not pushed):** the harder climb lengthened
-> careers → an inflated top-tier hoard (T1 median £618M, 91% hoarding >£400M). Bumped the
-> two career-only post-match sinks together (re-swept in `career.sim.ts`): `WAGE_TIER_K`
-> 1.3→**1.4** (finance.ts), `UPKEEP_PER_LEVEL` 0.75→**0.85** (stadium.ts). Result: T1
-> median **£155M**, max £1125M, hoarders **37%**; champ/sacked/PL unchanged (post-match
-> levers, not strength). Classic untouched (36.8%), Draft 0-stranded.
+> **Economy arc (this session):** the harder climb lengthened careers → an inflated
+> top-tier hoard (T1 median £618M, 91% hoarding >£400M). Two moves: (1) **retighten** —
+> `WAGE_TIER_K` 1.3→**1.4** (finance.ts) + `UPKEEP_PER_LEVEL` 0.75→**0.85** (stadium.ts).
+> (2) **contract-renewal signing-on bonuses** (`RENEWAL_RATE`=0.3, market.ts) as the
+> STANDING sink — keeping your squad together now costs real money (a galáctico squad is
+> expensive to HOLD; lapse a deal and he walks on a Bosman). Both modelled in
+> `career.sim.ts`. Net: T1 median **£71M**, max **£999M**, hoarders **27%**; champ
+> ~43% / sacked ~1% / PL ~97% all unchanged (pure economy). Classic 36.8%, Draft
+> 0-stranded. Live-verified the renewal UI (£6M cost + running total).
 >
 > **Live playthrough QA (this session):** played a full Hardcore season end-to-end —
 > verified tougher AI (youStrength 1062 = 900×1.18), contested matches (MW1 lost 1-2,
@@ -790,18 +792,16 @@ programmatically** from existing single position (confirm before building).
 > (`git push origin main` auto-deploys to prod).
 >
 > Today I want to: **[PICK ONE — fill this in]**
->   (a) **push** the economy-retighten commit (`aaecdaa`) to prod (difficulty rebalance +
->       trap fix already live as `e5bf90f`);
->   (a′) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
+>   (a) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
 >       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
 >   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
 >       international call-ups, set-piece/tactics depth;
 >   (d) a **full QA sweep** (draft tournament + a multi-season manager career w/ a
 >       sacking & job switch + a standalone League/Cup run);
->   (e) **deeper money-matters work** — the retighten lowered the plateau, but the root
->       is "nothing to spend on once the squad is complete" (a content gap). Could add a
->       spend sink: squad rotation/fatigue forcing depth buys, contract-renewal wage
->       negotiation, or a youth-academy money pit.
+>   (e) **more money-matters depth** — contract-renewal bonuses now ship (the standing
+>       sink). Remaining ideas: squad rotation/fatigue forcing depth buys (note: fatigue
+>       exists but is deliberately gentle ±2% & NOT modelled in the sim — biting harder
+>       would need sim modelling to stay gated), or a youth-academy money pit.
 > If I haven't said, recommend one and proceed.
 
 ### ⭐ CAREER DIFFICULTY REBALANCE (2026-06-12, committed `54dc692`, NOT pushed)
@@ -1047,18 +1047,24 @@ tier-aware `sell`. Classic/Endless/Scenario keep the roguelike gacha `Shop`.
 swept values; THESE are what's shipped):**
 - `lib/market.ts`: `VALUE_DIV`=45, `VALUE_EXP`=5, `MARKET_TIER_K`=1.2,
   `MARKET_SELL_RATE`=0.85, `FREE_AGENT_MAX_OVERALL`=64, `POACH_PREMIUM`=1.4,
-  `CAREER_STARTING_BANKROLL`=35.
+  `CAREER_STARTING_BANKROLL`=35, **`RENEWAL_RATE`=0.3** (contract-renewal
+  signing-on bonus = 30% of market value; free for free agents).
 - `finance.ts`: `WAGE_TIER_K`=**1.4** (was 1.3). `lib/stadium.ts`:
   `UPKEEP_PER_LEVEL`=**0.85** (was 0.75). Bumped together 2026-06-12 to tame the
   top-tier hoard the difficulty rebalance inflated (career-only → Classic untouched).
+- **Contract-renewal bonuses are the STANDING money sink** (the "nothing to spend
+  on once your squad's complete" fix): `renewalCost(p, tier)`; charged in
+  `advanceCareerSeason` for renewed players; `renewContract` gated on the bankroll;
+  CareerReview shows the cost + a running total. Modelled in `career.sim.ts` (the
+  AI renews the best expiring it can afford).
 - Career sim (`tests/career.sim.ts`, run via `npm run sim`) — CURRENT (post
-  difficulty rebalance + economy retighten): **Standard** reaches PL **~97%**,
-  champion **~42%** over 20 seasons (was ~67% — now a real contest), sacked **~1%**,
-  **PL median bankroll ~£155M** (was £546-618M), hoarders (>£400M) **~37%** (was
-  91%); Easy ~77% champ / Hardcore ~8% champ, ~80% sacked. **Classic completion
-  36.8%** (the Classic balance harness `tests/balance.sim.ts` shares the run; career
-  levers are post-match/career-only so Classic is untouched). Persistence **v30**.
-  **387 tests**, build green.
+  difficulty rebalance + economy retighten + renewals): **Standard** reaches PL
+  **~97%**, champion **~43%** over 20 seasons (was ~67% — now a real contest),
+  sacked **~1%**, **PL median bankroll ~£71M** (was £546-618M), hoarders (>£400M)
+  **~27%** (was 91%), max ~£999M; Easy ~75% champ / Hardcore ~8% champ, ~80%
+  sacked. **Classic completion 36.8%** (the Classic balance harness
+  `tests/balance.sim.ts` shares the run; career levers are post-match/career-only
+  so Classic is untouched). Persistence **v30**. **389 tests**, build green.
 
 **⭐ FM-FEEL ENHANCEMENTS — COMPLETE & PUSHED (tasks 1–4 + Inbox).** All
 Career/League only; Classic untouched. Commits `439b3ec`…`d28306c` (see git log).
