@@ -289,6 +289,17 @@ export default function App() {
   const showInbox = !!(career || league);
   const inboxUnread = unreadCount(inbox);
 
+  // Classic Draft League is a focused tournament — hide the tabs that don't apply
+  // (no transfers, inbox, challenges, compete or records mid-tournament).
+  const draftTournament = mode === 'classic' && !career && !!league;
+  const hiddenTabs: Tab[] | undefined = draftTournament
+    ? ['transfers', 'inbox', 'challenges', 'pvp', 'records']
+    : undefined;
+  // If a now-hidden tab is active (e.g. on starting the tournament), bounce home.
+  useEffect(() => {
+    if (hiddenTabs?.includes(activeTab)) setActiveTab('formation');
+  }, [hiddenTabs, activeTab]);
+
   // Opening the Inbox marks everything read (clears the badge).
   useEffect(() => {
     if (activeTab === 'inbox' && inboxUnread > 0) markInboxRead();
@@ -345,6 +356,7 @@ export default function App() {
         attentionTab={attentionTab}
         showInbox={showInbox}
         inboxUnread={inboxUnread}
+        hiddenTabs={hiddenTabs}
       />
 
       {/* The core-loop guide: sign → pick → kick off, one obvious action per stage */}

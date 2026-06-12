@@ -31,8 +31,10 @@ export interface DraftablePlayer {
 
 /** Roles a squad must cover to field a legal XI (sums to 11). */
 export const DRAFT_NEED: Record<Role, number> = { GK: 1, DEF: 4, MID: 4, FWD: 2 };
-/** Total players each team drafts (a legal XI + three for the bench). */
-export const DRAFT_SQUAD_SIZE = 14;
+/** Total players each team drafts — a legal XI + five subs (the full 16-man
+ *  roster). It's a closed tournament: no transfers, so the bench is your only
+ *  cover for suspensions and injuries. */
+export const DRAFT_SQUAD_SIZE = 16;
 
 /**
  * Baseline draft budget (£m) for a Classic team — enough to draft a competitive
@@ -183,33 +185,39 @@ export function canPick(state: DraftState, teamIdx: number, playerId: string): b
 }
 
 /**
- * Whether a team may draft a player in the UI. ROLE-FIRST: while required roles
- * are unfilled you may only draft those roles (so a legal XI is built early, when
- * cheap players are plentiful — no stranding yourself with a lopsided squad). A
- * needed-role pick is allowed within the reserve guard, OR as a last resort if
- * it's the cheapest available of that role (so you can ALWAYS complete an XI,
- * even if a depleted market means dipping the budget). Once the XI is complete,
- * any affordable player is fair game for depth.
+ * Whether a team may draft a player in the UI. FREE PICKING: from the very first
+ * pick you may draft any player of any role you can afford — no role-first
+ * restriction, so the available pool never "changes" on you mid-draft. Two
+ * guarantees keep every squad legal:
+ *  - you can't over-commit picks to one area — once your remaining picks only
+ *    just cover the required roles you still need, you must fill those roles;
+ *  - if you've spent up, the cheapest available player of a still-needed role
+ *    (or, when the XI is complete, the cheapest player left) is always a
+ *    last-resort pick, so the squad ALWAYS fills.
  */
 export function pickableInDraft(state: DraftState, teamIdx: number, playerId: string): boolean {
   const team = state.teams[teamIdx];
   const p = state.meta[playerId];
   if (!team || !p || !state.pool.includes(playerId)) return false;
   const needs = unmetNeeds(state, team);
-  const neededRoles = new Set(Object.keys(needs) as Role[]);
-  if (neededRoles.size) {
-    if (!neededRoles.has(p.role)) return false; // fill required roles first
-    if (canPick(state, teamIdx, playerId)) return true;
-    const cheapestOfRole = Math.min(
+  const requiredLeft = Object.values(needs).reduce((a, b) => a + b, 0);
+  const picksLeft = DRAFT_SQUAD_SIZE - team.roster.length;
+  // Reserve your final picks for any required roles you still need — otherwise
+  // pick freely (any affordable player, any role).
+  if (picksLeft <= requiredLeft && !needs[p.role]) return false;
+  if (p.value <= team.budget) return true;
+  // Spent up → last resort so the squad always completes.
+  if (needs[p.role]) {
+    const cheapest = Math.min(
       ...state.pool.filter((id) => state.meta[id].role === p.role).map((id) => state.meta[id].value)
     );
-    return p.value === cheapestOfRole; // last resort — always completable
+    return p.value === cheapest;
   }
-  // XI complete → depth picks: anything affordable, OR the cheapest player left
-  // (last resort, so you can always fill your full squad even if budget is spent).
-  if (p.value <= team.budget) return true;
-  const cheapest = Math.min(...state.pool.map((id) => state.meta[id].value));
-  return p.value === cheapest;
+  if (requiredLeft === 0) {
+    const cheapest = Math.min(...state.pool.map((id) => state.meta[id].value));
+    return p.value === cheapest;
+  }
+  return false;
 }
 
 /**

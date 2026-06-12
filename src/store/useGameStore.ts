@@ -731,6 +731,9 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const mw = league.matchweek;
   const pf = playerFixture(league, mw);
   const config = runConfig(s);
+  // Classic Draft League is a CLOSED tournament: no economy, no transfers, no
+  // inbox/offers — you live with the squad you drafted. Just play the season.
+  const draftLeague = s.mode === 'classic' && !s.career;
 
   // Record results (player is side A; orient into the fixture's home/away).
   const results = { ...league.results };
@@ -783,7 +786,10 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   }
   const fine = s.career ? Math.round(disciplinaryFine(yellows, reds, s.career.tier) * scale) : 0;
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
-  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep - fine + wagerDelta);
+  // Draft tournament: the bank is locked — no money earned or spent.
+  const bankroll = draftLeague
+    ? s.bankroll
+    : Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep - fine + wagerDelta);
 
   // Discipline & fitness (same rules as the ladder). The medical centre shaves
   // rounds off new injuries (career only) — a bad enough knock can heal at once.
@@ -949,21 +955,24 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const newMsgs: InboxMessage[] = [];
   // A rival's own signing this week may rewrite the league's clubs (living market).
   let aiClubsOverride: LeagueClub[] | null = null;
-  if (pf) {
-    const oppId = pf.home === YOU ? pf.away : pf.home;
-    const oppName = league.clubs.find((c) => c.id === oppId)?.name ?? 'the opposition';
-    newMsgs.push(resultMessage(mw, oppName, result.score.a, result.score.b));
+  // The draft tournament has no inbox (the tab is hidden) — skip the feed.
+  if (!draftLeague) {
+    if (pf) {
+      const oppId = pf.home === YOU ? pf.away : pf.home;
+      const oppName = league.clubs.find((c) => c.id === oppId)?.name ?? 'the opposition';
+      newMsgs.push(resultMessage(mw, oppName, result.score.a, result.score.b));
+    }
+    newMsgs.push(...injuryMsgs);
+    if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
+    newMsgs.push(...pledgeMsgs); // board remembers your pre-season pledge
   }
-  newMsgs.push(...injuryMsgs);
-  if (seasonNote) newMsgs.push(boardMessage(mw, 'Season verdict', seasonNote));
-  newMsgs.push(...pledgeMsgs); // board remembers your pre-season pledge
 
   // Incoming bids: while the window is open, rival clubs may bid for your better
   // players — seeded on a SEPARATE stream so match/AI determinism is untouched.
   // Stamped for the upcoming matchweek, so they only land when you can act on
   // them. Buyers are biased toward clubs short in that role; players with an open
   // bid are skipped.
-  if (!done && isWindowOpen(nextMw, weeks)) {
+  if (!done && isWindowOpen(nextMw, weeks) && !draftLeague) {
     const ownedPlayers = s.owned.map(getPlayer).filter((p): p is Player => !!p);
     const openOffers = new Set(
       s.inbox.filter((m) => m.kind === 'offer' && !m.resolved && m.offer).map((m) => m.offer!.playerId)
@@ -1009,7 +1018,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   // Morale (man-management): flag at most ONE newly-unhappy player per matchweek
   // (frozen out / poor form), deduped by a stable id so it never spams. Morale is
   // derived from the just-updated form (avg rating) + sharpness.
-  if (!done) {
+  if (!done && !draftLeague) {
     const flagged = new Set(
       s.inbox.filter((m) => m.kind === 'morale').map((m) => m.id)
     );
@@ -1060,7 +1069,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     runStatus,
     peakBankroll: Math.max(s.peakBankroll, bankroll),
     bestStreak: Math.max(s.bestStreak, newStreak),
-    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, fine, wager: wagerDelta },
+    lastIncome: draftLeague ? null : { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, fine, wager: wagerDelta },
     notice: seasonNote ?? achievementNote,
     noticeKind: 'success',
     selectedPlayerId: null,
@@ -1217,6 +1226,11 @@ export const useGameStore = create<GameState>()(
         const s0 = get();
         const player = getPlayer(id);
         if (!player || !s0.owned.includes(id)) return;
+        // Draft tournament: no transfers in OR out — you're stuck with your squad.
+        if (s0.mode === 'classic' && !s0.career && !!s0.league) {
+          set({ notice: 'No transfers — you play with the squad you drafted.', noticeKind: 'error' });
+          return;
+        }
         // Career/League: selling is window-gated too (no business out of window).
         if (marketTierOf(s0) !== null && !windowOpenFor(s0)) {
           set({ notice: windowClosedNotice(s0), noticeKind: 'error' });
@@ -2105,6 +2119,9 @@ export const useGameStore = create<GameState>()(
             ...fresh,
             difficulty: diffId,
             draft,
+            // A closed tournament — no bank, no transfers once the draft is done.
+            bankroll: 0,
+            peakBankroll: 0,
             best: s.best,
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,

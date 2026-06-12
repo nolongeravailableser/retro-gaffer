@@ -82,15 +82,18 @@ export default function Hud({ onNewRun }: HudProps) {
 
   return (
     <div className="relative flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-      <motion.div
-        key={bankroll}
-        initial={{ scale: 1.12 }}
-        animate={{ scale: 1 }}
-        className="flex items-center gap-2 rounded-lg border border-crt-amber/40 bg-pitch-900/80 px-4 py-2"
-      >
-        <Coins size={18} className="text-crt-amber" />
-        <span className="font-display text-2xl text-crt-amber">£{bankroll}M</span>
-      </motion.div>
+      {/* No bank in the Classic Draft tournament — you're stuck with your squad. */}
+      {!(mode === 'classic' && league) && (
+        <motion.div
+          key={bankroll}
+          initial={{ scale: 1.12 }}
+          animate={{ scale: 1 }}
+          className="flex items-center gap-2 rounded-lg border border-crt-amber/40 bg-pitch-900/80 px-4 py-2"
+        >
+          <Coins size={18} className="text-crt-amber" />
+          <span className="font-display text-2xl text-crt-amber">£{bankroll}M</span>
+        </motion.div>
+      )}
 
       {/* Run status — round / lives / streak, persistent across tabs */}
       {runStatus === 'playing' && (

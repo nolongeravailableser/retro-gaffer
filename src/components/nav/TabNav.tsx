@@ -30,10 +30,13 @@ interface TabNavProps {
   showInbox?: boolean;
   /** Unread inbox count — renders a numeric badge on the Inbox tab. */
   inboxUnread?: number;
+  /** Tabs to hide entirely (e.g. the focused Draft-tournament mode). */
+  hiddenTabs?: Tab[];
 }
 
-export default function TabNav({ active, onChange, attentionTab, showInbox, inboxUnread = 0 }: TabNavProps) {
-  const tabs = showInbox ? TABS : TABS.filter((t) => t.id !== 'inbox');
+export default function TabNav({ active, onChange, attentionTab, showInbox, inboxUnread = 0, hiddenTabs }: TabNavProps) {
+  const hidden = new Set(hiddenTabs);
+  const tabs = TABS.filter((t) => (t.id !== 'inbox' || showInbox) && !hidden.has(t.id));
   return (
     <>
       {/* Desktop: horizontal bar below header (scrolls if the viewport is narrow) */}
