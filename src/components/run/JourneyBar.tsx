@@ -52,8 +52,8 @@ export default function JourneyBar({
         : careerSeason && round === 1
           ? `Start Season ${careerSeason}`
           : onTargetTab
-            ? `Kick off — Play Round ${round}`
-            : `Ready! Play Round ${round}`;
+            ? `Kick off — Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`
+            : `Ready! Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`;
 
   const PrimaryIcon = stage === 'sign' ? ShoppingCart : stage === 'pick' ? Users : Play;
 

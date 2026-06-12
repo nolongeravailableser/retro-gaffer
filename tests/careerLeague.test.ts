@@ -269,6 +269,54 @@ describe('career start — the unknown pool', () => {
   });
 });
 
+describe('manager career dynasty (QA) — spans clubs, never game over', () => {
+  it('survives repeated sackings, rehires at new clubs, and keeps a coherent state', () => {
+    useGameStore.getState().startCareer('standard');
+    const clubs = new Set<string | null>([useGameStore.getState().clubName]);
+    let sackings = 0;
+    let advances = 0;
+
+    // Win once (climb + a between-seasons review → exercises aging/contracts),
+    // then lose out (bottom-tier relegations → repeated sackings → job market).
+    const script: Array<'win' | 'loss'> = ['win', 'loss', 'loss', 'loss', 'loss', 'loss', 'loss'];
+    for (const outcome of script) {
+      playSeason(outcome);
+      const s = useGameStore.getState();
+
+      // INVARIANT: a manager's career is never "lost" (only champion ends it).
+      expect(s.runStatus === 'playing' || s.runStatus === 'won').toBe(true);
+      expect(s.bankroll).toBeGreaterThanOrEqual(0);
+      if (s.runStatus === 'won') break;
+
+      if (s.jobMarket) {
+        sackings++;
+        useGameStore.getState().takeJob(s.jobMarket[0]);
+        const a = useGameStore.getState();
+        expect(a.jobMarket).toBeNull();
+        expect(a.runStatus).toBe('playing');
+        // Inherited a full, fieldable squad of REAL players (not unknowns).
+        expect(a.owned.length).toBeGreaterThanOrEqual(11);
+        expect(a.owned.every((id) => !id.startsWith('unknown-'))).toBe(true);
+        expect(a.xi.filter(Boolean)).toHaveLength(11);
+        expect(a.bankroll).toBeGreaterThanOrEqual(0);
+        clubs.add(a.clubName);
+      } else if (s.careerReview) {
+        advances++;
+        useGameStore.getState().advanceCareerSeason(null);
+        expect(useGameStore.getState().careerReview).toBeNull();
+      }
+      // Always still owns a legal squad to field.
+      expect(useGameStore.getState().owned.length).toBeGreaterThanOrEqual(11);
+    }
+
+    expect(sackings).toBeGreaterThanOrEqual(2); // got sacked and rehired multiple times
+    expect(advances).toBeGreaterThanOrEqual(1); // at least one promotion/relegation review (aging ran)
+    expect(clubs.size).toBeGreaterThanOrEqual(2); // managed more than one club
+    // The manager's story spans the whole journey (every season logged).
+    expect(useGameStore.getState().career!.history.length).toBeGreaterThanOrEqual(6);
+  });
+});
+
 describe('career finances — sponsorship & fines', () => {
   it('banks the season sponsorship at kickoff with an inbox note', () => {
     useGameStore.getState().startCareer('standard');

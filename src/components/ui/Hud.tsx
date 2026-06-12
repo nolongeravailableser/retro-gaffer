@@ -9,7 +9,7 @@ import { bestLabel } from '@/lib/ladder';
 import { Briefcase } from 'lucide-react';
 import { getMutator, dailyMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
-import { division } from '@/lib/league';
+import { division, totalWeeks } from '@/lib/league';
 import { dailyKey } from '@/lib/daily';
 import { runScore, formatScore } from '@/lib/score';
 
@@ -38,6 +38,7 @@ export default function Hud({ onNewRun }: HudProps) {
   const mutator = getMutator(mutatorId);
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
+  const league = useGameStore((s) => s.league);
   const notice = useGameStore((s) => s.notice);
   const noticeKind = useGameStore((s) => s.noticeKind);
   const clearNotice = useGameStore((s) => s.clearNotice);
@@ -95,8 +96,12 @@ export default function Hud({ onNewRun }: HudProps) {
       {runStatus === 'playing' && (
         <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-pitch-900/80 px-3 py-2">
           <span className="font-display text-sm text-chrome">
-            R{round}
-            <span className="text-chrome-muted">/{Number.isFinite(maxRounds) ? maxRounds : '∞'}</span>
+            {/* A league/career season is played in matchweeks (home-and-away →
+                derived from the fixtures); other modes count ladder rounds. */}
+            {league ? `MW${round}` : `R${round}`}
+            <span className="text-chrome-muted">
+              /{league ? totalWeeks(league) : Number.isFinite(maxRounds) ? maxRounds : '∞'}
+            </span>
           </span>
           <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
             {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
