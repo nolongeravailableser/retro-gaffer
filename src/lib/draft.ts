@@ -186,7 +186,11 @@ export function pickableInDraft(state: DraftState, teamIdx: number, playerId: st
     );
     return p.value === cheapestOfRole; // last resort — always completable
   }
-  return p.value <= team.budget; // XI complete → depth, simple affordability
+  // XI complete → depth picks: anything affordable, OR the cheapest player left
+  // (last resort, so you can always fill your full squad even if budget is spent).
+  if (p.value <= team.budget) return true;
+  const cheapest = Math.min(...state.pool.map((id) => state.meta[id].value));
+  return p.value === cheapest;
 }
 
 /**

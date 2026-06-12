@@ -35,16 +35,36 @@ export default function DraftRoom() {
   const stillNeeds = (role: Role) => Math.max(0, DRAFT_NEED[role] - (have[role] ?? 0));
   const neededRoles = new Set(ROLES.filter((r) => stillNeeds(r) > 0));
 
-  // Surface what you can pick NOW first: while your XI is incomplete that's the
-  // still-needed roles (role-first); once complete it's whatever you can afford.
-  // Then best-rated within that. Keeps a tight budget always showing options.
-  const priority = (id: string) => {
+  // The cheapest available of each role — the "last resort" that's always
+  // pickable for a still-needed role (so a depleted market never strands you).
+  const cheapestByRole: Partial<Record<Role, number>> = {};
+  for (const id of draft.pool) {
     const m = draft.meta[id];
-    return neededRoles.size ? (neededRoles.has(m.role) ? 1 : 0) : (m.value <= you.budget ? 1 : 0);
+    if (m && (cheapestByRole[m.role] === undefined || m.value < cheapestByRole[m.role]!)) {
+      cheapestByRole[m.role] = m.value;
+    }
+  }
+  // Surface what you can actually PICK first: affordable players, plus the
+  // last-resort cheapest of a still-needed role — so a tight budget always shows
+  // options. Then best-rated within that. While your XI is incomplete, needed
+  // roles outrank the rest (role-first).
+  const cheapestOverall = Math.min(...draft.pool.map((id) => draft.meta[id].value));
+  const canTake = (id: string) => {
+    const m = draft.meta[id];
+    if (m.value <= you.budget) return true;
+    // Last resort: the cheapest of a still-needed role, or — once the XI is
+    // complete — the cheapest player left, so the squad always fills.
+    if (neededRoles.size) return neededRoles.has(m.role) && m.value === cheapestByRole[m.role];
+    return m.value === cheapestOverall;
+  };
+  const rank = (id: string) => {
+    const m = draft.meta[id];
+    const needBonus = neededRoles.size && !neededRoles.has(m.role) ? 0 : 1; // role-first
+    return (canTake(id) ? 2 : 0) + needBonus;
   };
   const available = draft.pool
     .filter((id) => filter === 'ALL' || draft.meta[id]?.role === filter)
-    .sort((a, b) => priority(b) - priority(a) || draft.meta[b].rating - draft.meta[a].rating)
+    .sort((a, b) => rank(b) - rank(a) || draft.meta[b].rating - draft.meta[a].rating)
     .slice(0, 40);
 
   return (

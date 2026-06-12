@@ -103,15 +103,19 @@ export default function Hud({ onNewRun }: HudProps) {
               /{league ? totalWeeks(league) : Number.isFinite(maxRounds) ? maxRounds : '∞'}
             </span>
           </span>
-          <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
-            {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
-              <Heart
-                key={i}
-                size={12}
-                className={i < lives ? 'fill-rose-400 text-rose-400' : 'text-white/15'}
-              />
-            ))}
-          </span>
+          {/* Lives are a ladder concept — a league (Classic draft / League /
+              Career) has none, so don't show the hearts there. */}
+          {!league && (
+            <span className="flex items-center gap-0.5" aria-label={`${lives} lives`}>
+              {Array.from({ length: Math.max(startingLives, lives) }, (_, i) => (
+                <Heart
+                  key={i}
+                  size={12}
+                  className={i < lives ? 'fill-rose-400 text-rose-400' : 'text-white/15'}
+                />
+              ))}
+            </span>
+          )}
           {streak > 0 && (
             <span className="flex items-center gap-0.5 font-display text-sm text-crt-amber">
               <Flame size={13} />

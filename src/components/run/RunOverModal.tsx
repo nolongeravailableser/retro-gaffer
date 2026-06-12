@@ -163,8 +163,10 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
     ? 'Retry Challenge'
     : career
       ? 'New Career'
-      : league
-        ? 'New League Season'
+      : mode === 'classic' // a Classic draft league (also has `league` set)
+        ? 'New Classic'
+        : league
+          ? 'New League Season'
         : cup
           ? 'New Cup Run'
           : daily

@@ -164,6 +164,20 @@ describe('pickableInDraft — role-first for the player', () => {
     expect(pickableInDraft(s, 0, 'gk1')).toBe(true); // GK needed → pickable
   });
 
+  it('depth last-resort: you can always fill your squad even at £0', () => {
+    const c = (id: string, role: Role): DraftablePlayer => ({ id, role, rating: 90, value: 1 });
+    const xi: DraftablePlayer[] = [
+      c('gk', 'GK'), c('d1', 'DEF'), c('d2', 'DEF'), c('d3', 'DEF'), c('d4', 'DEF'),
+      c('m1', 'MID'), c('m2', 'MID'), c('m3', 'MID'), c('m4', 'MID'), c('f1', 'FWD'), c('f2', 'FWD'),
+    ];
+    const depthPool = [...xi, c('depth', 'MID')];
+    let s = generateDraft('s', [{ id: 'YOU', name: 'You', budget: 11 }], depthPool);
+    for (const id of xi.map((p) => p.id)) s = applyPick(s, id); // draft the legal XI
+    expect(s.teams[0].budget).toBe(0); // spent it all
+    // XI complete, £0 left — the cheapest remaining player is still pickable.
+    expect(pickableInDraft(s, 0, 'depth')).toBe(true);
+  });
+
   it('last resort: the cheapest needed-role player is always pickable, even over budget', () => {
     // Budget too small for the only (expensive) GK, but you NEED a GK → the
     // cheapest available GK is pickable anyway so you can complete a legal XI.
