@@ -7,6 +7,7 @@ import {
   RELEGATION_BONUS,
   potentialStars,
   generateYouth,
+  generateUnknowns,
   ageRoster,
   newMeta,
   youthMeta,
@@ -19,8 +20,45 @@ import {
   getPlayer,
   registerPlayers,
   clearOverlay,
+  POOL,
 } from '@/data/pool';
-import type { Player } from '@/lib/types';
+import { overall } from '@/lib/wages';
+import { FREE_AGENT_MAX_OVERALL } from '@/lib/market';
+import type { Player, Role } from '@/lib/types';
+
+describe('generateUnknowns — the grey starting squad', () => {
+  const poolIds = new Set(POOL.map((p) => p.id));
+
+  it('produces a fieldable, role-balanced squad with no real-pool collisions', () => {
+    const squad = generateUnknowns('seedA');
+    expect(squad).toHaveLength(15); // 2 GK, 5 DEF, 5 MID, 3 FWD — an XI + bench
+    const count = (r: Role) => squad.filter((p) => p.role === r).length;
+    // Enough of every role to field any of the formations' XIs.
+    expect(count('GK')).toBeGreaterThanOrEqual(1);
+    expect(count('DEF')).toBeGreaterThanOrEqual(4);
+    expect(count('MID')).toBeGreaterThanOrEqual(4);
+    expect(count('FWD')).toBeGreaterThanOrEqual(2);
+    // Never collide with a real player id.
+    for (const p of squad) {
+      expect(p.id.startsWith('unknown-')).toBe(true);
+      expect(poolIds.has(p.id)).toBe(false);
+      expect(p.tags).toContain('unknown');
+      expect(p.cost).toBe(0);
+    }
+  });
+
+  it('rates every unknown BELOW the real free-agent floor (so real signings upgrade them)', () => {
+    const squad = generateUnknowns('seedB');
+    for (const p of squad) {
+      expect(overall(p)).toBeLessThan(FREE_AGENT_MAX_OVERALL);
+    }
+  });
+
+  it('is deterministic per seed and varies across seeds', () => {
+    expect(generateUnknowns('same')).toEqual(generateUnknowns('same'));
+    expect(generateUnknowns('a')).not.toEqual(generateUnknowns('b'));
+  });
+});
 
 describe('reviewBonus', () => {
   it('pays most for promotion, least for surviving relegation', () => {

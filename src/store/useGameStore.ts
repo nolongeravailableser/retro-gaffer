@@ -69,6 +69,7 @@ import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import {
   generateYouth,
+  generateUnknowns,
   ageRoster,
   youthMeta,
   reviewBonus,
@@ -2042,15 +2043,47 @@ export const useGameStore = create<GameState>()(
           // money only comes with the top flight).
           const sponsorship = seasonSponsorship(tier);
           const opening = Math.round(CAREER_STARTING_BANKROLL * cfg.startBankrollMult) + sponsorship;
+
+          // The "unknown pool": a new club starts with a full squad of grey,
+          // generated journeymen (rated below the real free-agent floor) — a
+          // fieldable XI from day one, and every real signing is a clear upgrade.
+          // They're registered in the overlay and snapshotted into career.roster
+          // so they survive a reload (the rehydrate path re-registers it).
+          const squad = generateUnknowns(fresh.runSeed);
+          clearOverlay();
+          registerPlayers(squad);
+          const roster: Record<string, Player> = {};
+          const meta: Record<string, ReturnType<typeof newMeta>> = {};
+          for (const p of squad) {
+            roster[p.id] = p;
+            meta[p.id] = newMeta();
+          }
+          // Auto-field the strongest legal XI into the default formation; the rest
+          // fill the bench.
+          const byRole: Record<string, string[]> = {};
+          for (const p of squad) (byRole[p.role] ??= []).push(p.id);
+          const xi: (string | null)[] = emptyXi();
+          for (let i = 0; i < XI_SIZE; i++) {
+            const queue = byRole[slotRole(DEFAULT_FORMATION, i)];
+            if (queue && queue.length) xi[i] = queue.shift()!;
+          }
+          const bench: string[] = [];
+          for (const ids of Object.values(byRole)) {
+            for (const id of ids) if (bench.length < BENCH_SIZE) bench.push(id);
+          }
+
           return {
             ...fresh,
             difficulty: diffId,
-            // Modest opening transfer kitty — field the side with free agents
-            // (overall < 64) and spend this on a few quality upgrades.
+            // Modest opening transfer kitty — upgrade the grey starting XI with a
+            // few real signings (and pick up free agents to round out the squad).
             bankroll: opening,
             peakBankroll: opening,
+            owned: squad.map((p) => p.id),
+            xi,
+            bench,
             league,
-            career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
+            career: { season: 1, tier, meta, roster, facilities: newFacilities(), history: [] },
             careerReview: null,
             // The board lays out its expectation for the opening season + the
             // commercial team confirms the season's sponsorship.

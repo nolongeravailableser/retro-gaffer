@@ -185,6 +185,59 @@ export function generateYouth(seed: string | number, n: number): Player[] {
   return out;
 }
 
+// Fictional "unknown" journeymen — your starting squad in a new Career. Greyer,
+// blander names than the academy prospects, to read as forgettable nobodies you
+// upgrade by signing real players.
+const UNKNOWN_FIRST = [
+  'Gary', 'Dean', 'Lee', 'Carl', 'Wayne', 'Barry', 'Neil', 'Craig', 'Scott',
+  'Ross', 'Glen', 'Shaun', 'Dale', 'Kurt', 'Ricky', 'Lewis',
+];
+const UNKNOWN_LAST = [
+  'Stubbs', 'Pennington', 'Marsh', 'Hodgkiss', 'Bardsley', 'Crook', 'Tunnicliffe',
+  'Whitlow', 'Pugh', 'Catterick', 'Rowett', 'Bramall', 'Doidge', 'Hopper',
+  'Grimshaw', 'Ferris',
+];
+
+/** Role spread of a generated starting squad (15: a full XI + four for the bench). */
+const UNKNOWN_SQUAD: Record<Role, number> = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
+
+/**
+ * Generate a full squad of fictional "unknown" players — the grey, low-rated
+ * journeymen you start a new Career with. Deliberately rated BELOW the real
+ * free-agent floor (overall < ~55) so that signing ANY real player is a clear
+ * upgrade. Deterministic per seed; ids (`unknown-…`) never collide with the real
+ * pool. They're owned like any signing (age, contracts) — just forgettable.
+ */
+export function generateUnknowns(seed: string | number): Player[] {
+  const rng = new Rng(`${seed}-unknown`);
+  const out: Player[] = [];
+  let i = 0;
+  for (const role of ALL_ROLES) {
+    for (let n = 0; n < UNKNOWN_SQUAD[role]; n++, i++) {
+      const first = UNKNOWN_FIRST[rng.int(0, UNKNOWN_FIRST.length - 1)];
+      const last = UNKNOWN_LAST[rng.int(0, UNKNOWN_LAST.length - 1)];
+      const primary = rng.int(40, 52); // stronger side — non-league grade
+      const secondary = rng.int(28, 40);
+      const attackLed = role === 'FWD' || role === 'MID';
+      const attack = attackLed ? primary : secondary;
+      const defense = attackLed ? secondary : primary;
+      out.push({
+        id: `unknown-${seed}-${i}`,
+        name: `${first} ${last}`,
+        cost: 0,
+        stats: { attack: clamp(attack), defense: clamp(defense) },
+        tags: ['unknown'],
+        role,
+        rarity: 'bronze',
+        position: undefined,
+        synergyTags: ['unknown'], // no real-world chemistry — another reason to upgrade
+        era: 'Unknown',
+      });
+    }
+  }
+  return out;
+}
+
 /** Fresh meta for a newly acquired player (signed at their peak, on a full deal). */
 export function newMeta(): CareerMeta {
   return { age: 0, growthLeft: 0, contractYears: DEFAULT_CONTRACT };

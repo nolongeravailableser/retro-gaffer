@@ -252,6 +252,21 @@ describe('career pyramid', () => {
   });
 });
 
+describe('career start — the unknown pool', () => {
+  it('a new career fields a full squad of grey unknowns from day one', () => {
+    useGameStore.getState().startCareer('standard');
+    const s = useGameStore.getState();
+    // Owned a full squad (XI + bench) of generated unknowns, all resolvable.
+    expect(s.owned.length).toBeGreaterThanOrEqual(11);
+    expect(s.owned.every((id) => id.startsWith('unknown-'))).toBe(true);
+    // A legal, fully-filled XI — playable immediately, no transfer market needed.
+    expect(s.xi.filter((slot) => slot !== null)).toHaveLength(11);
+    // Snapshotted into career.roster so they survive a reload (rehydrate re-registers).
+    expect(Object.keys(s.career!.roster).length).toBe(s.owned.length);
+    expect(s.owned.every((id) => id in s.career!.roster)).toBe(true);
+  });
+});
+
 describe('career finances — sponsorship & fines', () => {
   it('banks the season sponsorship at kickoff with an inbox note', () => {
     useGameStore.getState().startCareer('standard');
