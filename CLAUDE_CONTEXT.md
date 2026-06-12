@@ -694,6 +694,33 @@ programmatically** from existing single position (confirm before building).
 
 ### ⭐ NEXT SESSION — START HERE
 
+**▶ READY-TO-PASTE PROMPT FOR THE NEXT SESSION:**
+> Read CLAUDE_CONTEXT.md first — the "⭐ NEXT SESSION — START HERE" block in §3.
+> The FM-core roadmap is fully shipped (persistence v27, 340 tests, prod live);
+> the working tree is clean and nothing is unpushed. My save (`gaffer-run`) is a
+> Classic R7 run — **before ANY destructive browser test (New Game / starting a
+> career or league / playing a match to full-time) back it up to a localStorage
+> key first** (`localStorage.setItem('gaffer-run-BACKUP', localStorage.getItem('gaffer-run'))`)
+> and restore + reload when done; a window snapshot is NOT enough. **Don't push to
+> origin unless I ask** (it auto-deploys to prod). After each change run `npx tsc -b`,
+> the relevant `npx vitest run`, and at milestones `npm run build` + `npm run sim`
+> (career + Classic) — don't move on if a gate is red. Keep the tree committed and
+> keep CLAUDE_CONTEXT.md updated (any persistence change → bump CURRENT_VERSION +
+> add a migration). Work autonomously without asking permission; only pause for a
+> genuine product/design fork, and phrase it as a yes/no question.
+>
+> Today I want to: **[PICK ONE — fill this in]**
+>   (a) **balance/feel tuning** — the 22-match career is easier now (champ ~67%,
+>       sacked ~1.3%); tune for more tension/stakes if it feels too soft in play;
+>   (b) a **new feature area** — e.g. a domestic cup *inside* Career (interleaved),
+>       loans, a sponsorship/finance layer, set-piece/tactics depth, or international
+>       call-ups;
+>   (c) **polish** the systems just shipped (training/morale/board/market/cup) based
+>       on how they feel to play;
+>   (d) another **QA sweep** (a full standalone-League season + a full Cup run +
+>       a multi-season career to exercise contracts/Bosman/youth/promotion together).
+> If I haven't said, recommend one and proceed.
+
 **Status (2026-06-12):** the **entire FM-core roadmap is shipped & PUSHED** — the
 FM-feel transfer batch (tasks 1–4 + Inbox) AND both roadmap tiers: Next-Up
 (home-and-away, training/fatigue, morale, Cup) + Future-Edge (board confidence &
@@ -723,9 +750,13 @@ swept values; THESE are what's shipped):**
   `MARKET_SELL_RATE`=0.85, `FREE_AGENT_MAX_OVERALL`=64, `POACH_PREMIUM`=1.4,
   `CAREER_STARTING_BANKROLL`=35.
 - `lib/wages.ts`: `WAGE_TIER_K`=**1.3**. `lib/stadium.ts`: `UPKEEP_PER_LEVEL`=**0.75**.
-- Career sim (`tests/career.sim.ts`, run via `npm run sim`): reaches PL ~94%,
-  champion ~53% over 20 seasons, sacked ~4%; **Classic completion 36.8%** (the
-  Classic balance harness `tests/balance.sim.ts` shares the run).
+- Career sim (`tests/career.sim.ts`, run via `npm run sim`) — CURRENT (post
+  home-and-away, 22-match seasons): reaches PL **~98%**, champion **~67%** over 20
+  seasons, sacked **~1.3%**, PL median bankroll ~£546M; **Classic completion 36.8%**
+  (the Classic balance harness `tests/balance.sim.ts` shares the run). The longer
+  season lowers variance → an easier/less-tense career than the old 11-match one
+  (a known, accepted trade for a legitimate home-and-away league). Persistence
+  **v27**. **340 tests**, build green. Everything is pushed; working tree clean.
 
 **⭐ FM-FEEL ENHANCEMENTS — COMPLETE & PUSHED (tasks 1–4 + Inbox).** All
 Career/League only; Classic untouched. Commits `439b3ec`…`d28306c` (see git log).
