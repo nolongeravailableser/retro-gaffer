@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core: Next-Up tier COMPLETE; **Future-Edge tier STARTED — living board confidence DONE & PUSHED**. persistence **v27**, **326 tests**, build green, Classic byte-identical (sim 36.8%). Board confidence is derived + career-only (no sim change). Next Future-Edge: living transfer-market AI, memory-carrying inbox, fan/finance loop. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + rivals-re-sign-after-poach DONE & PUSHED**. persistence **v27**, **327 tests**, build green, Classic byte-identical (sim 36.8%). Next Future-Edge: AI clubs bidding for free agents / each other, memory-carrying inbox, fan/finance loop. See §3 "START HERE")
 
 ---
 
@@ -767,11 +767,22 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
   The weekly loop is complete. **Next tier: Future-Edge** (board confidence,
   living transfer-market AI, memory-carrying inbox interactions, player dynamics,
   fan/finance loop) — all ride the Inbox + retro-minimal UI.
-- **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**
-  (`lib/board.ts`, see below); memory-carrying inbox interactions (the
-  press-conference killer); living transfer-market AI (rivals re-sign after a
-  poach/Bosman, bid against each other); lightweight player dynamics; fan/finance
-  reinvestment loop. All ride the **Inbox** + retro-minimal UI.
+- **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**;
+  living transfer-market AI — **STARTED** (rivals re-sign after a poach — ✅ DONE;
+  still TODO: AI clubs bidding for free agents / against each other, rivals
+  re-signing after a Bosman); memory-carrying inbox interactions (the
+  press-conference killer); lightweight player dynamics; fan/finance reinvestment
+  loop. All ride the **Inbox** + retro-minimal UI.
+
+**Future-Edge: rivals re-sign after a poach — ✅ DONE.** In `signPlayer`'s poach
+branch (store), when you prise a player from a rival the club now REACTS: it
+re-signs the best available replacement of that role from the open market
+(`POOL`, excluding owned + all club-owned), so it's dented (−1.2× the poached
+rating) but not gutted (+0.9× the replacement) — and the replacement leaves the
+pool (the market tightens). Notice names the replacement. Integration-tested
+(`careerLeague.test.ts`: squad size restored, replacement left the pool). Store-
+only (the sim doesn't poach) → Classic 36.8% untouched. Verified live: poached a
+club's player → every club stayed at 14 (the loser re-signed).
 
 **Future-Edge: living board confidence — ✅ DONE (Career; derived → no persistence,
 no sim change).** `lib/board.ts` (pure, 4 tests): `boardConfidence(position,

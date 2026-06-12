@@ -208,4 +208,26 @@ describe('career pyramid', () => {
     expect(s.owned).not.toContain(walk.id); // expired + unrenewed → left on a free
     expect(s.inbox.some((m) => m.kind === 'transfer')).toBe(true); // Bosman note
   });
+
+  it('a poached rival re-signs a replacement (the market stays alive)', () => {
+    // Start a standalone league (AI clubs own real squads).
+    useGameStore.getState().startLeague();
+    const league = useGameStore.getState().league!;
+    const rival = league.clubs.find((c) => c.id !== 'YOU' && (c.squad?.length ?? 0) > 0)!;
+    const target = rival.squad![0];
+    const beforeSquad = rival.squad!.length;
+    // Give plenty of bankroll so the poach completes, and poach.
+    useGameStore.setState({ bankroll: 9999 });
+    useGameStore.getState().signPlayer(target);
+
+    const after = useGameStore.getState();
+    const rivalAfter = after.league!.clubs.find((c) => c.id === rival.id)!;
+    expect(after.owned).toContain(target); // you signed him
+    expect(rivalAfter.squad).not.toContain(target); // off the rival's books
+    expect(rivalAfter.squad!.length).toBe(beforeSquad); // lost one, re-signed one
+    // The replacement is a real pool player now owned by the rival (left the pool).
+    const replacement = rivalAfter.squad!.find((id) => !rival.squad!.includes(id))!;
+    expect(replacement).toBeDefined();
+    expect(after.owned).not.toContain(replacement);
+  });
 });

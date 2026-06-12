@@ -1102,18 +1102,43 @@ export const useGameStore = create<GameState>()(
           placedOnBench = true;
         }
         // Poaching: take the player off the rival's books and dent their strength
-        // (a key signing genuinely weakens them for the rest of the season).
+        // (a key signing genuinely weakens them). The rival REACTS — they re-sign
+        // the best available replacement of that role from the open market, so
+        // they're dented but not gutted, and that player leaves the pool (the
+        // market tightens, FM-style — a living transfer market).
         let league = s.league;
+        let resignedName: string | null = null;
         if (club && league) {
           const hit = Math.round((player.stats.attack + player.stats.defense) * 1.2);
+          const ownedAfter = new Set([...s.owned, id]);
+          const taken = allClubOwnedIds(league);
+          const replacement = POOL
+            .filter(
+              (p) =>
+                p.role === player.role &&
+                p.id !== id &&
+                !ownedAfter.has(p.id) &&
+                !taken.has(p.id)
+            )
+            .sort(
+              (a, b) =>
+                b.stats.attack + b.stats.defense - (a.stats.attack + a.stats.defense)
+            )[0];
+          const restore = replacement
+            ? Math.round((replacement.stats.attack + replacement.stats.defense) * 0.9)
+            : 0;
+          resignedName = replacement?.name ?? null;
           league = {
             ...league,
             clubs: league.clubs.map((c) =>
               c.id === club.id
                 ? {
                     ...c,
-                    squad: (c.squad ?? []).filter((x) => x !== id),
-                    strength: Math.max(300, c.strength - hit),
+                    squad: [
+                      ...(c.squad ?? []).filter((x) => x !== id),
+                      ...(replacement ? [replacement.id] : []),
+                    ],
+                    strength: Math.max(300, c.strength - hit + restore),
                   }
                 : c
             ),
@@ -1131,7 +1156,7 @@ export const useGameStore = create<GameState>()(
             career: { ...s.career, meta: { ...s.career.meta, [id]: newMeta() } },
           }),
           notice: club
-            ? `Poached ${player.name} from ${club.name} for £${fee}M!`
+            ? `Poached ${player.name} from ${club.name} for £${fee}M!${resignedName ? ` (they replaced him with ${resignedName}.)` : ''}`
             : `Signed ${player.name}${fee === 0 ? ' on a free transfer' : ` for £${fee}M`}!`,
           noticeKind: 'success',
         });
