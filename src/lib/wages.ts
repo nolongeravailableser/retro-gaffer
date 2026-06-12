@@ -13,8 +13,21 @@
  * Constants are tuned against the balance sim (`npm run sim`).
  */
 
-import { TOP_TIER, BOTTOM_TIER } from './league';
 import type { Player, Role } from './types';
+import {
+  DIV_MULT_FLOOR,
+  DIV_MULT_CEIL,
+  WAGE_TIER_K,
+  LEAGUE_NEUTRAL_TIER,
+  prizeTierMult,
+  wageTierMult,
+} from './finance';
+
+// Division economics now live in finance.ts (the single balancing array).
+// Re-export the surface these legacy names point at, so call sites are untouched.
+export { DIV_MULT_FLOOR, DIV_MULT_CEIL, WAGE_TIER_K, LEAGUE_NEUTRAL_TIER, wageTierMult };
+/** Prize money / income multiplier by pyramid tier. Alias of `prizeTierMult`. */
+export const tierMult = prizeTierMult;
 
 /** Role weighting for a single 0–99 "overall" rating. */
 const OVR_W: Record<Role, { atk: number; def: number }> = {
@@ -51,48 +64,13 @@ export function wageBill(players: Iterable<Player>): number {
 /**
  * Division multiplier for prize money / income by round (1 → maxRounds).
  * Lower leagues pay less; the top division pays most. Clamped so Endless
- * (round → ∞) and one-off scenarios stay sane.
+ * (round → ∞) and one-off scenarios stay sane. (Uses the same floor/ceil as the
+ * tier-based `prizeTierMult`, now in finance.ts.)
  */
-export const DIV_MULT_FLOOR = 0.6;
-export const DIV_MULT_CEIL = 1.7;
 export function divisionMult(round: number, maxRounds = 12): number {
   const span = Math.max(1, (Number.isFinite(maxRounds) ? maxRounds : 12) - 1);
   const t = Math.max(0, Math.min(1, (round - 1) / span));
   return Math.round((DIV_MULT_FLOOR + (DIV_MULT_CEIL - DIV_MULT_FLOOR) * t) * 100) / 100;
-}
-
-/**
- * Division multiplier by pyramid TIER (Career/League). Unlike `divisionMult`,
- * which scales by the round within a finite climb, a league season is played
- * entirely in one division — so prize money/income are flat across its
- * matchweeks and scaled only by how high up the pyramid you are. Bottom tier →
- * floor, top tier → ceil. Standalone League (no tier) passes the mid tier.
- */
-export function tierMult(tier: number): number {
-  const span = Math.max(1, BOTTOM_TIER - TOP_TIER);
-  const t = Math.max(0, Math.min(1, (BOTTOM_TIER - tier) / span));
-  return Math.round((DIV_MULT_FLOOR + (DIV_MULT_CEIL - DIV_MULT_FLOOR) * t) * 100) / 100;
-}
-
-/** The tier a tier-less standalone League season is paid at (mid pyramid). */
-export const LEAGUE_NEUTRAL_TIER = Math.round((TOP_TIER + BOTTOM_TIER) / 2);
-
-/** How steeply the wage bill rises per division climbed in a Career. Tuned
- *  alongside facility upkeep AND the transfer market (which is now the primary
- *  money sink) — eased once market pricing took over the heavy lifting. */
-export const WAGE_TIER_K = 1.3;
-
-/**
- * Career wage multiplier by pyramid tier — the Premier League demands Premier
- * League wages. Bottom tier ×1; each rung up multiplies the bill by
- * `WAGE_TIER_K`. Without this, tier-scaled income in an open-ended career just
- * piles up unspent (a complete squad has nothing left to buy); scaling wages
- * keeps the FM wage-budget tension alive and bounds the economy to a plateau.
- * Tuned against the career balance sim (`npm run sim`). Classic and standalone
- * League are unscaled (×1).
- */
-export function wageTierMult(tier: number): number {
-  return WAGE_TIER_K ** (BOTTOM_TIER - tier);
 }
 
 /**

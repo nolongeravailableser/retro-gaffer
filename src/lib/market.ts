@@ -12,18 +12,19 @@
  */
 
 import { overall } from './wages';
-import { BOTTOM_TIER } from './league';
+import { MARKET_TIER_K, marketTierMult } from './finance';
 import { Rng } from './rng';
 import type { Player, Role } from './types';
+
+// Division inflation lives in the finance balancing array; re-export the names
+// this module historically owned so call sites/tests are unchanged.
+export { MARKET_TIER_K, marketTierMult };
 
 /** Convexity of the value curve — stars cost disproportionately more.
  *  Tuned so a starting £50M comfortably fields a lower-league XI (overall ~62 ≈
  *  £2M) while stars run into the tens of millions (×division inflation on top). */
 const VALUE_DIV = 45;
 const VALUE_EXP = 5;
-
-/** How much each division up multiplies a player's value (richer leagues pay more). */
-export const MARKET_TIER_K = 1.2;
 
 /**
  * Career/League opening transfer kitty (£m). Higher than Classic's £50M because
@@ -43,11 +44,6 @@ export const MARKET_SELL_RATE = 0.85;
 export function baseValue(p: Player): number {
   const o = overall(p);
   return Math.max(1, Math.round((o / VALUE_DIV) ** VALUE_EXP));
-}
-
-/** Division inflation multiplier: ×1 at the bottom tier, ×K per rung up. */
-export function marketTierMult(tier: number): number {
-  return MARKET_TIER_K ** (BOTTOM_TIER - tier);
 }
 
 /** A player's headline market value (£m) in a given division — what a quality
