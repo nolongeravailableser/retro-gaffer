@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 09 — Draft night (Classic)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .draft { max-width: 1100px; margin: 16px auto 60px; padding: 0 12px; }
+  .dhead { border: 1px solid var(--cash); border-radius: var(--r-lg); background: linear-gradient(180deg, rgba(255,176,0,.08), var(--surface-1)); padding: 14px 16px; }
+  .dhead .row1 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dhead h1 { font-size: 19px; color: var(--cash); letter-spacing: .06em; }
+  .onclock { font-family: var(--font-mono); font-size: 11px; color: var(--cash); border: 1px solid rgba(255,176,0,.45); border-radius: 99px; padding: 3px 10px; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .budget { flex: 1; min-width: 220px; }
+  .budget .cap { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-mut); font-family: var(--font-mono); margin-bottom: 4px; }
+  .budget .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; display: flex; }
+  .budget .spent { background: var(--cash); }
+  .budget .reserve { background: rgba(125,211,252,.45); }
+  .needs { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .needs .chip b { font-family: var(--font-mono); }
+  .needs .ok { color: var(--good); border-color: rgba(74,222,128,.4); }
+  .needs .todo { color: var(--warn); border-color: rgba(251,191,36,.4); }
+
+  .ticker { display: flex; gap: 16px; overflow: hidden; white-space: nowrap; margin-top: 10px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface-1); font-family: var(--font-mono); font-size: 11px; color: var(--text-mut); }
+  .ticker b { color: var(--text); }
+
+  .dgrid { display: grid; gap: 14px; margin-top: 14px; }
+  @media (min-width: 950px) { .dgrid { grid-template-columns: 1.5fr 1fr; } }
+
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .filters .chip { cursor: pointer; padding: 5px 12px; }
+  .filters .chip.on { border-color: var(--act-line); color: var(--act); background: var(--act-soft); }
+  .filters input { flex: 1; min-width: 130px; background: var(--surface-1); border: 1px solid var(--line); border-radius: 99px; color: var(--text); padding: 7px 14px; font-size: 13px; outline: none; }
+
+  .drow { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-top: 1px solid var(--line); }
+  .drow:hover { background: var(--surface-2); }
+  .drow .who { flex: 1; min-width: 0; }
+  .drow .nm { font-family: var(--font-display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drow .meta { font-size: 10px; color: var(--text-mut); }
+  .drow .pick-btn { flex: none; min-width: 88px; text-align: center; cursor: pointer; font-family: var(--font-display); font-size: 13px; border-radius: 9px; padding: 7px 10px; border: 1px solid rgba(255,176,0,.4); color: var(--cash); background: rgba(255,176,0,.07); transition: background .15s; }
+  .drow .pick-btn:hover { background: rgba(255,176,0,.16); }
+  .drow .pick-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .drow .why { font-size: 9px; color: var(--text-dim); display: block; }
+
+  .myrail .g { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); background: var(--surface-2); border-radius: 5px; padding: 3px 8px; margin: 10px 0 4px; }
+  .myrail .m { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 13px; }
+  .myrail .m .nm { font-family: var(--font-display); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .myrail .m .fee { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .myrail .slot-empty { color: var(--text-dim); border: 1px dashed var(--line-strong); border-radius: 7px; padding: 4px 8px; font-size: 11px; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">09 · Draft night</span>
+  <span>Classic mode's defining screen.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>What changed vs the current DraftRoom</h2>
+  <ul>
+    <li><strong>Draft night gets a sense of occasion.</strong> Today the draft is a competent filter-list in a modal — functionally fine, emotionally flat. The amber "ON THE CLOCK · PICK 4/16" framing plus a rival-picks ticker ("Oakvale took Shearer £38M") makes the 11 AI clubs feel present. The engine already decides their picks — they're just never shown; this surfaces information that exists. <span class="alt">Alternative considered: a full pick-by-pick draft board (NFL style, every club's picks in a grid). Rejected — 12 clubs × 16 rounds is a wall; a one-line ticker + their last pick gives the "living room" feel without the spreadsheet.</span></li>
+    <li><strong>The budget bar makes the reserve guard visible.</strong> The engine quietly reserves money so you can always complete a legal XI ("pickable" logic) — players currently discover it as mysteriously disabled buttons. The bar shows spent / available / <i>reserved for remaining XI</i> as segments, and disabled picks say why in 9px under the price. Honest constraints beat silent ones.</li>
+    <li><strong>Role coverage chips upgrade from numbers to needs.</strong> "DEF 2/4 todo" in warn-amber vs "GK 1/1 ✓" — the same data as today's header grid, but stated as what's left to do.</li>
+    <li><strong>Your squad rail keeps the picks in sight</strong> (desktop right rail, mobile collapsible) with fee paid per player — today your drafted squad lives only in the header counter until the draft ends.</li>
+    <li><span class="alt">Timed picks were considered and rejected — this is a cosy nostalgia game; a shot-clock punishes the player browsing 30 years of football, which is the whole point.</span></li>
+  </ul>
+</div>
+
+<div class="draft">
+  <div class="dhead">
+    <div class="row1">
+      <h1>🔨 DRAFT NIGHT</h1>
+      <span class="onclock">YOU'RE ON THE CLOCK · PICK 4 OF 16</span>
+      <div class="budget">
+        <div class="cap"><span>BUDGET £150M</span><span>spent £64M · <span style="color:var(--info)">reserved for XI £22M</span> · free £64M</span></div>
+        <div class="bar"><div class="spent" style="width:43%"></div><div style="flex:1"></div><div class="reserve" style="width:15%"></div></div>
+      </div>
+    </div>
+    <div class="needs">
+      <span class="chip ok">GK <b>1/1</b> ✓</span>
+      <span class="chip todo">DEF <b>2/4</b> · need 2</span>
+      <span class="chip todo">MID <b>1/4</b> · need 3</span>
+      <span class="chip ok">FWD <b>3/3</b> ✓</span>
+      <span class="chip">Bench <b>0/5</b> · any role</span>
+    </div>
+  </div>
+
+  <div class="ticker">
+    <span><b>Oakvale City</b> took Shearer · £38M</span>
+    <span><b>Hartlepool Galacticos</b> took Zola · £29M</span>
+    <span><b>Sporting Cathode</b> took Keane · £24M</span>
+    <span style="color:var(--text-dim)">· · · your pick</span>
+  </div>
+
+  <div class="dgrid">
+    <!-- board -->
+    <section class="card" style="padding:12px 10px;">
+      <div class="filters">
+        <span class="chip on">All</span><span class="chip">GK</span><span class="chip">DEF</span><span class="chip">MID</span><span class="chip">FWD</span>
+        <input placeholder="Search 642 remaining…">
+        <span class="chip">Sort: OVR ↓</span>
+        <span class="chip">Affordable</span>
+      </div>
+
+      <div class="drow">
+        <span class="role mid">MID</span>
+        <div class="who"><div class="nm">Paul Gascoigne</div><div class="meta">Spurs 1990/91 · GOLD · England</div></div>
+        <span class="ovr elite">89</span>
+        <button class="pick-btn">Draft · £34M</button>
+      </div>
+      <div class="drow">
+        <span class="role def">DEF</span>
+        <div class="who"><div class="nm">Paolo Maldini</div><div class="meta">AC Milan 1994/95 · ICON · Italy</div></div>
+        <span class="ovr elite">93</span>
+        <button class="pick-btn" disabled>£58M<span class="why">would break your XI reserve</span></button>
+      </div>
+      <div class="drow">
+        <span class="role mid">MID</span>
+        <div class="who"><div class="nm">Gheorghe Hagi</div><div class="meta">Galatasaray 1999/00 · GOLD · Romania</div></div>
+        <span class="ovr elite">88</span>
+        <button class="pick-btn">Draft · £28M</button>
+      </div>
+      <div class="drow">
+        <span class="role def">DEF</span>
+        <div class="who"><div class="nm">Steve Bould</div><div class="meta">Arsenal 1990/91 · SILVER · England</div></div>
+        <span class="ovr good">77</span>
+        <button class="pick-btn">Draft · £11M</button>
+      </div>
+      <div class="drow">
+        <span class="role mid">MID</span>
+        <div class="who"><div class="nm">Jon Mow</div><div class="meta">Cult hero · 90s legend</div></div>
+        <span class="ovr ok">71</span>
+        <button class="pick-btn">Draft · £6M</button>
+      </div>
+      <div style="padding:9px 8px; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line);">Tap a player for full stats · 642 remaining of 668</div>
+    </section>
+
+    <!-- your squad rail -->
+    <section class="card myrail">
+      <h2>Your squad · 3 of 16 · £64M spent</h2>
+      <div class="g">Goalkeeper</div>
+      <div class="m"><span class="role gk">GK</span><span class="nm">Bruce Grobbelaar</span><span class="ovr good">79</span><span class="fee">£14M</span></div>
+      <div class="g">Defence · need 2 more</div>
+      <div class="m"><span class="role def">DEF</span><span class="nm">Jaap Stam</span><span class="ovr elite">87</span><span class="fee">£31M</span></div>
+      <div class="m"><span class="role def">DEF</span><span class="nm">Marco Materazzi</span><span class="ovr good">81</span><span class="fee">£19M</span></div>
+      <div class="slot-empty">+ DEF needed for your XI</div>
+      <div class="slot-empty">+ DEF needed for your XI</div>
+      <div class="g">Midfield · need 3 more</div>
+      <div class="slot-empty">+ 3 MID needed for your XI</div>
+      <div class="g">Attack ✓</div>
+      <div class="m"><span class="role fwd">FWD</span><span class="nm">…3 forwards drafted</span></div>
+      <div style="margin-top:12px; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); padding-top:10px;">No transfers after draft night — your 16 is your season. Pick cover for every line.</div>
+    </section>
+  </div>
+</div>
+</body>
+</html>

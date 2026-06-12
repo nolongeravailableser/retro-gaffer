@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 10 — Cup week (career)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .stage-label { max-width: 1180px; margin: 22px auto 8px; padding: 0 12px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--info); }
+
+  /* cup hero — amber trim distinguishes a cup week from a league week at a glance */
+  .hero-cup { border-color: rgba(255,176,0,.5); background: linear-gradient(180deg, rgba(255,176,0,.07), var(--surface-1) 65%); }
+  .roundtag { display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-display); font-size: 13px; letter-spacing: .14em; color: var(--cash); }
+  .roundtag::before, .roundtag::after { content: ''; height: 1px; width: 48px; background: rgba(255,176,0,.4); }
+
+  .fixture { display: flex; align-items: center; gap: 14px; margin: 12px 0 4px; }
+  .fixture .side { flex: 1; min-width: 0; text-align: center; }
+  .fixture .crest-lg { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 6px; border: 1px solid var(--line-strong); }
+  .fixture .tname { font-family: var(--font-display); font-size: 16px; }
+  .fixture .tmeta { font-size: 11px; color: var(--text-mut); }
+  .fixture .vs { font-family: var(--font-display); color: var(--text-dim); font-size: 13px; }
+
+  .edge { margin: 12px auto 4px; max-width: 460px; }
+  .edge .bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  .edge .cap { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 4px; font-family: var(--font-mono); }
+  .edge .verdict { text-align: center; font-size: 12px; color: var(--text-mut); margin-top: 6px; }
+  .edge .verdict b { color: var(--text); }
+
+  .cup-stakes { display: flex; gap: 8px; margin-top: 14px; }
+  .cup-stakes .s { flex: 1; text-align: center; border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 6px; background: var(--surface-1); }
+  .cup-stakes .o { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
+  .cup-stakes .v { font-family: var(--font-display); font-size: 14px; margin-top: 3px; }
+  .glory-note { text-align: center; font-size: 11px; color: var(--warn); margin-top: 10px; }
+
+  .rotate-hint { display: flex; gap: 10px; align-items: center; margin-top: 12px; border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--r-md); padding: 9px 12px; font-size: 12px; color: var(--text-mut); }
+  .rotate-hint .btn { padding: 5px 11px; font-size: 12px; flex: none; }
+
+  .grid2 { display: grid; gap: 14px; margin-top: 14px; }
+  @media (min-width: 900px) { .grid2 { grid-template-columns: 1.2fr 1fr; } }
+
+  /* bracket */
+  .bracket { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; }
+  .bcol { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+  .bcol h4 { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); text-align: center; }
+  .tie { border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); padding: 6px 9px; font-size: 12px; font-family: var(--font-display); }
+  .tie .t { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; color: var(--text-mut); }
+  .tie .t.w { color: var(--text); }
+  .tie .t .sc { font-family: var(--font-mono); font-size: 11px; }
+  .tie.you { border-color: var(--act-line); background: var(--act-soft); }
+  .tie.you .t.you-row { color: var(--act); }
+  .tie.pending { border-style: dashed; color: var(--text-dim); text-align: center; font-size: 11px; padding: 8px; }
+
+  .feed-item { display: flex; gap: 10px; padding: 9px 2px; border-top: 1px solid var(--line); font-size: 12px; }
+  .feed-item:first-of-type { border-top: none; }
+  .feed-item .fi { flex: none; width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--surface-2); }
+  .feed-item .ft { color: var(--text-mut); }
+  .feed-item .ft b { color: var(--text); }
+
+  /* FT variant */
+  .modal { max-width: 560px; margin: 0 auto; border: 1px solid rgba(255,176,0,.5); border-radius: var(--r-lg); overflow: hidden; background: var(--surface-1); box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  .mhead { text-align: center; padding: 20px 18px 14px; border-bottom: 1px solid var(--line); }
+  .mhead .big { font-family: var(--font-display); font-size: 25px; color: var(--cash); letter-spacing: .04em; }
+  .mhead .sub { font-size: 12px; color: var(--text-mut); margin-top: 4px; }
+  .mbody { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .news { display: flex; gap: 10px; align-items: flex-start; border: 1px solid rgba(248,113,113,.35); background: rgba(248,113,113,.06); border-radius: var(--r-md); padding: 10px 12px; font-size: 12px; }
+  .mfoot { display: flex; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">10 · Cup week</span>
+  <span>Covers the career domestic cup shipped in ef8d098.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>How the shipped career cup fits the redesign</h2>
+  <ul>
+    <li><strong>A cup tie is a Home-hero VARIANT, not a new tab.</strong> The shipped feature plays QF/SF/Final as extra midweek ties at matchweeks 6/12/18. In this IA the Home hero simply swaps grammar for those weeks: amber trim, a round tag (QUARTER-FINAL), knockout stakes instead of payouts, bracket snippet instead of the league table. Three ties a season can't justify permanent chrome. <span class="alt">Alternative considered: a fifth "Cup" tab while the cup is alive. Rejected — it reintroduces exactly the mode-mutating nav this redesign removes, for a screen you need three times a season.</span></li>
+    <li><strong>"Glory, not gold" must be said out loud.</strong> The engine pays no prize money for cup ties — players trained by 21 league matchweeks of payouts WILL expect one. The stakes strip says what winning gets you (the semi, reputation, the trophy → honours) and the one-line note says what it doesn't. Same point-of-use-explainer rule as everywhere else (system rule 5).</li>
+    <li><strong>The real cost of a cup tie is squad condition — so surface the rotation decision.</strong> Injuries and bans carry into the league (shipped behaviour), and fatigue already exists in Career. The rotate hint ("3 starters are TIRED · league resumes at MW7") turns the feature's hidden trade-off into the interesting weekly decision it was designed to be. <span class="alt">Alternative: auto-suggest a rotated XI silently. Rejected — making the choice visible IS the feature; one tap to "Rotate XI" keeps it effortless.</span></li>
+    <li><strong>Full-time gets the cup variant of the receipt:</strong> no money table — progression headline, what it cost (carried injuries, with the league consequence spelled out), then the report. The "fix your XI" route matters more here than after a league game, because the next league fixture is days away with a possibly-wounded squad.</li>
+    <li><strong>Already covered elsewhere:</strong> the cup title chip in season history and the Cups honours tile shipped into CareerHub — mockup 06 anticipated both. Reputation gains land in 06's meter; a Final win adds a 07-style glory moment using the existing Champions template with the cup headline.</li>
+  </ul>
+</div>
+
+<!-- ============ A: HOME, CUP WEEK ============ -->
+<div class="stage-label">State A — Home during a cup week (matchweek 6 · quarter-final)</div>
+<div class="app" style="padding-top:0">
+  <div class="topbar">
+    <div class="crest"></div>
+    <div class="club"><div class="name">CRIMSON CASUALS</div><div class="sub">Championship · Season 4</div></div>
+    <div class="hud">
+      <span class="pill"><span class="lbl">Bank</span> <span class="cash">£48M</span></span>
+      <span class="pill"><span class="lbl">MW</span> 6 · <span style="color:var(--cash)">🏆</span></span>
+      <button class="menu-btn">☰</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="active"><span class="ico">⌂</span>Home</button>
+    <button><span class="ico">⬡</span>Squad</button>
+    <button><span class="ico">⇄</span>Market</button>
+    <button><span class="ico">▤</span>Club</button>
+  </nav>
+
+  <section class="card hero-cup" style="margin-top:14px">
+    <div class="roundtag">🏆 DOMESTIC CUP · QUARTER-FINAL · MIDWEEK</div>
+
+    <div class="fixture">
+      <div class="side">
+        <div class="crest-lg" style="background:linear-gradient(135deg,#d22,#fff 55%,#d22 55%)"></div>
+        <div class="tname">Crimson Casuals</div>
+        <div class="tmeta">Championship · 5th</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="side">
+        <div class="crest-lg" style="background:linear-gradient(180deg,#7a1fa2 50%,#fff 50%)"></div>
+        <div class="tname">Violet Velocity</div>
+        <div class="tmeta">Premier League · giant-killing time</div>
+      </div>
+    </div>
+
+    <div class="edge">
+      <div class="bar"><div style="width:41%; background:var(--act); opacity:.85"></div><div style="width:59%; background:#7a1fa2"></div></div>
+      <div class="cap"><span>YOU 1188</span><span>THEM 1690</span></div>
+      <div class="verdict">You're <b>underdogs</b> — they're a division above. One off-night is all it takes.</div>
+    </div>
+
+    <div class="cup-stakes">
+      <div class="s"><div class="o">Win</div><div class="v" style="color:var(--good)">Through to the Semi-Final</div><div style="font-size:9px; color:var(--text-dim)">played at MW 12</div></div>
+      <div class="s"><div class="o">Lose</div><div class="v" style="color:var(--text-mut)">Out of the cup</div><div style="font-size:9px; color:var(--text-dim)">league unaffected</div></div>
+    </div>
+    <div class="glory-note">Glory, not gold — cup ties pay no prize money. A trophy feeds your reputation and honours. <b>Injuries &amp; bans carry into the league.</b> The Gaffer's Gamble sits cup ties out.</div>
+
+    <div class="rotate-hint">
+      <span style="font-size:15px;">♻</span>
+      <span style="flex:1"><b style="color:var(--text)">3 starters are <span class="status-ico tired">TIRED</span>.</b> The league resumes Saturday (MW 7 vs Oakvale). Rest them tonight?</span>
+      <button class="btn">Rotate XI</button>
+    </div>
+
+    <div style="margin-top:14px;">
+      <button class="btn primary block" style="background:linear-gradient(180deg,#ffc83d,var(--cash)); border-color:var(--cash); box-shadow:0 0 18px rgba(255,176,0,.3);">🏆&nbsp; PLAY CUP TIE — QUARTER-FINAL</button>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>The road to the final</h2>
+      <div class="bracket">
+        <div class="bcol">
+          <h4>Quarter-finals · MW6</h4>
+          <div class="tie you"><div class="t you-row"><span>Crimson Casuals</span><span class="sc">—</span></div><div class="t"><span>Violet Velocity</span><span class="sc">—</span></div></div>
+          <div class="tie"><div class="t w"><span>Oakvale City</span><span class="sc">2</span></div><div class="t"><span>Sporting Cathode</span><span class="sc">1</span></div></div>
+          <div class="tie"><div class="t"><span>Hartlepool Gal.</span><span class="sc">—</span></div><div class="t"><span>Rusty Pylon Ath.</span><span class="sc">—</span></div></div>
+          <div class="tie"><div class="t"><span>Dynamo Disapp.</span><span class="sc">—</span></div><div class="t"><span>Real Sosobad</span><span class="sc">—</span></div></div>
+        </div>
+        <div class="bcol">
+          <h4>Semi-finals · MW12</h4>
+          <div class="tie pending">Winner vs Oakvale City</div>
+          <div class="tie pending">—</div>
+        </div>
+        <div class="bcol">
+          <h4>Final · MW18</h4>
+          <div class="tie pending">🏆</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>This week</h2>
+      <div class="feed-item">
+        <div class="fi">🏆</div>
+        <div class="ft"><b>Cup quarter-final tonight.</b> Beat Violet Velocity and Oakvale City await in the semi.</div>
+      </div>
+      <div class="feed-item">
+        <div class="fi">📋</div>
+        <div class="ft">League resumes <b>Saturday — MW 7 vs Oakvale City</b> (2nd). The table doesn't move this week.</div>
+      </div>
+      <div class="feed-item">
+        <div class="fi">⚕</div>
+        <div class="ft"><b>Materazzi</b> fit again — available for tonight.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============ B: CUP FULL-TIME ============ -->
+<div class="stage-label">State B — cup tie full-time (no receipt — glory framing)</div>
+<div class="modal">
+  <div class="mhead">
+    <div style="font-size:34px;">🏆</div>
+    <div class="big">GIANT-KILLING! THROUGH TO THE SEMI-FINAL</div>
+    <div class="sub">Crimson Casuals 2 — 1 Violet Velocity · a Premier League scalp</div>
+  </div>
+  <div class="mbody">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1; text-align:center; border:1px solid var(--line); border-radius:var(--r-md); padding:9px 4px; background:var(--surface-2);">
+        <div style="font-size:9px; text-transform:uppercase; color:var(--text-dim); letter-spacing:.07em;">Next round</div>
+        <div style="font-family:var(--font-display); font-size:14px; margin-top:2px;">Semi-Final vs Oakvale · MW 12</div>
+      </div>
+      <div style="flex:1; text-align:center; border:1px solid var(--line); border-radius:var(--r-md); padding:9px 4px; background:var(--surface-2);">
+        <div style="font-size:9px; text-transform:uppercase; color:var(--text-dim); letter-spacing:.07em;">Prize money</div>
+        <div style="font-family:var(--font-display); font-size:14px; margin-top:2px; color:var(--text-mut);">None — glory &amp; reputation</div>
+      </div>
+    </div>
+    <div class="news">
+      <span style="font-size:15px">⚠</span>
+      <div><b>What it cost:</b> <span class="status-ico inj">INJ·2</span> Stam limped off — <b>he misses Saturday's league game</b> (MW 7 vs Oakvale). <a href="#" style="color:var(--act)">Fix your XI →</a></div>
+    </div>
+    <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-mut); border:1px solid var(--line); border-radius:var(--r-md); padding:10px 12px;">
+      38' ⚽ Immobile · 51' ⚽ them · 64' 🟥 their CB · 81' ⚽ Pellissier — the winner<br>
+      <span style="color:var(--text-dim)">Pellissier ★8.4 MOTM · full report below the fold</span>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn ghost" style="flex:1">Share the upset</button>
+    <button class="btn primary" style="flex:1.4">Continue → Fix your XI</button>
+  </div>
+</div>
+
+<div style="height:48px"></div>
+</body>
+</html>

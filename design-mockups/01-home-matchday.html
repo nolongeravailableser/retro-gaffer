@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 01 — Home / Match day</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* hero */
+  .hero { border-color: var(--act-line); background: linear-gradient(180deg, var(--surface-2), var(--surface-1)); }
+  .fixture { display: flex; align-items: center; gap: 14px; margin: 10px 0 4px; }
+  .fixture .side { flex: 1; min-width: 0; text-align: center; }
+  .fixture .side .crest-lg { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 6px; border: 1px solid var(--line-strong); }
+  .fixture .side .tname { font-family: var(--font-display); font-size: 16px; }
+  .fixture .side .tmeta { font-size: 11px; color: var(--text-mut); }
+  .fixture .vs { font-family: var(--font-display); color: var(--text-dim); font-size: 13px; }
+  .form { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; }
+  .form .w { color: var(--good); } .form .d { color: var(--text-mut); } .form .l { color: var(--bad); }
+
+  .edge { margin: 14px auto 4px; max-width: 460px; }
+  .edge .bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  .edge .you { background: var(--act); opacity: .85; }
+  .edge .them { background: #b51d4f; }
+  .edge .cap { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 4px; font-family: var(--font-mono); }
+  .edge .verdict { text-align: center; font-size: 12px; color: var(--text-mut); margin-top: 6px; }
+  .edge .verdict b { color: var(--text); }
+
+  .stakes { display: flex; gap: 8px; margin-top: 14px; }
+  .stakes .s { flex: 1; text-align: center; border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 4px; background: var(--surface-1); }
+  .stakes .s .o { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
+  .stakes .s .v { font-family: var(--font-mono); font-size: 15px; margin-top: 2px; }
+  .stakes .s .n { font-size: 9px; color: var(--text-dim); }
+  .stakes .win .v { color: var(--good); } .stakes .loss .v { color: var(--bad); }
+  .stake-detail { font-size: 11px; color: var(--text-dim); margin-top: 8px; display: none; }
+  .stake-detail.open { display: block; }
+  .stake-detail table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
+  .stake-detail td { padding: 3px 0; border-bottom: 1px solid var(--line); color: var(--text-mut); }
+  .stake-detail td:last-child { text-align: right; }
+  .linklike { background: none; border: none; color: var(--info); font-size: 11px; cursor: pointer; padding: 0; margin-top: 8px; }
+
+  .wager { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .wager .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
+  .stepper { display: flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; }
+  .stepper button { width: 40px; height: 38px; background: var(--surface-2); color: var(--text); border: none; font-size: 17px; cursor: pointer; }
+  .stepper .val { width: 72px; text-align: center; font-family: var(--font-mono); font-size: 15px; color: var(--cash); }
+
+  .grid2 { display: grid; gap: 14px; margin-top: 14px; }
+  @media (min-width: 900px) { .grid2 { grid-template-columns: 1.2fr 1fr; } }
+
+  table.lt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.lt th { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; color: var(--text-dim); text-align: right; padding: 4px 6px; font-weight: 400; }
+  table.lt th:nth-child(-n+2) { text-align: left; }
+  table.lt td { padding: 6px; border-top: 1px solid var(--line); text-align: right; font-family: var(--font-mono); font-size: 12px; }
+  table.lt td:nth-child(-n+2) { text-align: left; }
+  table.lt tr.you td { background: var(--act-soft); color: var(--act); font-weight: 600; }
+  table.lt .club-cell { font-family: var(--font-display); letter-spacing: .02em; }
+  .lt-legend { display: flex; gap: 14px; font-size: 10px; color: var(--text-dim); margin-top: 8px; }
+  .lt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+  .feed-item { display: flex; gap: 10px; padding: 9px 2px; border-top: 1px solid var(--line); font-size: 12px; }
+  .feed-item:first-of-type { border-top: none; }
+  .feed-item .fi { flex: none; width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--surface-2); }
+  .feed-item .ft { color: var(--text-mut); }
+  .feed-item .ft b { color: var(--text); font-weight: 600; }
+  .feed-item .when { margin-left: auto; flex: none; font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+  .feed-item .act-row { margin-top: 6px; display: flex; gap: 6px; }
+  .feed-item .act-row .btn { padding: 4px 10px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">01 · Home / Match day</span>
+  <span>Resize the window to see mobile vs desktop.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>Why this screen exists (it replaces the “Season” tab as the default landing)</h2>
+  <ul>
+    <li><strong>The home screen is the next match, not a tab row.</strong> Today the player lands on Tactics/Transfers and the kick-off lives at the bottom of the Season tab, patched over with a sticky JourneyBar. This screen makes the fixture the centre of gravity: opponent, your readiness, the stakes and the kick-off button are one glance, one tap. The JourneyBar logic survives — the hero CTA swaps to “Sign players” / “Pick your XI” when the squad isn’t legal — but it's the hero of a real screen instead of a bar bolted above every screen.</li>
+    <li><strong>Relative strength, not raw numbers.</strong> “ATK 643 · DEF 531” means nothing without your own numbers next to it. The edge bar compares the two sides and says the conclusion in words (“Slight favourites”). <span class="alt">Alternative considered: FM-style betting odds (4/6, 11/2). Rejected — odds are opaque to non-gamblers and imply a precision the xG sim doesn't have; a two-colour bar + plain-English verdict reads instantly.</span></li>
+    <li><strong>Stakes are three numbers; the arithmetic is an expander.</strong> Win/Draw/Loss payouts stay headline; interest, wages, upkeep and streak move into “How is this calculated?”. Today that arithmetic is a 10px footnote that everyone squints at or ignores. <span class="alt">Alternative: keep the full breakdown always visible. Rejected — it's needed the first three times, then never again; an expander serves both audiences.</span></li>
+    <li><strong>The wager is a stepper, not a 56px-wide text input.</strong> Quick chips (None / ¼ / Max) stay for the common cases.</li>
+    <li><strong>Table + feed live with the fixture.</strong> The league table snippet shows your zone (±3 rows), with the full table one tap away. The inbox stops being a whole tab: messages become a feed on the home screen, with inline Accept/Reject. The current Inbox tab appears/disappears by mode, which destabilises the nav — a feed slot is mode-agnostic and empty states cost nothing.</li>
+    <li><strong>Nav drops from 7 tabs to 4</strong> (Home / Squad / Market / Club). Challenges, Compete, Records move under Club (see mockup 05 for the IA map). The tab set no longer mutates per mode — Draft simply shows “Market” as locked with a reason, instead of five tabs vanishing.</li>
+    <li><strong>“New Game” leaves the header.</strong> A destructive action shouldn't be a first-class button on every screen; it lives behind the ☰ menu (which also hosts Daily, tutorial, sound). The logo stays the way back to the Start Menu.</li>
+  </ul>
+</div>
+
+<div class="app">
+
+  <!-- top bar: one row, ~50px, vs ~170px today -->
+  <div class="topbar">
+    <div class="crest"></div>
+    <div class="club">
+      <div class="name">CRIMSON CASUALS</div>
+      <div class="sub">Premier League · Season 3</div>
+    </div>
+    <div class="hud">
+      <span class="pill"><span class="lbl">Bank</span> <span class="cash">£98M</span></span>
+      <span class="pill"><span class="lbl">MW</span> 7/11</span>
+      <button class="menu-btn" title="Menu — New game, Daily, tutorial, sound">☰</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="active"><span class="ico">⌂</span>Home</button>
+    <button><span class="ico">⬡</span>Squad</button>
+    <button><span class="ico">⇄</span>Market</button>
+    <button style="position:relative"><span class="ico">▤</span>Club<span class="count">2</span></button>
+  </nav>
+
+  <!-- ===== HERO: the next fixture ===== -->
+  <section class="card hero" style="margin-top:14px">
+    <h2>Matchweek 7 · Premier League</h2>
+
+    <div class="fixture">
+      <div class="side">
+        <div class="crest-lg" style="background:linear-gradient(135deg,#d22,#fff 55%,#d22 55%)"></div>
+        <div class="tname">Crimson Casuals</div>
+        <div class="tmeta">2nd · <span class="form"><span class="w">W</span><span class="w">W</span><span class="d">D</span><span class="w">W</span><span class="l">L</span></span></div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="side">
+        <div class="crest-lg" style="background:linear-gradient(180deg,#0e2a6b 50%,#fff 50%)"></div>
+        <div class="tname">Dynamo Disappointment</div>
+        <div class="tmeta">5th · <span class="form"><span class="l">L</span><span class="w">W</span><span class="w">W</span><span class="d">D</span><span class="d">D</span></span></div>
+      </div>
+    </div>
+
+    <div class="edge">
+      <div class="bar"><div class="you" style="width:56%"></div><div class="them" style="width:44%"></div></div>
+      <div class="cap"><span>YOU 1188</span><span>THEM 935</span></div>
+      <div class="verdict">You're <b>slight favourites</b> — their attack is sharp, your back line is stronger.</div>
+    </div>
+
+    <div class="stakes">
+      <div class="s win"><div class="o">Win</div><div class="v">+£17M</div><div class="n">&nbsp;</div></div>
+      <div class="s"><div class="o">Draw</div><div class="v">+£11M</div><div class="n">&nbsp;</div></div>
+      <div class="s loss"><div class="o">Loss</div><div class="v">+£9M</div><div class="n">−1 life</div></div>
+    </div>
+    <button class="linklike" onclick="document.getElementById('sd').classList.toggle('open')">How is this calculated?</button>
+    <div class="stake-detail" id="sd">
+      <table>
+        <tr><td>Match reward (win)</td><td>+£8M</td></tr>
+        <tr><td>Matchday income</td><td>+£2M</td></tr>
+        <tr><td>Bank interest</td><td>+£6M</td></tr>
+        <tr><td>Win-streak bonus</td><td>+£2M</td></tr>
+        <tr><td>Wage bill <span style="color:var(--good)">(£3M of £11.9M budget)</span></td><td>−£3M</td></tr>
+      </table>
+    </div>
+
+    <div class="wager">
+      <span class="lbl">Gaffer's gamble</span>
+      <div class="stepper">
+        <button>−</button><div class="val">£0M</div><button>+</button>
+      </div>
+      <span class="chip">None</span><span class="chip">¼ bank</span><span class="chip">Max</span>
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:10px; align-items:center;">
+      <button class="btn primary block">▶&nbsp; KICK OFF — MATCHWEEK 7</button>
+    </div>
+    <div style="text-align:center; font-size:11px; color:var(--good); margin-top:8px;">✓ XI ready · full squad available</div>
+  </section>
+
+  <div class="grid2">
+    <!-- ===== league table snippet ===== -->
+    <section class="card">
+      <h2>Table · around you</h2>
+      <table class="lt">
+        <tr><th>#</th><th>Club</th><th>P</th><th>GD</th><th>Pts</th></tr>
+        <tr class="zone-promo"><td>1</td><td class="club-cell">Oakvale City</td><td>6</td><td>+9</td><td>14</td></tr>
+        <tr class="you zone-promo"><td>2</td><td class="club-cell">Crimson Casuals</td><td>6</td><td>+8</td><td>13</td></tr>
+        <tr class="zone-promo"><td>3</td><td class="club-cell">Hartlepool Galacticos</td><td>6</td><td>+5</td><td>12</td></tr>
+        <tr><td>4</td><td class="club-cell">Sporting Cathode</td><td>6</td><td>+2</td><td>11</td></tr>
+        <tr><td>5</td><td class="club-cell">Dynamo Disappointment</td><td>6</td><td>−1</td><td>9</td></tr>
+      </table>
+      <div class="lt-legend">
+        <span><i style="background:var(--good)"></i>Promotion (top 3)</span>
+        <span><i style="background:var(--bad)"></i>Relegation (bottom 3)</span>
+        <button class="linklike" style="margin:0 0 0 auto;">Full table →</button>
+      </div>
+    </section>
+
+    <!-- ===== feed (replaces the Inbox tab) ===== -->
+    <section class="card">
+      <h2>This week</h2>
+      <div class="feed-item">
+        <div class="fi">✉</div>
+        <div style="flex:1">
+          <div class="ft"><b>Oakvale City bid £14M</b> for Fredy Guarin.</div>
+          <div class="act-row"><button class="btn" style="border-color:var(--act-line)">Accept £14M</button><button class="btn ghost">Reject</button></div>
+        </div>
+        <span class="when">MW7</span>
+      </div>
+      <div class="feed-item">
+        <div class="fi">⚕</div>
+        <div class="ft"><b>Marco Materazzi</b> is back from injury and available to start.</div>
+        <span class="when">MW7</span>
+      </div>
+      <div class="feed-item">
+        <div class="fi">⇄</div>
+        <div class="ft">Transfer window <b>open</b> — closes matchweek 9.</div>
+        <span class="when">MW6</span>
+      </div>
+    </section>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 03 — Transfer market</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .budget { display: grid; gap: 12px; margin-top: 14px; }
+  @media (min-width: 700px) { .budget { grid-template-columns: 1fr 1fr 1fr; } }
+  .budget .b { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
+  .budget .b .l { font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); }
+  .budget .b .v { font-family: var(--font-mono); font-size: 17px; margin-top: 2px; }
+  .wbar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.08); margin-top: 7px; overflow: hidden; }
+  .wbar .f { height: 100%; width: 26%; background: var(--good); border-radius: 99px; }
+
+  .segments { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+  .segments button {
+    flex: 1; min-width: 110px; cursor: pointer; text-align: left;
+    background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 9px 12px; color: var(--text-mut);
+  }
+  .segments button .t { font-family: var(--font-display); font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .segments button .d { font-size: 10px; margin-top: 1px; }
+  .segments button.on { border-color: var(--act-line); background: var(--act-soft); }
+  .segments button.on .t { color: var(--act); }
+
+  .filters { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .filters .chip { cursor: pointer; padding: 5px 12px; }
+  .filters .chip.on { border-color: var(--act-line); color: var(--act); background: var(--act-soft); }
+  .filters input {
+    flex: 1; min-width: 140px; background: var(--surface-1); border: 1px solid var(--line);
+    border-radius: 99px; color: var(--text); padding: 7px 14px; font-size: 13px; outline: none;
+  }
+
+  .mrow {
+    display: flex; align-items: center; gap: 10px; padding: 9px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .mrow:hover { background: var(--surface-2); }
+  .mrow .who { flex: 1; min-width: 0; }
+  .mrow .who .nm { font-family: var(--font-display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mrow .who .meta { font-size: 10px; color: var(--text-mut); }
+  .mrow .who .meta .own { color: var(--bad); }
+  .mrow .chem { font-family: var(--font-mono); font-size: 10px; color: var(--good); width: 40px; text-align: right; flex: none; }
+  .mrow .fee {
+    flex: none; min-width: 92px; text-align: center; cursor: pointer;
+    font-family: var(--font-display); font-size: 13px;
+    border-radius: 9px; padding: 7px 10px; border: 1px solid;
+  }
+  .fee.free { color: var(--good); border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.08); }
+  .fee.buy { color: var(--cash); border-color: rgba(255,176,0,.4); background: rgba(255,176,0,.07); }
+  .fee.poach { color: #f0a; border-color: rgba(255,0,170,.35); background: rgba(255,0,170,.07); }
+  .fee .sub { display: block; font-size: 8px; font-family: var(--font-mono); opacity: .75; letter-spacing: .06em; }
+
+  .closed-note {
+    display: flex; gap: 10px; align-items: center; margin-top: 14px;
+    border: 1px solid rgba(251,191,36,.4); background: rgba(251,191,36,.07);
+    border-radius: var(--r-md); padding: 10px 14px; font-size: 12px; color: var(--warn);
+  }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">03 · Transfer market</span>
+  <span>Resize the window to see mobile vs desktop.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>What changed vs the current TransferMarket</h2>
+  <ul>
+    <li><strong>The three market tiers become the primary structure.</strong> Free agents / Open market / At rivals are the most important mental model in the market (free = safety net, open = normal buys, poach = premium + weakens a rival) — today they're a small filter row and a footnote (“free agents (under 64 OVR) are free; poaching a rival weakens them”). Each segment now carries its own one-line explainer, so the rule is taught where it applies. <span class="alt">Alternative considered: one merged list with coloured price buttons only (status quo, lighter). Rejected — three price colours with no key is exactly the kind of implicit convention this game over-relies on.</span></li>
+    <li><strong>Money context is pinned at the top.</strong> Bank, wage bill vs budget (as a bar — the single most missable number in the current UI, where going over budget is a 10px rose footnote on another tab), and squad count. You can't make a good buying decision without these three; they were previously spread across Season, the HUD, and a footer.</li>
+    <li><strong>Fee buttons say what they do:</strong> “Sign · Free”, “Buy · £28M”, “Poach · £39M ↪ Oakvale”. The poach premium and the victim club are on the button, not in fine print.</li>
+    <li><strong>Window-closed is a state, not a dead end.</strong> The list stays browsable but desaturated, with one amber banner explaining when it reopens — replacing today's silently disabled buttons with hover-only tooltips (which don't exist on touch).</li>
+    <li><strong>Row economy:</strong> role · name · club/era · chem gain · OVR · fee. The 6-stat MiniStats grid comes off the card — it moves into the same player detail sheet as mockup 02 (tap a row). Comparing 60 players across six sub-stats at 9px isn't a decision aid, it's noise. <span class="alt">Alternative: keep MiniStats but only on desktop. Rejected — divergent mobile/desktop information makes the game feel different per device, and OVR + role + chem is what the buy decision actually uses.</span></li>
+    <li><strong>This page covers Career/League.</strong> The Classic draft shop and the Draft Room would adopt the same row anatomy and segment pattern (pack pills become segments), but are out of scope for this pass.</li>
+  </ul>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="crest"></div>
+    <div class="club"><div class="name">CRIMSON CASUALS</div><div class="sub">Premier League · Season 3</div></div>
+    <div class="hud">
+      <span class="pill"><span class="lbl">Bank</span> <span class="cash">£98M</span></span>
+      <span class="pill"><span class="lbl">MW</span> 7/11</span>
+      <button class="menu-btn">☰</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button><span class="ico">⌂</span>Home</button>
+    <button><span class="ico">⬡</span>Squad</button>
+    <button class="active"><span class="ico">⇄</span>Market</button>
+    <button><span class="ico">▤</span>Club</button>
+  </nav>
+
+  <!-- money context -->
+  <div class="budget">
+    <div class="b"><div class="l">Bank</div><div class="v" style="color:var(--cash)">£98M</div></div>
+    <div class="b">
+      <div class="l">Wage bill / budget</div>
+      <div class="v">£3.1M <span style="color:var(--text-dim); font-size:12px;">/ £11.9M wk</span></div>
+      <div class="wbar"><div class="f"></div></div>
+    </div>
+    <div class="b"><div class="l">Squad</div><div class="v">14 <span style="color:var(--text-dim); font-size:12px;">/ 15</span></div></div>
+  </div>
+
+  <!-- the three market tiers -->
+  <div class="segments">
+    <button><span class="t">Free agents</span><span class="d">Under 64 OVR · always £0 — you can never be stuck</span></button>
+    <button class="on"><span class="t">Open market</span><span class="d">Unattached players · pay market value</span></button>
+    <button><span class="t">At rivals <span class="chip" style="font-size:9px; padding:1px 6px;">+40% fee</span></span><span class="d">Poach from this division — weakens their season</span></button>
+  </div>
+
+  <div class="filters">
+    <span class="chip on">All</span><span class="chip">GK</span><span class="chip">DEF</span><span class="chip">MID</span><span class="chip">FWD</span>
+    <input placeholder="Search 668 players…">
+    <span class="chip">Sort: OVR ↓</span>
+    <span class="chip">Affordable</span>
+  </div>
+
+  <!-- list -->
+  <section class="card" style="margin-top:10px; padding:6px 8px;">
+    <div class="mrow">
+      <span class="role fwd">FWD</span>
+      <div class="who"><div class="nm">Ronaldinho</div><div class="meta">Barcelona 2005/06 · ICON · Brazil</div></div>
+      <span class="chem">+10%</span>
+      <span class="ovr elite">93</span>
+      <button class="fee buy">Buy · £41M</button>
+    </div>
+    <div class="mrow">
+      <span class="role mid">MID</span>
+      <div class="who"><div class="nm">Gheorghe Hagi</div><div class="meta">Galatasaray 1999/00 · GOLD · Romania</div></div>
+      <span class="chem">—</span>
+      <span class="ovr elite">88</span>
+      <button class="fee buy">Buy · £28M</button>
+    </div>
+    <div class="mrow">
+      <span class="role def">DEF</span>
+      <div class="who"><div class="nm">Sol Campbell</div><div class="meta">Arsenal 2003/04 · GOLD · <span class="own">at Oakvale City</span></div></div>
+      <span class="chem">+20%</span>
+      <span class="ovr elite">86</span>
+      <button class="fee poach">Poach · £39M<span class="sub">↪ weakens Oakvale</span></button>
+    </div>
+    <div class="mrow">
+      <span class="role mid">MID</span>
+      <div class="who"><div class="nm">Jon Mow</div><div class="meta">Cult hero · 90s legend</div></div>
+      <span class="chem">+10%</span>
+      <span class="ovr ok">71</span>
+      <button class="fee buy">Buy · £6M</button>
+    </div>
+    <div class="mrow">
+      <span class="role gk">GK</span>
+      <div class="who"><div class="nm">Kevin Pressman</div><div class="meta">Sheff Wed 1996/97 · SILVER</div></div>
+      <span class="chem">—</span>
+      <span class="ovr ok">63</span>
+      <button class="fee free">Sign · Free</button>
+    </div>
+    <div style="padding:9px 8px; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); display:flex; justify-content:space-between;">
+      <span>Showing 5 of 212 · tap a player for full stats &amp; negotiation</span>
+      <span>Load more ↓</span>
+    </div>
+  </section>
+
+  <!-- window-closed state demo -->
+  <div class="closed-note">
+    <span style="font-size:16px;">🔒</span>
+    <span><b>Transfer window closed</b> — reopens matchweek 9. You can browse and shortlist, but not sign. Free agents stay available in an injury crisis.</span>
+  </div>
+
+</div>
+</body>
+</html>

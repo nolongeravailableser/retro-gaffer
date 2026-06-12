@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 06 — Club tab (career hub + consolidated meta)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .grid2 { display: grid; gap: 14px; margin-top: 14px; }
+  @media (min-width: 900px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+
+  .identity { display: flex; align-items: center; gap: 14px; }
+  .identity .crest-lg { width: 56px; height: 56px; border-radius: 14px; border: 1px solid var(--line-strong); background: linear-gradient(135deg,#d22,#fff 55%,#d22 55%); flex: none; }
+  .identity .nm { font-family: var(--font-display); font-size: 20px; }
+  .identity .sub { font-size: 12px; color: var(--text-mut); }
+  .rep { margin-top: 12px; }
+  .rep .row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-mut); margin-bottom: 5px; }
+  .rep .row b { color: var(--cash); font-family: var(--font-mono); }
+
+  .pyr { display: flex; flex-direction: column; gap: 5px; }
+  .pyr .rung { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); font-family: var(--font-display); font-size: 13px; color: var(--text-dim); background: var(--surface-1); }
+  .pyr .rung .tick { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: var(--good); }
+  .pyr .rung.done { color: var(--text-mut); }
+  .pyr .rung.you { border-color: var(--act-line); background: var(--act-soft); color: var(--act); box-shadow: 0 0 14px rgba(57,255,20,.12); }
+  .pyr .rung.you .badge { margin-left: auto; font-family: var(--font-mono); font-size: 9px; background: var(--act); color: #06270b; border-radius: 99px; padding: 2px 8px; }
+
+  .hon { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .hon .h { text-align: center; border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 4px; background: var(--surface-1); }
+  .hon .h .e { font-size: 18px; }
+  .hon .h .v { font-family: var(--font-display); font-size: 17px; margin-top: 2px; }
+  .hon .h .l { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-dim); }
+
+  .fac { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .fac:first-of-type { border-top: none; }
+  .fac .e { font-size: 18px; flex: none; width: 26px; text-align: center; }
+  .fac .who { flex: 1; min-width: 0; }
+  .fac .who .n { font-family: var(--font-display); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .fac .who .fx { font-size: 11px; color: var(--text-mut); }
+  .fac .who .nxt { font-size: 10px; color: var(--text-dim); }
+  .fac .btn { padding: 6px 12px; font-size: 12px; }
+
+  .hist { font-size: 12px; }
+  .hist .s { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--line); }
+  .hist .s:first-of-type { border-top: none; }
+  .hist .yr { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); width: 24px; flex: none; }
+  .hist .club { font-family: var(--font-display); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hist .div { color: var(--text-mut); font-size: 11px; flex: none; }
+  .hist .out { flex: none; font-family: var(--font-mono); font-size: 9px; border-radius: 99px; padding: 2px 8px; }
+  .out.up { color: #052e12; background: var(--good); }
+  .out.stay { color: var(--text-mut); border: 1px solid var(--line); }
+  .out.down { color: #2e0505; background: var(--bad); }
+  .out.cup { color: #2e2305; background: var(--cash); }
+
+  .peek { margin-top: 14px; display: grid; gap: 10px; }
+  @media (min-width: 900px) { .peek { grid-template-columns: 1fr 1fr 1fr; } }
+  .peek .p { border: 1px dashed var(--line-strong); border-radius: var(--r-md); padding: 12px 14px; font-size: 12px; color: var(--text-mut); }
+  .peek .p b { display: block; color: var(--text); font-family: var(--font-display); font-size: 13px; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">06 · Club tab</span>
+  <span>The consolidation proof: where Records / Challenges / Compete went.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>Why the Club tab can absorb three tabs without becoming a junk drawer</h2>
+  <ul>
+    <li><strong>A pill sub-nav, not nested tabs.</strong> Club / Records / Challenges / Compete / Settings are pills inside the tab — one tap deeper than today, but they stop competing with the core loop for nav space. The pills are mode-aware (a Classic run shows Records/Challenges/Compete/Settings; Career adds the hub) without the top-level nav ever changing shape. <span class="alt">Alternative considered: a "More" overflow menu (the pre-June design). Rejected — it hid everything equally; pills keep each section one visible tap away and show a badge per section.</span></li>
+    <li><strong>The career hub leads with identity and trajectory,</strong> not settings: crest + reputation, the pyramid with your rung lit, honours as a cabinet, then facilities and history. Settings drops to the last pill — renaming your club is a launch-day action, not a weekly one.</li>
+    <li><strong>Facilities show the NEXT level's payoff</strong> ("Lvl 2 → 3: +£1.2M gate") instead of only the current effect — the upgrade decision is currently made blind.</li>
+    <li><strong>Season history gets outcome chips</strong> (▲ promoted, ▼ relegated, 🏆 cup) per row, readable as a career at a glance — and it's where the in-progress domestic-cup feature (spotted in your working tree) would surface.</li>
+  </ul>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="crest"></div>
+    <div class="club"><div class="name">CRIMSON CASUALS</div><div class="sub">Championship · Season 4</div></div>
+    <div class="hud">
+      <span class="pill"><span class="lbl">Bank</span> <span class="cash">£48M</span></span>
+      <span class="pill"><span class="lbl">MW</span> 3/22</span>
+      <button class="menu-btn">☰</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button><span class="ico">⌂</span>Home</button>
+    <button><span class="ico">⬡</span>Squad</button>
+    <button><span class="ico">⇄</span>Market</button>
+    <button class="active"><span class="ico">▤</span>Club</button>
+  </nav>
+
+  <div style="margin-top:14px" class="subseg">
+    <button class="on">Club</button>
+    <button>Records</button>
+    <button>Challenges</button>
+    <button>Compete</button>
+    <button>Settings</button>
+  </div>
+
+  <div class="grid2">
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <!-- identity + reputation -->
+      <section class="card">
+        <div class="identity">
+          <div class="crest-lg"></div>
+          <div>
+            <div class="nm">CRIMSON CASUALS</div>
+            <div class="sub">Il Capitano · 2nd club managed · Season 4</div>
+          </div>
+        </div>
+        <div class="rep">
+          <div class="row"><span>Manager reputation</span><b>ESTABLISHED · 62/100</b></div>
+          <div class="meter"><div class="f" style="width:62%; background:var(--cash)"></div></div>
+          <div style="font-size:10px; color:var(--text-dim); margin-top:5px;">Reputation opens bigger jobs after a sacking — titles and promotions raise it, relegations dent it.</div>
+        </div>
+      </section>
+
+      <!-- pyramid -->
+      <section class="card">
+        <h2>The pyramid · 1 tier to the summit</h2>
+        <div class="pyr">
+          <div class="rung">👑 Premier League</div>
+          <div class="rung you">⬡ Championship <span class="badge">YOU · 5th</span></div>
+          <div class="rung done">League One <span class="tick">✓ S3 · champions</span></div>
+          <div class="rung done">League Two <span class="tick">✓ S2 · promoted</span></div>
+          <div class="rung done">National League <span class="tick">✓ S1</span></div>
+        </div>
+      </section>
+
+      <!-- honours -->
+      <section class="card">
+        <h2>Honours cabinet</h2>
+        <div class="hon">
+          <div class="h"><div class="e">👑</div><div class="v">1</div><div class="l">Div. titles</div></div>
+          <div class="h"><div class="e">▲</div><div class="v">2</div><div class="l">Promotions</div></div>
+          <div class="h"><div class="e">🏆</div><div class="v">1</div><div class="l">Cups</div></div>
+          <div class="h"><div class="e">💼</div><div class="v">2</div><div class="l">Clubs</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <!-- facilities -->
+      <section class="card">
+        <h2>Club development · running costs −£2M / MW</h2>
+        <div class="fac">
+          <span class="e">🏟</span>
+          <div class="who">
+            <div class="n">Stadium <span class="lvl"><i class="f"></i><i class="f"></i><i></i></span></div>
+            <div class="fx">+£2.4M matchday gate · 🎟 9,200 / 12,000 (77%)</div>
+            <div class="nxt">Lvl 2 → 3: +£1.2M gate, +2,500 seats</div>
+          </div>
+          <button class="btn">£18M</button>
+        </div>
+        <div class="fac">
+          <span class="e">🎓</span>
+          <div class="who">
+            <div class="n">Academy <span class="lvl"><i class="f"></i><i></i><i></i></span></div>
+            <div class="fx">2 prospects per intake</div>
+            <div class="nxt">Lvl 1 → 2: +1 prospect, better potential range</div>
+          </div>
+          <button class="btn">£12M</button>
+        </div>
+        <div class="fac">
+          <span class="e">⚕</span>
+          <div class="who">
+            <div class="n">Medical <span class="lvl"><i class="f"></i><i class="f"></i><i class="f"></i></span></div>
+            <div class="fx">Injuries heal 2 rounds faster</div>
+            <div class="nxt">Maxed out</div>
+          </div>
+          <button class="btn" disabled>MAX</button>
+        </div>
+      </section>
+
+      <!-- history -->
+      <section class="card">
+        <h2>Career history</h2>
+        <div class="hist">
+          <div class="s"><span class="yr">S4</span><span class="club">Crimson Casuals</span><span class="div">Championship</span><span class="out stay">IN PLAY</span></div>
+          <div class="s"><span class="yr">S3</span><span class="club">Crimson Casuals</span><span class="div">League One · 1st</span><span class="out up">▲ CHAMPIONS</span><span class="out cup">🏆 CUP</span></div>
+          <div class="s"><span class="yr">S2</span><span class="club">Oakvale City</span><span class="div">League Two · 2nd</span><span class="out up">▲ PROMOTED</span></div>
+          <div class="s"><span class="yr">S1</span><span class="club">Rusty Pylon Athletic</span><span class="div">National Lg · 18th</span><span class="out down">▼ SACKED</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- what lives behind the other pills -->
+  <div class="peek">
+    <div class="p"><b>Records pill</b>Players signed 22/668 · trophy cabinet (locked = 🔒 + name, not just desaturation) · collection-by-rarity bars · best scores. Identical content to today's tab, one tap deeper.</div>
+    <div class="p"><b>Challenges pill</b>Scenario cards with star grades + a difficulty chip (Easy/Hard) so players stop walking blind into Threadbare. Daily Gauntlet entry moves here too (with the ☰ menu shortcut kept).</div>
+    <div class="p"><b>Compete pill</b>PvP share/import + the daily leaderboard. When offline, the board shows "Leaderboard needs a connection" instead of vanishing — an explained absence, not a mystery.</div>
+  </div>
+</div>
+</body>
+</html>

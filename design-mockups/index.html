@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retro Gaffer — design review &amp; redesign mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .wrap { max-width: 860px; margin: 0 auto; padding: 30px 16px 80px; }
+  h1 { font-size: 26px; }
+  .sub { color: var(--text-mut); margin: 6px 0 26px; font-size: 14px; max-width: 620px; }
+  .note { border: 1px dashed var(--info); border-radius: var(--r-md); padding: 10px 14px; font-size: 12px; color: var(--text-mut); margin-bottom: 26px; }
+  .mock-list { display: grid; gap: 12px; }
+  a.mock {
+    display: block; text-decoration: none; color: var(--text);
+    background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 16px 18px; transition: border-color .15s;
+  }
+  a.mock:hover { border-color: var(--act-line); }
+  a.mock .n { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  a.mock h3 { font-size: 17px; margin: 2px 0 4px; }
+  a.mock p { font-size: 12.5px; color: var(--text-mut); }
+  h2.sect { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--info); margin: 34px 0 12px; }
+  .finding { border-top: 1px solid var(--line); padding: 10px 2px; font-size: 13px; color: var(--text-mut); display: flex; gap: 12px; }
+  .finding .sev { flex: none; width: 64px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; padding-top: 2px; }
+  .sev.hi { color: var(--bad); } .sev.med { color: var(--warn); } .sev.lo { color: var(--text-dim); }
+  .finding b { color: var(--text); }
+  .finding .fix { color: var(--text-dim); font-size: 11.5px; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RETRO GAFFER — design review &amp; redesign proposal</h1>
+  <p class="sub">Standalone mockups. Nothing here touches the game code — open each page, resize the window to compare mobile (&lt;900px) and desktop layouts, and hit “ⓘ Design rationale” on any page for the reasoning and the alternatives that were rejected.</p>
+
+  <div class="note">⚠ These are throwaway visuals for evaluation. Player data is illustrative. The full written review lives in the chat alongside this folder; each page carries its own screen-level rationale.</div>
+
+  <div class="mock-list">
+    <a class="mock" href="01-home-matchday.html">
+      <span class="n">01</span><h3>Home / Match day</h3>
+      <p>The biggest structural change: a fixture-first home screen replacing the Season tab + JourneyBar combo. Relative-strength edge bar, stakes with an arithmetic expander, wager stepper, table snippet, and the Inbox reborn as a feed. Nav drops 7 → 4 stable tabs; “New Game” leaves the header.</p>
+    </a>
+    <a class="mock" href="02-squad.html">
+      <span class="n">02</span><h3>Squad &amp; tactics</h3>
+      <p>Pitch-first on every viewport. Roster rows rebuilt around a single OVR badge (form ★, chem %, lettered status chips); ATK/DEF and sub-stats move into a tap-through player sheet, where Sell also now lives. Team strength + chemistry as live toolbar chips.</p>
+    </a>
+    <a class="mock" href="03-market.html">
+      <span class="n">03</span><h3>Transfer market</h3>
+      <p>The three market tiers (Free / Open / At rivals) promoted from footnote to primary segments, each teaching its own rule. Bank, wage-budget bar and squad count pinned on top. Fee buttons that say what they do. A browsable, explained window-closed state.</p>
+    </a>
+    <a class="mock" href="04-match.html">
+      <span class="n">04</span><h3>Match flow — live + full-time</h3>
+      <p>Two states side by side. Decisions (team talk, subs) become true overlays with effects shown per option — they can never sit below the fold again. Full-time becomes a matchday receipt: itemised payout, team news with a “fix your XI” route, then the report.</p>
+    </a>
+    <a class="mock" href="05-system.html">
+      <span class="n">05</span><h3>Design system &amp; IA map</h3>
+      <p>Colour roles (green = action, amber = money, full stop), the eight rules that fix the cross-screen inconsistencies, the type floor (12px data minimum), core atoms, and the 7-tabs → 4-tabs IA map showing where everything goes.</p>
+    </a>
+  </div>
+
+  <h2 class="sect">Round 2 — full coverage (the screens round 1 skipped)</h2>
+  <div class="mock-list">
+    <a class="mock" href="06-club.html">
+      <span class="n">06</span><h3>Club tab — the consolidation proof</h3>
+      <p>Career hub (identity + reputation, lit pyramid, honours cabinet, facilities with next-level payoffs, history with outcome chips) plus the pill sub-nav that absorbs Records / Challenges / Compete / Settings without a junk drawer.</p>
+    </a>
+    <a class="mock" href="07-moments.html">
+      <span class="n">07</span><h3>Season moments — promotion · sacking · glory</h3>
+      <p>The three emotional beats, each as a real moment: promotion review with pinned renewal budget and explained youth potential; the sack with board expectations per vacancy; Champions of England with a story-first summary and a share preview.</p>
+    </a>
+    <a class="mock" href="08-front-door.html">
+      <span class="n">08</span><h3>Front door — start menu + onboarding</h3>
+      <p>The start menu gets floodlight atmosphere and a Resume card with trajectory; the Daily gets a live hook. Onboarding shrinks to 3 steps (identity → difficulty → play), with the mechanics lecture replaced by contextual coach-marks at first contact.</p>
+    </a>
+    <a class="mock" href="09-draft.html">
+      <span class="n">09</span><h3>Draft night (Classic)</h3>
+      <p>“On the clock” framing, a rival-picks ticker, a budget bar that makes the hidden XI-reserve guard visible (disabled picks say why), needs-based role chips, and a your-squad rail. Same engine, finally visible.</p>
+    </a>
+    <a class="mock" href="10-cup-week.html">
+      <span class="n">10</span><h3>Cup week (career) — covers the shipped domestic cup</h3>
+      <p>The Home hero as a cup-tie variant (amber trim, knockout stakes, “glory not gold” stated at point of use), a bracket snippet replacing the table, a rotation hint surfacing the carried-injury trade-off, and a money-free full-time screen. No fifth tab needed.</p>
+    </a>
+  </div>
+
+  <h2 class="sect">What “modern feel” means here (without losing the retro soul)</h2>
+  <div class="finding"><span class="sev lo">Spec</span><div>
+    <b>Surfaces &amp; depth:</b> three elevation steps with soft gradients and shadows instead of one near-black + borders everywhere (already applied across these pages). ·
+    <b>Motion as feedback:</b> springy bottom-sheets for the player card, count-ups on money changes, score pops, press-scale on buttons (90–150ms), skeleton rows while lists build — and nothing looping forever; all behind <span class="mono">prefers-reduced-motion</span>. ·
+    <b>Touch-first interactions:</b> bottom sheets instead of hover tooltips, 44px minimum targets, swipe between Club pills. ·
+    <b>States for everything:</b> empty, loading, offline and locked states all say why and what to do next — absence is always explained. ·
+    <b>Focus &amp; a11y:</b> visible focus rings, icon+letter status chips, 12px data floor, AA contrast on muted text.
+  </div></div>
+
+  <h2 class="sect">Coverage map — every current screen, accounted for</h2>
+  <div class="finding"><span class="sev lo">Map</span><div style="line-height:2">
+    Tactics tab → <b>02</b> · Transfers tab (market + shop) → <b>03</b> (+ draft shop folds into <b>09</b>'s row anatomy) · Season tab → <b>01</b> · Inbox tab → <b>01</b> feed · Challenges / Compete / Records tabs → <b>06</b> pills · Club tab → <b>06</b> · Match (live/HT/FT) → <b>04</b> · StartMenu → <b>08A</b> · Onboarding/KitPicker → <b>08B</b> · DraftRoom → <b>09</b> · CareerReview → <b>07A</b> · JobMarket → <b>07B</b> · RunOverModal → <b>07C</b> · HUD/TabNav/JourneyBar → dissolved into the chrome of <b>01/02/03</b> · NegotiationModal &amp; SavePanel → unchanged in flow, restyled by the system (<b>05</b>); the negotiation's two-step flow is sound. · Career domestic cup (shipped <span class="mono">ef8d098</span>, after round 2) → <b>10</b>, with its honours/history chips already in <b>06</b>.
+  </div></div>
+
+  <h2 class="sect">The findings these address (abridged — full review in chat)</h2>
+
+  <div class="finding"><span class="sev hi">High</span><div><b>No relative strength anywhere.</b> Opponents are raw “ATK 643 · DEF 531”; your own numbers are on another tab. The core pre-match question — “am I favoured?” — is unanswerable. <div class="fix">→ 01: edge bar + plain-English verdict.</div></div></div>
+  <div class="finding"><span class="sev hi">High</span><div><b>Header costs ~40% of a phone screen.</b> Logo row + club row + HUD row + buttons row before any content; the pitch lands two screens down. <div class="fix">→ 01/02: one-row top bar, New Game demoted to ☰.</div></div></div>
+  <div class="finding"><span class="sev hi">High</span><div><b>Squad list can't do its job at 288px.</b> Names truncate, ATK/DEF double-encoded ×16 rows, no OVR (the market shows OVR — the worst data inconsistency in the game), and 11 permanent Sell buttons. <div class="fix">→ 02: OVR rows + player sheet.</div></div></div>
+  <div class="finding"><span class="sev hi">High</span><div><b>Match decisions can render below the fold</b> in the scrollable feed — the game looks frozen at exactly the moment it wants input. <div class="fix">→ 04: modal decision overlays.</div></div></div>
+  <div class="finding"><span class="sev med">Med</span><div><b>7 tabs that mutate by mode.</b> Inbox appears/disappears, Draft hides five tabs, Compete is nearly empty offline. The nav never feels stable, and 7 items force 9px mobile labels. <div class="fix">→ 01/05: 4 stable tabs + locked states.</div></div></div>
+  <div class="finding"><span class="sev med">Med</span><div><b>The economy explains itself in 9–10px footnotes.</b> Stakes arithmetic, wage-over-budget, promotion rules — all decision-critical, all micro-type. <div class="fix">→ 01/03: 12px floor, expanders, wage bar.</div></div></div>
+  <div class="finding"><span class="sev med">Med</span><div><b>Colour does four jobs at once.</b> Neon green = brand + active + positive + chemistry; amber = money + warnings + rarity. Tier/role/price colours have no key, and several signals are colour-only (attention dot, zone borders). <div class="fix">→ 05: colour roles + “never colour alone”.</div></div></div>
+  <div class="finding"><span class="sev med">Med</span><div><b>Hover-only help on a touch product.</b> MiniStats meanings, scout briefs, disabled-button reasons all live in tooltips that don't exist on mobile. <div class="fix">→ 03/05: inline explainers at point of use.</div></div></div>
+  <div class="finding"><span class="sev lo">Low</span><div><b>Post-match payout is a prose sentence</b> at the end of a scroll; team news is buried under it. <div class="fix">→ 04: receipt + team news with a fix-XI route.</div></div></div>
+  <div class="finding"><span class="sev lo">Low</span><div><b>Permanent logo flicker + ubiquitous glows</b> tax attention all session and dilute the one CTA that should glow. <div class="fix">→ 05: motion-as-feedback rule.</div></div></div>
+
+  <h2 class="sect">What was deliberately kept</h2>
+  <div class="finding"><span class="sev lo">Keep</span><div>The CRT identity (palette, scanlines, mono numerals, ticker voice) · the Start Menu + Resume front door · the difficulty picker cards · the Sign→Pick→Kick-off journey logic (it becomes the Home hero's state machine) · Auto-pick/Auto-sign · the live match's interactive decisions · deterministic seeds, save codes, PvP codes · promotion confetti.</div></div>
+</div>
+</body>
+</html>

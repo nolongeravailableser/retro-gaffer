@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 04 — Match day flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .stage-label { max-width: 760px; margin: 22px auto 8px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--info); }
+  .matchframe { max-width: 760px; margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-lg); overflow: hidden; background: var(--surface-1); position: relative; }
+
+  .scorebar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  .scorebar .t { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 14px; }
+  .scorebar .t.right { justify-content: flex-end; text-align: right; }
+  .kitdot { width: 16px; height: 16px; border-radius: 5px; flex: none; border: 1px solid var(--line-strong); }
+  .score { font-family: var(--font-mono); font-size: 26px; font-weight: 600; flex: none; }
+  .minute { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--act); }
+  .progress { height: 3px; background: rgba(255,255,255,.07); }
+  .progress .f { height: 100%; width: 50%; background: var(--act); }
+
+  .viz { position: relative; aspect-ratio: 16/9; max-height: 300px; width: 100%;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 11%, transparent 11% 22%), linear-gradient(180deg, #123420, #0b2414); }
+  .viz .dot { position: absolute; width: 11px; height: 11px; border-radius: 99px; border: 1px solid rgba(0,0,0,.4); }
+  .viz .ball { width: 7px; height: 7px; background: #fff; border-radius: 99px; position: absolute; box-shadow: 0 0 6px #fff; }
+  .captions { padding: 8px 14px; font-family: var(--font-mono); font-size: 11px; color: var(--text-mut); border-top: 1px solid var(--line); }
+  .captions .c.goal { color: var(--good); }
+  .captions .c { padding: 2px 0; }
+
+  .controls { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); }
+  .controls .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; margin-left: auto; }
+  .controls .seg button { background: none; border: none; color: var(--text-mut); font-family: var(--font-mono); font-size: 11px; padding: 6px 10px; cursor: pointer; }
+  .controls .seg button.on { background: var(--act-soft); color: var(--act); }
+
+  /* decision overlay */
+  .decision-dim { position: absolute; inset: 0; z-index: 5; background: rgba(2,8,4,.78); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; padding: 18px; overflow-y: auto; }
+  .decision { width: 100%; max-width: 430px; background: var(--surface-2); border: 1px solid var(--warn); border-radius: var(--r-lg); padding: 16px; }
+  .decision h3 { color: var(--warn); font-size: 15px; display: flex; gap: 8px; align-items: center; }
+  .decision .sub { font-size: 11px; color: var(--text-mut); margin: 3px 0 12px; }
+  .talk { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; cursor: pointer;
+    background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; margin-top: 8px; color: var(--text); }
+  .talk:hover { border-color: var(--warn); }
+  .talk .e { font-size: 20px; flex: none; }
+  .talk .n { font-family: var(--font-display); font-size: 14px; }
+  .talk .d { font-size: 11px; color: var(--text-mut); }
+  .talk .fx { margin-left: auto; flex: none; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
+
+  /* full time */
+  .ft-banner { text-align: center; padding: 18px 14px 6px; }
+  .ft-banner .h { font-family: var(--font-display); font-size: 26px; color: var(--good); letter-spacing: .04em; }
+  .ft-banner .s { font-size: 12px; color: var(--text-mut); margin-top: 2px; }
+  .ft-grid { display: grid; gap: 12px; padding: 14px; }
+  @media (min-width: 700px) { .ft-grid { grid-template-columns: 1fr 1fr; } }
+  .receipt td { padding: 5px 0; font-family: var(--font-mono); font-size: 12px; border-bottom: 1px solid var(--line); color: var(--text-mut); }
+  .receipt td:last-child { text-align: right; }
+  .receipt tr.total td { color: var(--text); font-weight: 600; border-bottom: none; border-top: 1px solid var(--line-strong); padding-top: 8px; }
+  .receipt { width: 100%; border-collapse: collapse; }
+  .news { display: flex; gap: 10px; align-items: flex-start; border: 1px solid rgba(248,113,113,.35); background: rgba(248,113,113,.06); border-radius: var(--r-md); padding: 10px 12px; font-size: 12px; margin-top: 10px; }
+  .timeline { font-family: var(--font-mono); font-size: 11px; color: var(--text-mut); }
+  .timeline div { padding: 3px 0; display: flex; gap: 8px; }
+  .timeline .m { color: var(--text-dim); width: 28px; flex: none; text-align: right; }
+  .timeline .them { justify-content: flex-end; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">04 · Match flow (two states)</span>
+  <span>State A: live + decision · State B: full-time</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>What changed vs the current MatchView</h2>
+  <ul>
+    <li><strong>Decisions are a true overlay, not a card in the scroll.</strong> Half-time talks and injury subs currently render inline in the scrollable feed — if you've scrolled, the match pauses with the decision below the fold and the game appears frozen. The overlay dims the pitch, blocks scrolling, and each option carries its effect inline (“+ATK / −DEF until FT”), so the choice is informed rather than vibes. <span class="alt">Alternative considered: auto-scroll the feed to the decision card. Rejected — fights the user's scroll position and still competes with the live ratings panel; a modal moment is honest about the fact the game is paused.</span></li>
+    <li><strong>One screen, three zones, no collapsibles mid-match.</strong> Scoreboard (kits, score, minute, thin progress) / pitch / 3-line caption feed. The collapsible live-ratings panel goes — live ratings move to full-time, where they're actually read. Speed controls remain visible while paused (greyed), fixing “can't change speed at a decision point”.</li>
+    <li><strong>Full-time is a receipt, not a sprawl.</strong> The single most important post-match question in an economy game is “what did this match do to my money?” — today the net payout is one long sentence at the bottom of a scroll. The receipt itemises Result / Gate / Interest / Streak / Wages / Upkeep → Net, ending in the new balance. Team news (bans/injuries) sits directly under the banner with the consequence spelled out (“you'll need a MID for MW8”) and a one-tap “Fix XI” route. <span class="alt">Alternative: keep the prose sentence (more “retro ticker” in tone). Rejected — the prose hides signed numbers; a tabular receipt is still period-correct for a CM homage (it's a teletext payslip).</span></li>
+    <li><strong>Report stays.</strong> Timeline + ratings grid survive below the receipt — they're good. MOTM gets a label (“MOTM”) instead of a bare star.</li>
+  </ul>
+</div>
+
+<!-- ================== STATE A ================== -->
+<div class="stage-label">State A — live match, paused at half-time</div>
+<div class="matchframe">
+  <div class="scorebar">
+    <div class="t"><span class="kitdot" style="background:linear-gradient(90deg,#d22 33%,#fff 33% 66%,#d22 66%)"></span>Crimson Casuals</div>
+    <div>
+      <div class="score">1 : 1</div>
+      <div class="minute">HT · paused</div>
+    </div>
+    <div class="t right">Dynamo Disappointment<span class="kitdot" style="background:linear-gradient(180deg,#0e2a6b 50%,#fff 50%)"></span></div>
+  </div>
+  <div class="progress"><div class="f"></div></div>
+
+  <div class="viz">
+    <!-- static dot constellation suggesting the 2D viz -->
+    <span class="dot" style="background:#d22; left:12%; top:48%"></span>
+    <span class="dot" style="background:#d22; left:26%; top:22%"></span>
+    <span class="dot" style="background:#d22; left:28%; top:64%"></span>
+    <span class="dot" style="background:#d22; left:40%; top:38%"></span>
+    <span class="dot" style="background:#d22; left:44%; top:78%"></span>
+    <span class="dot" style="background:#0e2a6b; left:58%; top:30%"></span>
+    <span class="dot" style="background:#0e2a6b; left:62%; top:58%"></span>
+    <span class="dot" style="background:#0e2a6b; left:74%; top:44%"></span>
+    <span class="dot" style="background:#0e2a6b; left:86%; top:50%"></span>
+    <span class="ball" style="left:47%; top:50%"></span>
+  </div>
+
+  <div class="captions">
+    <div class="c goal">38' ⚽ GOAL — Immobile slots it home! (assist: Fernandinho)</div>
+    <div class="c">43' 🟨 Materazzi goes in the book. No complaints.</div>
+    <div class="c">45' The ref calls it — all square at the break.</div>
+  </div>
+
+  <div class="controls">
+    <span class="chip">⬡ Pitch</span><span class="chip" style="opacity:.6">≣ Ticker</span><span class="chip" style="opacity:.6">🔇</span>
+    <div class="seg"><button>0.5×</button><button class="on">1×</button><button>2×</button><button>4×</button><button>≫ Instant</button></div>
+  </div>
+
+  <!-- decision overlay — dims the WHOLE match frame, blocks scroll -->
+  <div class="decision-dim">
+    <div class="decision">
+      <h3>📣 Half-time team talk</h3>
+      <div class="sub">Level at 1–1. Your call shapes the second half.</div>
+      <button class="talk"><span class="e">🔥</span><div><div class="n">Demand more</div><div class="d">Push for a winner</div></div><div class="fx">+ATK<br>−DEF</div></button>
+      <button class="talk"><span class="e">🧊</span><div><div class="n">Stay calm</div><div class="d">No changes — trust the plan</div></div><div class="fx">±0</div></button>
+      <button class="talk"><span class="e">🚌</span><div><div class="n">Park the bus</div><div class="d">Protect the point</div></div><div class="fx">−ATK<br>+DEF</div></button>
+    </div>
+  </div>
+</div>
+
+<!-- ================== STATE B ================== -->
+<div class="stage-label">State B — full-time</div>
+<div class="matchframe">
+  <div class="scorebar">
+    <div class="t"><span class="kitdot" style="background:linear-gradient(90deg,#d22 33%,#fff 33% 66%,#d22 66%)"></span>Crimson Casuals</div>
+    <div><div class="score">2 : 1</div><div class="minute" style="color:var(--text-dim)">FULL-TIME</div></div>
+    <div class="t right">Dynamo Disappointment<span class="kitdot" style="background:linear-gradient(180deg,#0e2a6b 50%,#fff 50%)"></span></div>
+  </div>
+
+  <div class="ft-banner">
+    <div class="h">VICTORY</div>
+    <div class="s">xG 2.31 — 1.04 · your gamble paid out</div>
+  </div>
+
+  <div class="ft-grid">
+    <div>
+      <section class="card">
+        <h2>Matchday receipt</h2>
+        <table class="receipt">
+          <tr><td>Win bonus</td><td style="color:var(--good)">+£8M</td></tr>
+          <tr><td>Matchday gate</td><td style="color:var(--good)">+£2M</td></tr>
+          <tr><td>Bank interest</td><td style="color:var(--good)">+£6M</td></tr>
+          <tr><td>Win streak ×2</td><td style="color:var(--good)">+£2M</td></tr>
+          <tr><td>Wages</td><td style="color:var(--bad)">−£3M</td></tr>
+          <tr><td>Facility upkeep</td><td style="color:var(--bad)">−£1M</td></tr>
+          <tr class="total"><td>Net</td><td style="color:var(--good)">+£14M → £112M</td></tr>
+        </table>
+      </section>
+
+      <div class="news">
+        <span style="font-size:15px">⚠</span>
+        <div>
+          <b>Team news:</b> <span class="status-ico ban">BAN</span> Guarin suspended for MW8 (red card).
+          You'll be short a MID — <a href="#" style="color:var(--act)">fix your XI now →</a>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <section class="card">
+        <h2>Match report</h2>
+        <div class="timeline">
+          <div><span class="m">38'</span> ⚽ Immobile (assist: Fernandinho)</div>
+          <div><span class="m">43'</span> 🟨 Materazzi</div>
+          <div class="them"><span>Kowalski ⚽</span><span class="m">51'</span></div>
+          <div><span class="m">64'</span> 🟥 Guarin — second yellow</div>
+          <div><span class="m">81'</span> ⚽ Pellissier — the late winner!</div>
+        </div>
+        <div style="margin-top:12px; font-size:11px; color:var(--text-mut);">
+          <b style="color:var(--text)">Ratings:</b> Pellissier ★8.6 <span class="chip" style="font-size:9px; padding:1px 6px; color:var(--cash)">MOTM</span> · Immobile ★8.1 · Cañizares ★7.7 · Stam ★7.4 · <span style="color:var(--text-dim)">+7 more…</span>
+        </div>
+      </section>
+      <button class="btn primary block" style="margin-top:12px;">Continue → Fix your XI</button>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px"></div>
+</body>
+</html>

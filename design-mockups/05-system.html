@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 05 — Design system &amp; IA map</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .wrap { max-width: 900px; margin: 0 auto; padding: 10px 14px 60px; }
+  .wrap > h1 { font-size: 22px; margin: 22px 0 4px; color: var(--text); }
+  .wrap > p.lead { color: var(--text-mut); font-size: 13px; max-width: 640px; }
+  .sec { margin-top: 26px; }
+  .sec h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--info); margin-bottom: 10px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .sw { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface-1); }
+  .sw .c { height: 44px; }
+  .sw .i { padding: 8px 10px; font-size: 11px; color: var(--text-mut); }
+  .sw .i b { display: block; color: var(--text); font-family: var(--font-mono); font-size: 11px; }
+  .rule { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-1); padding: 12px 14px; margin-top: 10px; font-size: 13px; color: var(--text-mut); }
+  .rule b { color: var(--text); }
+  .ia { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: var(--text-mut); background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 20px; overflow-x: auto; white-space: pre; }
+  .ia b { color: var(--act); }
+  .ia i { color: var(--text-dim); font-style: normal; }
+  .type-row { display: flex; align-items: baseline; gap: 16px; border-top: 1px solid var(--line); padding: 8px 0; }
+  .type-row .lbl { width: 220px; flex: none; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .demo-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">05 · System &amp; IA</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>Why a system page is part of the proposal</h2>
+  <ul>
+    <li>Most of the friction in the current UI isn't any single screen — it's that <strong>colour, size and number-encoding rules are inconsistent between screens</strong> (OVR in the market but not the squad; green meaning brand, money-positive, active, and chemistry; three different price-button colours with no key). Codifying ~8 rules fixes dozens of small papercuts at once and keeps future features consistent.</li>
+    <li>The IA map shows where the demoted screens go — nothing is deleted, the 7-tab row just stops competing with the core loop.</li>
+  </ul>
+</div>
+
+<div class="wrap">
+  <h1>Design system — colour roles, type, and the rules</h1>
+  <p class="lead">Same retro-CRT identity, but every colour gets ONE job. The neon green stops being wallpaper and starts being a signpost.</p>
+
+  <div class="sec">
+    <h2>Colour roles</h2>
+    <div class="swatches">
+      <div class="sw"><div class="c" style="background:#39ff14"></div><div class="i"><b>--act #39FF14</b>The primary action + active nav. Nothing else. One glowing thing per screen.</div></div>
+      <div class="sw"><div class="c" style="background:#ffb000"></div><div class="i"><b>--cash #FFB000</b>Money, only money. Never warnings (warnings use --warn).</div></div>
+      <div class="sw"><div class="c" style="background:#4ade80"></div><div class="i"><b>--good #4ADE80</b>Positive outcomes: wins, chem links, promotion zone. Softer than --act so it can't be mistaken for a button.</div></div>
+      <div class="sw"><div class="c" style="background:#fbbf24"></div><div class="i"><b>--warn #FBBF24</b>Caution: out of position, window closing, board grumbles.</div></div>
+      <div class="sw"><div class="c" style="background:#f87171"></div><div class="i"><b>--bad #F87171</b>Losses, bans, relegation zone, destructive actions.</div></div>
+      <div class="sw"><div class="c" style="background:#7dd3fc"></div><div class="i"><b>--info #7DD3FC</b>Neutral information, links, help.</div></div>
+      <div class="sw"><div class="c" style="background:#0c1d12"></div><div class="i"><b>--surface-1/2/3</b>Three elevation steps instead of one near-black — cards can layer without borders doing all the work.</div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>The eight rules</h2>
+    <div class="rule">1 · <b>One number per player: OVR, everywhere.</b> Tier-coloured badge (87 green → 58 red). ATK/DEF and the 8 sub-stats live in the player sheet, one tap away — identical sheet in squad, market, draft and match.</div>
+    <div class="rule">2 · <b>Never colour alone.</b> Every status is icon/letters + colour: <span class="status-ico ban">BAN</span> <span class="status-ico inj">INJ·2</span> <span class="status-ico tired">TIRED</span>. Promotion/relegation zones get the bar <i>and</i> a legend. Price tiers get words on the button (“Sign · Free”, “Poach · £39M”).</div>
+    <div class="rule">3 · <b>12px floor for data, 14px for body.</b> The current UI sets stakes math, wage budgets and promotion rules at 9–11px. If it matters to a decision it gets ≥12px; if it doesn't, it goes behind an expander instead of shrinking.</div>
+    <div class="rule">4 · <b>Numbers earn their place by being comparable.</b> Raw “ATK 643 · DEF 531” for an opponent is banned — strength is always shown relative to you (edge bar + verdict in words).</div>
+    <div class="rule">5 · <b>Explainer-at-the-point-of-use, not tooltips.</b> Hover tooltips are dead weight on touch. Each rule of the game gets one inline sentence where it applies (segment subtitles, “How is this calculated?” expanders), then stays out of the way.</div>
+    <div class="rule">6 · <b>One glowing CTA per screen.</b> Primary = filled neon green. Secondary = outlined. Tertiary = ghost. Destructive = outlined red, never adjacent to the primary, always two-step.</div>
+    <div class="rule">7 · <b>Stable chrome.</b> The four tabs never appear/disappear per mode — a mode that doesn't support a tab shows it locked, with the reason. Modal stack is capped at one game-layer (decisions) above one screen-layer.</div>
+    <div class="rule">8 · <b>Motion is feedback, not atmosphere.</b> Score pops, payout count-ups, promotion confetti stay. The permanent logo flicker goes (it taxes attention all session); scanlines stay as static texture. All motion behind <span class="mono">prefers-reduced-motion</span>.</div>
+  </div>
+
+  <div class="sec">
+    <h2>Type scale</h2>
+    <div class="type-row"><span class="lbl">Display / Oswald 600 · 22–26px</span><span class="display" style="font-size:24px;">MATCHWEEK 7 · VICTORY</span></div>
+    <div class="type-row"><span class="lbl">Heading / Oswald 500 · 15–16px</span><span class="display" style="font-size:16px;">Transfer Market</span></div>
+    <div class="type-row"><span class="lbl">Body / Inter 400 · 14px</span><span>You're slight favourites — their attack is sharp.</span></div>
+    <div class="type-row"><span class="lbl">Data / Plex Mono 400 · 12px min</span><span class="mono" style="font-size:12px;">+£17M · MW 7/11 · ★ 7.4</span></div>
+    <div class="type-row"><span class="lbl">Micro / Mono caps · 10px (labels only)</span><span class="mono" style="font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim);">WAGE BILL / BUDGET</span></div>
+  </div>
+
+  <div class="sec">
+    <h2>Core atoms</h2>
+    <div class="demo-row">
+      <button class="btn primary">▶ Kick off</button>
+      <button class="btn">Auto-pick</button>
+      <button class="btn ghost">Cancel</button>
+      <button class="btn ghost" style="border-color:rgba(248,113,113,.5); color:var(--bad);">Sell · £2M</button>
+    </div>
+    <div class="demo-row">
+      <span class="ovr elite">93</span><span class="ovr good">81</span><span class="ovr ok">68</span><span class="ovr low">52</span>
+      <span class="role gk">GK</span><span class="role def">DEF</span><span class="role mid">MID</span><span class="role fwd">FWD</span>
+      <span class="status-ico ban">BAN</span><span class="status-ico inj">INJ·2</span><span class="status-ico tired">TIRED</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Information architecture — 7 mutating tabs → 4 stable ones</h2>
+    <div class="ia"><b>HOME</b>   next fixture · edge bar · stakes · wager · table snippet · week feed <i>(absorbs Season + Inbox + JourneyBar)</i>
+<b>SQUAD</b>  pitch · bench · roster (OVR rows) · player sheet · training segment <i>(absorbs Tactics + TrainingPanel)</i>
+<b>MARKET</b> free agents / open market / at rivals · negotiation <i>(locked state in Draft, with reason, instead of vanishing)</i>
+<b>CLUB</b>   career hub · records &amp; trophies · challenges/scenarios · PvP &amp; leaderboard · settings · save codes
+       <i>badge = inbox-style attention (board message, job offers)</i>
+
+☰ MENU  new game · daily gauntlet · how to play · sound <i>(destructive + occasional actions leave the header)</i>
+LOGO    → start menu (unchanged — it's good)</div>
+    <p style="font-size:12px; color:var(--text-mut); margin-top:10px;"><span class="alt" style="font-style:italic; color:var(--text-dim);">Alternative considered: keeping Records/Challenges/Compete as top-level tabs (status quo — they're discoverable there). Rejected: during an actual run those three are visited a fraction as often as Squad/Market/Home, and the 7-tab row is the reason the mobile nav needs 9px labels. Discoverability is preserved by Club-tab badges and the Start Menu's Records entry.</span></p>
+  </div>
+</div>
+</body>
+</html>

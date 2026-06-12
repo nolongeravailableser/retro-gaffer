@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 08 — Front door (start menu + onboarding)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .stage-label { max-width: 980px; margin: 26px auto 8px; padding: 0 14px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--info); }
+
+  /* --- start menu: atmosphere, not a dialog --- */
+  .door {
+    position: relative; max-width: 980px; margin: 0 auto; border-radius: var(--r-lg);
+    border: 1px solid var(--line); overflow: hidden;
+    background:
+      radial-gradient(900px 420px at 50% -10%, rgba(57,255,20,.13), transparent 60%),
+      radial-gradient(500px 260px at 12% 110%, rgba(255,176,0,.07), transparent 60%),
+      linear-gradient(180deg, #0a1c11, #060f0a 70%);
+    padding: clamp(24px, 6vw, 64px) clamp(16px, 5vw, 60px);
+  }
+  /* floodlights */
+  .door::before, .door::after {
+    content: ''; position: absolute; top: -40px; width: 280px; height: 420px; pointer-events: none;
+    background: linear-gradient(195deg, rgba(255,255,255,.05), transparent 65%);
+    transform: rotate(18deg);
+  }
+  .door::before { left: -60px; }
+  .door::after { right: -60px; transform: rotate(-18deg) scaleX(-1); }
+
+  .wordmark { text-align: center; }
+  .wordmark .t { font-family: var(--font-display); font-size: clamp(30px, 6vw, 46px); letter-spacing: .12em; color: var(--act); text-shadow: 0 0 28px rgba(57,255,20,.35); }
+  .wordmark .s { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: .3em; text-transform: uppercase; margin-top: 2px; }
+
+  .resume {
+    display: flex; align-items: center; gap: 16px; cursor: pointer;
+    margin: 28px auto 0; max-width: 560px; text-align: left;
+    border: 1px solid var(--act-line); border-radius: var(--r-lg);
+    background: linear-gradient(180deg, rgba(57,255,20,.10), rgba(57,255,20,.03));
+    padding: 16px 18px; color: var(--text); width: 100%;
+    box-shadow: 0 0 30px rgba(57,255,20,.12);
+    transition: box-shadow .2s, transform .12s;
+  }
+  .resume:hover { box-shadow: 0 0 44px rgba(57,255,20,.22); transform: translateY(-1px); }
+  .resume .play { width: 46px; height: 46px; border-radius: 99px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--act); color: #06270b; font-size: 18px; }
+  .resume .t1 { font-family: var(--font-display); font-size: 18px; color: var(--act); }
+  .resume .t2 { font-size: 12px; color: var(--text-mut); margin-top: 2px; }
+  .resume .prog { margin-top: 8px; }
+  .resume .arrow { margin-left: auto; color: var(--act); font-size: 20px; }
+
+  .modes { display: grid; gap: 12px; max-width: 560px; margin: 14px auto 0; }
+  @media (min-width: 700px) { .modes { grid-template-columns: 1fr 1fr; } }
+  .mode {
+    text-align: left; cursor: pointer; border: 1px solid var(--line); border-radius: var(--r-lg);
+    background: var(--surface-1); padding: 14px 16px; color: var(--text);
+    transition: border-color .15s, transform .12s;
+  }
+  .mode:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+  .mode .e { font-size: 20px; }
+  .mode .t { font-family: var(--font-display); font-size: 16px; margin-top: 6px; }
+  .mode .d { font-size: 11px; color: var(--text-mut); margin-top: 2px; }
+
+  .tertiary { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin-top: 22px; font-size: 12px; }
+  .tertiary button { background: none; border: none; color: var(--text-mut); cursor: pointer; font-size: 12px; }
+  .tertiary button:hover { color: var(--text); }
+  .daily-chip { display: flex; justify-content: center; margin-top: 14px; }
+
+  /* --- onboarding --- */
+  .ob { max-width: 560px; margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-lg); overflow: hidden; background: var(--surface-1); box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  .ob .h { padding: 18px 20px 0; }
+  .ob .steps { display: flex; gap: 6px; margin-bottom: 14px; }
+  .ob .steps i { height: 4px; border-radius: 99px; flex: 1; background: rgba(255,255,255,.1); }
+  .ob .steps i.done { background: var(--act); }
+  .ob h3 { font-size: 20px; }
+  .ob .sub { font-size: 12px; color: var(--text-mut); margin-top: 4px; }
+  .ob .b { padding: 16px 20px; display: flex; gap: 18px; align-items: flex-start; }
+  .shirt { width: 110px; height: 120px; flex: none; border-radius: 12px; background: linear-gradient(90deg,#d22 33%,#fff 33% 66%,#d22 66%); border: 1px solid var(--line-strong); position: relative; }
+  .shirt::after { content: 'CC'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: #0008; font-size: 22px; }
+  .ob input { width: 100%; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); padding: 10px 12px; font-size: 14px; margin-top: 4px; }
+  .ob label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); display: block; margin-top: 10px; }
+  .swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .swatches i { width: 22px; height: 22px; border-radius: 7px; cursor: pointer; border: 2px solid transparent; }
+  .swatches i.on { border-color: var(--act); transform: scale(1.1); }
+  .ob .f { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--surface-2); }
+
+  .coach { max-width: 560px; margin: 14px auto 0; display: flex; gap: 10px; align-items: center; border: 1px solid var(--info); border-radius: var(--r-md); background: rgba(125,211,252,.07); padding: 10px 14px; font-size: 12px; color: var(--text-mut); }
+</style>
+</head>
+<body>
+
+<div class="mock-toolbar">
+  <a href="index.html">← All mockups</a>
+  <span class="tag">08 · Front door</span>
+  <span>State A: start menu · State B: onboarding reimagined.</span>
+  <button onclick="document.getElementById('rat').classList.toggle('open')">ⓘ Design rationale</button>
+</div>
+
+<div class="rationale" id="rat">
+  <h2>What changed vs the current StartMenu + OnboardingModal</h2>
+  <ul>
+    <li><strong>The front door gets atmosphere.</strong> At desktop the current menu is a small left-ish column floating in dead black — it reads as a settings dialog, not a game. Floodlight gradients, a glowing wordmark and a hero Resume card make the same content feel like match night. Zero new assets — it's all CSS light. <span class="alt">Alternative considered: a stadium illustration/pixel-art backdrop. Rejected for scope — art assets need sourcing and maintenance; gradient atmosphere gets 80% of the warmth free, and stays on-theme.</span></li>
+    <li><strong>Resume shows trajectory, not just facts.</strong> A season progress bar under "Championship · S4 · MW3" — the card answers "where was I?" before you tap.</li>
+    <li><strong>The Daily gets a live hook</strong> ("today's rule · resets in 6h") on the front door — it's the retention feature, and today it's a small button in the header that most players never read.</li>
+    <li><strong>Onboarding: three steps, show-don't-tell.</strong> Step 1 merges club name + kit (one identity moment, live shirt preview). Step 2 picks difficulty (the existing, excellent cards). Step 3 is NOT a 5-card lecture — it's straight into the game with three contextual coach-marks that appear on first contact (first market visit, first XI gap, first kick-off). The carousel taught chemistry/bosses/economy to people who hadn't seen a single screen yet; teaching at first contact actually lands. <span class="alt">Alternative: keep the carousel but cut to 3 cards. Rejected — any pre-game lecture is forgotten by kick-off; the mechanics are simple enough to teach in place.</span></li>
+  </ul>
+</div>
+
+<!-- ============ A: START MENU ============ -->
+<div class="stage-label">State A — the start menu (desktop &amp; mobile)</div>
+<div class="door">
+  <div class="wordmark">
+    <div class="t">⚽ RETRO GAFFER</div>
+    <div class="s">Thirty years of football · one dugout</div>
+  </div>
+
+  <button class="resume">
+    <span class="play">▶</span>
+    <span style="flex:1; min-width:0;">
+      <span class="t1">Resume career</span>
+      <span class="t2" style="display:block">Crimson Casuals · Championship · Season 4 · <span class="mono" style="color:var(--cash)">£48M</span></span>
+      <span class="prog" style="display:block">
+        <span class="meter" style="display:block"><span class="f" style="display:block; width:14%"></span></span>
+        <span style="font-size:9px; color:var(--text-dim); font-family:var(--font-mono)">MATCHWEEK 3 OF 22</span>
+      </span>
+    </span>
+    <span class="arrow">→</span>
+  </button>
+
+  <div class="modes">
+    <button class="mode"><span class="e">👑</span><div class="t">New career</div><div class="d">Climb from the National League to the title. Your club, your dynasty.</div></button>
+    <button class="mode"><span class="e">⚡</span><div class="t">Quick classic</div><div class="d">Draft night vs 11 AI clubs, then a one-season league. ~40 minutes.</div></button>
+  </div>
+
+  <div class="daily-chip">
+    <span class="chip" style="border-color:rgba(255,176,0,.4); color:var(--cash); padding:6px 14px;">📅 Daily Gauntlet · today's rule: 🎲 Carnage · resets in 6h</span>
+  </div>
+
+  <div class="tertiary">
+    <button>More ways to play · Endless · Cup · Scenarios</button>
+    <button>How to play</button>
+    <button>Records</button>
+  </div>
+</div>
+
+<!-- ============ B: ONBOARDING ============ -->
+<div class="stage-label">State B — first run · step 1 of 3 (identity)</div>
+<div class="ob">
+  <div class="h">
+    <div class="steps"><i class="done"></i><i></i><i></i></div>
+    <h3>Found your club</h3>
+    <div class="sub">Name it, dress it. You can change everything later in Club → Settings.</div>
+  </div>
+  <div class="b">
+    <div class="shirt"></div>
+    <div style="flex:1; min-width:0;">
+      <label>Club name</label>
+      <input value="Crimson Casuals">
+      <label>Manager name · optional</label>
+      <input placeholder="The Gaffer">
+      <label>Kit</label>
+      <div class="swatches">
+        <i class="on" style="background:#d22"></i><i style="background:#08c"></i><i style="background:#1a6"></i><i style="background:#fb0"></i><i style="background:#f0a"></i><i style="background:#fff"></i><i style="background:#333"></i>
+      </div>
+    </div>
+  </div>
+  <div class="f">
+    <button class="btn ghost">🎲 Surprise me</button>
+    <span style="flex:1"></span>
+    <button class="btn ghost">Skip</button>
+    <button class="btn primary">Next · difficulty →</button>
+  </div>
+</div>
+
+<div class="stage-label" style="margin-top:18px;">…then step 3 is the game itself, with contextual coach-marks:</div>
+<div class="coach">
+  <span style="font-size:16px;">👋</span>
+  <span><b style="color:var(--text)">Your first signing.</b> This is the market — players sharing a club, nation or era link up for a chemistry boost. Sign any 11 to field a team, or let <b style="color:var(--text)">Auto-sign</b> build one.</span>
+  <button class="btn ghost" style="padding:4px 10px; font-size:11px; flex:none;">Got it</button>
+</div>
+
+<div style="height:48px"></div>
+</body>
+</html>
