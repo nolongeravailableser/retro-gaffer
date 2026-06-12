@@ -111,9 +111,12 @@ import {
   offerMessage,
   departureMessage,
   moraleMessage,
+  expectationMessage,
+  confidenceWarning,
   type InboxMessage,
 } from '@/lib/inbox';
 import { morale as playerMorale, moraleBand } from '@/lib/morale';
+import { boardConfidence, confidenceBand, boardExpectation } from '@/lib/board';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
 import {
@@ -846,6 +849,16 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     if (unhappy) {
       const name = getPlayer(unhappy.id)?.name ?? 'A player';
       newMsgs.push(moraleMessage(nextMw, unhappy.id, name));
+    }
+  }
+
+  // Board confidence (Career): if the mood sours mid-season, the board warns you
+  // (once per season). Derived from league position + form; no hard sacking here.
+  if (!done && career) {
+    const conf = boardConfidence(pos, clubs, record);
+    const alreadyWarned = s.inbox.some((m) => m.id === `board-warn-${career.season}`);
+    if (confidenceBand(conf) === 'under-pressure' && !alreadyWarned) {
+      newMsgs.push(confidenceWarning(nextMw, career.season));
     }
   }
 
@@ -1880,6 +1893,8 @@ export const useGameStore = create<GameState>()(
             league,
             career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
             careerReview: null,
+            // The board lays out its expectation for the opening season.
+            inbox: [expectationMessage(1, 1, boardExpectation(tier))],
             best: s.best,
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,
@@ -1971,16 +1986,18 @@ export const useGameStore = create<GameState>()(
           }
           registerPlayers(Object.values(roster));
 
-          // Inbox: note any out-of-contract departures (Bosman frees).
           const departedNames = contracts.departed.map((id) => getPlayer(id)?.name ?? 'A player');
-          const inbox = departedNames.length
-            ? pushMessages(s.inbox, [departureMessage(1, prev.season + 1, departedNames)])
-            : s.inbox;
 
           const nextSeason = prev.season + 1;
           // Apply promotion/relegation: the review already resolved which tier we
           // play in next. A fresh league is generated for that division.
           const tier = review.toTier;
+          // Inbox: out-of-contract departures (Bosman) + the new season's board
+          // expectation (scaled to the division you'll play in).
+          const inbox = pushMessages(s.inbox, [
+            ...(departedNames.length ? [departureMessage(1, nextSeason, departedNames)] : []),
+            expectationMessage(1, nextSeason, boardExpectation(tier)),
+          ]);
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
           const league = leagueWithSquads(seed, division(tier).baseStrength);

@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap **Next-Up tier COMPLETE** — #1 home-and-away, #2/#4 training/fatigue, #3 morale, **#5 Cup mode** all DONE & PUSHED. persistence **v27**, **322 tests**, build green, Classic byte-identical (sim 36.8%). Core loop done; next is the **Future-Edge** tier (board confidence, living market AI, memory-carrying inbox). See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core: Next-Up tier COMPLETE; **Future-Edge tier STARTED — living board confidence DONE & PUSHED**. persistence **v27**, **326 tests**, build green, Classic byte-identical (sim 36.8%). Board confidence is derived + career-only (no sim change). Next Future-Edge: living transfer-market AI, memory-carrying inbox, fan/finance loop. See §3 "START HERE")
 
 ---
 
@@ -767,11 +767,25 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
   The weekly loop is complete. **Next tier: Future-Edge** (board confidence,
   living transfer-market AI, memory-carrying inbox interactions, player dynamics,
   fan/finance loop) — all ride the Inbox + retro-minimal UI.
-- **Future Edge (the "FM killers"):** living board confidence, memory-carrying
-  inbox interactions (the press-conference killer), living transfer-market AI,
-  lightweight player dynamics, fan/finance reinvestment loop. All ride the **Inbox**
-  (our anti-bloat surface) + the retro-minimal UI (our moat). Hold until the weekly
-  loop feels complete.
+- **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**
+  (`lib/board.ts`, see below); memory-carrying inbox interactions (the
+  press-conference killer); living transfer-market AI (rivals re-sign after a
+  poach/Bosman, bid against each other); lightweight player dynamics; fan/finance
+  reinvestment loop. All ride the **Inbox** + retro-minimal UI.
+
+**Future-Edge: living board confidence — ✅ DONE (Career; derived → no persistence,
+no sim change).** `lib/board.ts` (pure, 4 tests): `boardConfidence(position,
+clubs, record)` blends table position (65%) + form (35%) → 0–100, with a neutral
+`CONFIDENCE_NEUTRAL`=60 baseline before any games (the pre-season table is just an
+alphabetical tiebreak); `confidenceBand` (secure/stable/shaky/under-pressure) +
+`confidenceLabel`; `boardExpectation(tier)` (pyramid-scaled ask). Inbox: a
+pre-season `expectationMessage` (posted in `startCareer` + `advanceCareerSeason`)
+and a deduped mid-season `confidenceWarning` (fires once per season when
+confidence is `under-pressure`, in `resolveLeagueRound`). UI: a confidence meter
+in `CareerHub`'s This-Season panel. No hard sacking yet (relegation stays the only
+fail → sim untouched); teeth can be added later without re-architecting. Verified
+live: National-League career → "mount a promotion challenge" expectation in the
+inbox + a "Stable" meter pre-season.
 - **Anti-bloat principles** (already how the codebase works): derive don't store;
   one pure `lib/` module + thin UI per feature; the Inbox is the default UI surface;
   stay seeded/deterministic; don't fork the engine, add a bounded lever.

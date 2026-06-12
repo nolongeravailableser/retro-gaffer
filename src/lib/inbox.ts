@@ -111,6 +111,30 @@ export function boardMessage(week: number, title: string, body: string): InboxMe
   return { id: `board-${week}`, week, kind: 'board', title, body, read: false };
 }
 
+/** The board's pre-season expectation (once per season). */
+export function expectationMessage(week: number, season: number, expectation: string): InboxMessage {
+  return {
+    id: `board-expect-${season}`,
+    week,
+    kind: 'board',
+    title: 'The board sets out its expectations',
+    body: `The owner expects you to ${expectation} this season. Deliver, and your job is safe.`,
+    read: false,
+  };
+}
+
+/** A mid-season warning when board confidence sours (once per season). */
+export function confidenceWarning(week: number, season: number): InboxMessage {
+  return {
+    id: `board-warn-${season}`,
+    week,
+    kind: 'board',
+    title: 'The board is growing concerned',
+    body: 'Results have the owner worried — the mood in the boardroom has soured. A turnaround is needed to win them back.',
+    read: false,
+  };
+}
+
 /** Players who left the club on free transfers (expired contracts / Bosman). */
 export function departureMessage(week: number, season: number, names: readonly string[]): InboxMessage {
   const n = names.length;

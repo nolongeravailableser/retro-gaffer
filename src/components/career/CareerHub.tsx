@@ -8,6 +8,7 @@ import {
   PROMOTION_SPOTS, RELEGATION_SPOTS, TOP_TIER, BOTTOM_TIER, YOU,
 } from '@/lib/league';
 import { DEFAULT_KIT } from '@/lib/kits';
+import { boardConfidence, confidenceBand, confidenceLabel } from '@/lib/board';
 import CrestBadge from '@/components/ui/CrestBadge';
 import PyramidLadder from './PyramidLadder';
 import FacilitiesPanel from './FacilitiesPanel';
@@ -117,6 +118,30 @@ export default function CareerHub() {
                   {row.gd > 0 ? `+${row.gd}` : row.gd}
                 </p>
               )}
+              {row &&
+                (() => {
+                  const conf = boardConfidence(pos, clubs, { w: row.won, d: row.drawn, l: row.lost });
+                  const band = confidenceBand(conf);
+                  const tone =
+                    band === 'secure'
+                      ? 'bg-crt-green'
+                      : band === 'stable'
+                        ? 'bg-crt-green/70'
+                        : band === 'shaky'
+                          ? 'bg-crt-amber'
+                          : 'bg-rose-400';
+                  return (
+                    <div data-testid="board-confidence">
+                      <div className="mb-1 flex justify-between font-ticker text-[10px] text-chrome-muted">
+                        <span>Board confidence</span>
+                        <span className="capitalize">{confidenceLabel(band)}</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                        <div className={`h-full rounded-full ${tone}`} style={{ width: `${conf}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
               <div>
                 <div className="mb-1 flex justify-between font-ticker text-[10px] text-chrome-muted">
                   <span>Matchweek {Math.min(league.matchweek, weeks)}/{weeks}</span>
