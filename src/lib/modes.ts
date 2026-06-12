@@ -24,7 +24,7 @@ import { BOSSES, type BossSchedule } from './bosses';
 import { DEFAULT_TUNING, type EngineTuning } from './engine';
 import { DEFAULT_EVENT_RATES, type EventRates } from './events';
 
-export type ModeId = 'classic' | 'endless' | 'league';
+export type ModeId = 'classic' | 'endless' | 'league' | 'cup';
 
 /** Teams in a league division → matchweeks = teams − 1. */
 export const LEAGUE_TEAMS = 12;
@@ -132,6 +132,30 @@ export const LEAGUE: ModeConfig = {
   finalMustWin: false,
 };
 
+/**
+ * Cup: a standalone single-elimination knockout (8 clubs → 3 rounds). No lives
+ * in the league sense — lose a tie and you're out (`finalMustWin` + the cup's own
+ * elimination in the store). Win the final to lift the trophy. Uses the FM
+ * transfer market to build a squad (like League); the bracket lives in the store.
+ */
+export const CUP_ROUNDS = 3; // 8 → QF, SF, Final
+export const CUP: ModeConfig = {
+  id: 'cup',
+  name: 'Cup Run',
+  blurb: 'A seeded knockout — win three ties to lift the cup. Lose one and you’re out.',
+  scored: false,
+  maxRounds: CUP_ROUNDS,
+  startingLives: 1,
+  startingBankroll: STARTING_BANKROLL,
+  roundIncome: ROUND_INCOME,
+  roundTarget: ROUND_TARGET,
+  roundTargetStep: ROUND_TARGET_STEP,
+  bosses: {},
+  engine: DEFAULT_TUNING,
+  eventRates: DEFAULT_EVENT_RATES,
+  finalMustWin: true,
+};
+
 export const DEFAULT_MODE_ID: ModeId = 'classic';
 
 /** Registry of all playable modes. */
@@ -139,6 +163,7 @@ export const MODES: Record<ModeId, ModeConfig> = {
   classic: CLASSIC,
   endless: ENDLESS,
   league: LEAGUE,
+  cup: CUP,
 };
 
 /** Resolve a mode config by id, falling back to Classic for unknown ids. */

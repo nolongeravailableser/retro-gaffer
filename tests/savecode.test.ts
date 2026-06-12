@@ -155,6 +155,11 @@ describe('migrations', () => {
     expect(kept.sharpness).toEqual({ p1: 80 });
   });
 
+  it('adds a null cup to a pre-cup save (v27)', () => {
+    const migrated = migrateSave(validSave(), 26) as Record<string, unknown>;
+    expect(migrated.cup).toBeNull();
+  });
+
   it('round-trips club identity (name + manager + onboarded)', () => {
     const save = validSave({ clubName: 'Pixel Rovers', managerName: 'The Gaffer', onboarded: true });
     const r = decodeSave(encodeSave(save));

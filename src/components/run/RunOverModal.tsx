@@ -6,6 +6,7 @@ import {
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { ladderTier, bestLabel } from '@/lib/ladder';
 import { table as leagueTable, position as leaguePosition, division, YOU } from '@/lib/league';
+import { roundName as cupRoundName } from '@/lib/cup';
 import { careerHonours } from '@/lib/career';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -51,6 +52,8 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const careerBest = useGameStore((s) => s.careerBest);
   const clubName = useGameStore((s) => s.clubName);
   const league = useGameStore((s) => s.league);
+  const cup = useGameStore((s) => s.cup);
+  const startCup = useGameStore((s) => s.startCup);
 
   const startRun = useGameStore((s) => s.startRun);
   const startLeague = useGameStore((s) => s.startLeague);
@@ -106,7 +109,9 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
       : []),
     league
       ? ['Finished', won ? 'Champions 🏆' : `${ord(leaguePos)} of ${league.clubs.length}`]
-      : ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
+      : cup
+        ? ['Cup run', won ? 'Winners 🏆' : `out · ${cupRoundName(cup.round, cup.rounds)}`]
+        : ['Reached', won ? 'Champions League winner' : `Round ${round} · ${ladderTier(round)}`],
     [
       'Record',
       leagueRow
@@ -131,7 +136,9 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
     ? won ? 'CHAMPIONS OF ENGLAND!' : 'SACKED — CAREER OVER'
     : league
       ? won ? 'LEAGUE CHAMPIONS!' : 'SEASON OVER'
-      : scenario
+      : cup
+        ? won ? 'CUP WINNERS!' : 'KNOCKED OUT'
+        : scenario
         ? won ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED'
         : won
           ? 'CHAMPIONS OF EUROPE!'
@@ -144,6 +151,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
     if (scenarioId) startScenario(scenarioId);
     else if (career) startCareer();
     else if (league) startLeague();
+    else if (cup) startCup();
     else if (daily) newDailyRun();
     else startRun(mode, mutatorId);
   };
@@ -153,7 +161,9 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
       ? 'New Career'
       : league
         ? 'New League Season'
-        : daily
+        : cup
+          ? 'New Cup Run'
+          : daily
           ? "Replay Daily"
           : mode === 'endless'
             ? 'New Endless Run'

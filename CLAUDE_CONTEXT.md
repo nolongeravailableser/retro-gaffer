@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap — **#1 home-and-away**, **#2/#4 training/sharpness/fatigue**, **#3 morale/form** all DONE & PUSHED. persistence **v26**, **316 tests**, build green. Classic byte-identical (sim 36.8%); training+morale are derived player-skill layers the sim doesn't model. Only **#5 cup** left in Next Up. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap **Next-Up tier COMPLETE** — #1 home-and-away, #2/#4 training/fatigue, #3 morale, **#5 Cup mode** all DONE & PUSHED. persistence **v27**, **322 tests**, build green, Classic byte-identical (sim 36.8%). Core loop done; next is the **Future-Edge** tier (board confidence, living market AI, memory-carrying inbox). See §3 "START HERE")
 
 ---
 
@@ -762,10 +762,11 @@ wage) to avoid an economy re-tune — revisit if per-player negotiated wages are
 **⭐⭐ FM-CORE ROADMAP (2026-06-12, user-approved):** strategic feature-map after
 the FM-transfer batch. The engine (`engine.ts`+`stats.ts`: attribute-driven,
 segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
-- **Next Up (core loop):** (1) home-and-away — **✅ DONE**; (2)+(4) **training,
-  sharpness & fatigue** — **✅ DONE**; (3) **morale/form** — **✅ DONE**
-  (`lib/morale.ts`, see below); (5) **cup competition** — **TODO** (`lib/cup.ts`
-  knockout, reuses the engine + inbox draws) — the last Next-Up item.
+- **Next Up (core loop) — ✅ ALL DONE:** (1) home-and-away; (2)+(4) training,
+  sharpness & fatigue; (3) morale/form; (5) **Cup mode** (`lib/cup.ts`, see below).
+  The weekly loop is complete. **Next tier: Future-Edge** (board confidence,
+  living transfer-market AI, memory-carrying inbox interactions, player dynamics,
+  fan/finance loop) — all ride the Inbox + retro-minimal UI.
 - **Future Edge (the "FM killers"):** living board confidence, memory-carrying
   inbox interactions (the press-conference killer), living transfer-market AI,
   lightweight player dynamics, fan/finance reinvestment loop. All ride the **Inbox**
@@ -820,6 +821,23 @@ spams). UI: mood icon (Smile/Meh/Frown) in SquadList + a `morale` inbox kind/ico
 A skill layer the sim doesn't model (≈net-neutral) → sim unmoved (Classic 36.8%).
 Verified live: a frozen-out, poor-form starter showed the Frown + RUSTY and
 triggered "Tony Coton is unhappy" in the inbox; dedup held.
+
+**#5 Cup mode — ✅ DONE (standalone knockout; user chose "standalone" over
+interleaved to protect the snappy identity).** `lib/cup.ts` (pure, 5 tests):
+`generateCup` (reuses `generateLeague` for seeded clubs → 8 clubs, 3 rounds,
+shuffled bracket draw), `cupTies`/`playerTie`, `tieWinner` (score, level →
+seeded shootout), `resolveCupRound` (your tie = real engine, AI ties simmed via
+`simAiResult`, survivors advance). New `cup` ModeId/`CUP` config + `cup: CupState`
+store state (persist **v27** + migration), `startCup`, `resolveCupRoundState`
+(light sprint economy: reward+income+interest−wages, discipline + history; no
+tiers/facilities). Reuses the FM transfer market (`marketTierOf` returns neutral
+for cup; no windows). UI: `CupBracket.tsx` on the Season tab, New Run "Cup Run"
+card, cup-aware `SeasonPanel` header + `RunOverModal` (CUP WINNERS / KNOCKED OUT
++ "New Cup Run" replay). No training/morale/inbox in cup (a 3-match sprint).
+Classic sim untouched (36.8%) — cup is a separate mode the harness doesn't run.
+Verified live: built a squad via the market, played QF→SF→Final (bracket advanced,
+AI ties resolved, a red-card suspension handled via the normal availability flow),
+lost the final → cup-aware end screen.
 
 **Implementation anchors:** market logic in `lib/market.ts`; league/club state
 + squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);

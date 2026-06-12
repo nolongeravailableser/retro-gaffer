@@ -55,6 +55,14 @@ import {
   YOU,
   type LeagueState,
 } from '@/lib/league';
+import {
+  generateCup,
+  playerTie,
+  resolveCupRound as resolveCupBracket,
+  roundName as cupRoundName,
+  CUP_SIZE,
+  type CupState,
+} from '@/lib/cup';
 import { resolveConfig, dailyMutator } from '@/lib/mutators';
 import { getScenario, buildScenarioSquad, runConfig } from '@/lib/scenarios';
 import {
@@ -146,9 +154,14 @@ export function isSlotEligible(
  * has no market (Classic/Endless/Scenario use the roguelike draft shop instead).
  * Career → its current tier; standalone League → the neutral mid tier.
  */
-function marketTierOf(s: { career: CareerState | null; league: LeagueState | null }): number | null {
+function marketTierOf(s: {
+  career: CareerState | null;
+  league: LeagueState | null;
+  cup?: CupState | null;
+}): number | null {
   if (s.career) return s.career.tier;
   if (s.league) return LEAGUE_NEUTRAL_TIER;
+  if (s.cup) return LEAGUE_NEUTRAL_TIER; // Cup builds a squad via the FM market too
   return null;
 }
 
@@ -286,6 +299,8 @@ interface GameState {
   careerReview: ReviewState | null;
   /** Active League-Season state (table/fixtures/results), or null. */
   league: LeagueState | null;
+  /** Active Cup knockout state (bracket), or null. */
+  cup: CupState | null;
   /** FM-style club inbox (Career/League): results, injuries, board notes, bids.
    *  Newest first; empty outside the simulation modes. */
   inbox: InboxMessage[];
@@ -428,6 +443,8 @@ interface GameState {
   startRun: (modeId: ModeId, mutatorId?: string | null) => void;
   /** Start a League Season (round-robin division with a table). */
   startLeague: () => void;
+  /** Begin a new standalone Cup knockout. */
+  startCup: () => void;
   /** Start an authored scenario by id (prebuilt squad + fixed start state). */
   startScenario: (id: string) => void;
   /** Begin a new Career: multiple seasons, persistent squad, board objectives. */
@@ -481,6 +498,7 @@ function freshRun(
     career: null as CareerState | null,
     careerReview: null as ReviewState | null,
     league: null as LeagueState | null,
+    cup: null as CupState | null,
     inbox: [] as InboxMessage[],
     training: DEFAULT_FOCUS as TrainingFocus,
     sharpness: {} as Record<string, number>,
@@ -531,6 +549,7 @@ function saveSlice(s: GameState) {
     career: s.career,
     careerReview: s.careerReview,
     league: s.league,
+    cup: s.cup,
     inbox: s.inbox,
     training: s.training,
     sharpness: s.sharpness,
@@ -855,6 +874,88 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, wager: wagerDelta },
     notice: seasonNote ?? achievementNote,
     noticeKind: 'success',
+    selectedPlayerId: null,
+  };
+}
+
+/**
+ * Resolve a Cup tie (standalone knockout). Your tie uses the real-engine result;
+ * the rest of the round is simmed and survivors advance. Lose your tie and the
+ * run is over; win the final and you lift the trophy. Light economy (a short
+ * sprint): match reward + round income + interest − wages, plus discipline +
+ * player-history accrual.
+ */
+function resolveCupRoundState(s: GameState, result: MatchResult): Partial<GameState> {
+  const cup = s.cup!;
+  const config = runConfig(s);
+  const tie = playerTie(cup);
+  const playerResult =
+    tie && tie.home === YOU
+      ? { home: result.score.a, away: result.score.b }
+      : { home: result.score.b, away: result.score.a };
+  const { alive, results, playerThrough } = resolveCupBracket(cup, playerResult, `${s.runSeed}-cup`);
+
+  // Economy — a short sprint: no facilities/tiers, just the core flow.
+  const outcome = result.outcome;
+  const newStreak = outcome === 'win' ? s.streak + 1 : 0;
+  const reward = MATCH_REWARD[outcome];
+  const roundIncome = config.roundIncome;
+  const intr = interest(s.bankroll);
+  const sb = outcome === 'win' ? streakBonus(newStreak) : 0;
+  const wage = Math.round(wageBill(s.owned.map(getPlayer).filter((p): p is Player => !!p)));
+  const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
+  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage + wagerDelta);
+
+  // Discipline & fitness (same as the ladder).
+  const suspensions = result.suspensions ?? [];
+  const newInjuries: Record<string, number> = {};
+  for (const [id, r] of Object.entries(s.injuries)) if (r > 1) newInjuries[id] = r - 1;
+  for (const inj of result.injuries ?? []) {
+    if (inj.rounds > 0) newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
+  }
+
+  const key = outcome === 'win' ? 'w' : outcome === 'loss' ? 'l' : 'd';
+  const record = { ...s.record, [key]: s.record[key] + 1 };
+  const xiPlayers = s.xi.map((id) => (id ? getPlayer(id) : null)).filter((p): p is Player => !!p);
+  const playerHistory = accrueHistory(s.playerHistory, result.events, xiPlayers, {
+    goalsConceded: result.score.b,
+    outcome,
+    seed: `M-${s.runSeed}-cup-${cup.round}`,
+  });
+
+  const thisRoundName = cupRoundName(cup.round, cup.rounds);
+  const nextRound = cup.round + 1;
+  const wonCup = playerThrough && nextRound > cup.rounds;
+  let runStatus: GameState['runStatus'] = 'playing';
+  let note: string;
+  if (!playerThrough) {
+    runStatus = 'lost';
+    note = `Knocked out of the Cup in the ${thisRoundName}.`;
+  } else if (wonCup) {
+    runStatus = 'won';
+    note = '🏆 CUP WINNERS! You lifted the trophy!';
+  } else {
+    note = `Through to the ${cupRoundName(nextRound, cup.rounds)}!`;
+  }
+
+  const newCup: CupState = { ...cup, alive, results, round: playerThrough ? nextRound : cup.round };
+
+  return {
+    cup: newCup,
+    round: nextRound,
+    bankroll,
+    streak: newStreak,
+    record,
+    suspensions,
+    injuries: newInjuries,
+    playerHistory,
+    wager: 0,
+    runStatus,
+    peakBankroll: Math.max(s.peakBankroll, bankroll),
+    bestStreak: Math.max(s.bestStreak, newStreak),
+    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep: 0, wager: wagerDelta },
+    notice: note,
+    noticeKind: runStatus === 'lost' ? 'info' : 'success',
     selectedPlayerId: null,
   };
 }
@@ -1223,7 +1324,8 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
-          // League runs resolve on a separate path (table/matchweeks, no lives).
+          // Cup + League resolve on their own paths (bracket / table, no lives).
+          if (s.cup) return resolveCupRoundState(s, result);
           if (s.league) return resolveLeagueRound(s, result);
           const config = runConfig(s);
           const boss = getBoss(s.round, config.bosses);
@@ -1699,6 +1801,22 @@ export const useGameStore = create<GameState>()(
             bankroll: CAREER_STARTING_BANKROLL,
             peakBankroll: CAREER_STARTING_BANKROLL,
             league,
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
+          };
+        }),
+
+      startCup: () =>
+        set((s) => {
+          const fresh = freshRun(null, 'cup', null);
+          const cup = generateCup(fresh.runSeed, LEAGUE_BASE_STRENGTH, CUP_SIZE);
+          return {
+            ...fresh,
+            // Build a squad from the FM market (free agents + signings).
+            bankroll: CAREER_STARTING_BANKROLL,
+            peakBankroll: CAREER_STARTING_BANKROLL,
+            cup,
             best: s.best,
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,

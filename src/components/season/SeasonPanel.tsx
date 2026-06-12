@@ -26,6 +26,7 @@ import {
   PROMOTION_SPOTS,
   RELEGATION_SPOTS,
 } from '@/lib/league';
+import { roundName as cupRoundName } from '@/lib/cup';
 import { FACILITIES, FACILITY_IDS, MAX_LEVEL } from '@/lib/stadium';
 import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
@@ -74,6 +75,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   const scenario = getScenario(scenarioId);
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
+  const cup = useGameStore((s) => s.cup);
   const careerBest = useGameStore((s) => s.careerBest);
   const clubName = useGameStore((s) => s.clubName);
   const startRun = useGameStore((s) => s.startRun);
@@ -316,6 +318,13 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
               <h2 className="font-display text-xl">
                 {career ? division(career.tier).name : 'League Season'}
               </h2>
+            </>
+          ) : cup ? (
+            <>
+              <p className="text-xs uppercase tracking-wide text-chrome-muted">
+                Cup · {cup.alive.length} clubs left
+              </p>
+              <h2 className="font-display text-xl">{cupRoundName(cup.round, cup.rounds)}</h2>
             </>
           ) : (
             <>

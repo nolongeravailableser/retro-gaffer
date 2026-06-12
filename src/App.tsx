@@ -16,6 +16,7 @@ import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
 import { generateOpponent } from '@/lib/opponent';
 import { playerFixture, YOU } from '@/lib/league';
+import { playerTie as cupPlayerTie } from '@/lib/cup';
 import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
@@ -52,6 +53,7 @@ import CareerHub from '@/components/career/CareerHub';
 import TransferMarket from '@/components/shop/TransferMarket';
 import InboxPanel from '@/components/inbox/InboxPanel';
 import TrainingPanel from '@/components/training/TrainingPanel';
+import CupBracket from '@/components/cup/CupBracket';
 import { unreadCount } from '@/lib/inbox';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
@@ -86,6 +88,7 @@ export default function App() {
   const formation = useGameStore((s) => s.formation);
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
+  const cup = useGameStore((s) => s.cup);
   const training = useGameStore((s) => s.training);
   const sharpness = useGameStore((s) => s.sharpness);
   const fatigue = useGameStore((s) => s.fatigue);
@@ -178,6 +181,19 @@ export default function App() {
 
   const roundOpponent = useMemo<MatchTeam | null>(() => {
     if (!playerTeam || runStatus !== 'playing') return null;
+    // Cup: face this round's knockout opponent (its club's strength).
+    if (cup) {
+      const tie = cupPlayerTie(cup);
+      if (!tie) return null;
+      const oppId = tie.home === YOU ? tie.away : tie.home;
+      const club = cup.clubs.find((c) => c.id === oppId);
+      if (!club) return null;
+      const half = Math.round(club.strength / 2);
+      return {
+        ...generateOpponent(half, half, `${runSeed}-C${cup.round}-${oppId}`),
+        name: club.name,
+      };
+    }
     // League: face this matchweek's fixture opponent (its club's strength).
     if (league) {
       const pf = playerFixture(league, league.matchweek);
@@ -195,7 +211,7 @@ export default function App() {
       roundTarget: config.roundTarget,
       bosses: config.bosses,
     });
-  }, [playerTeam, round, runSeed, runStatus, config, league]);
+  }, [playerTeam, round, runSeed, runStatus, config, league, cup]);
 
   const ready = filled === XI_SIZE;
 
@@ -387,9 +403,9 @@ export default function App() {
 
         {activeTab === 'transfers' && (
           <div className="flex flex-col gap-4">
-            {/* Career/League use the FM-style transfer market; Classic & co. keep
-                the roguelike draft shop (featured agent + scouting). */}
-            {career || league ? (
+            {/* Career/League/Cup use the FM-style transfer market; Classic & co.
+                keep the roguelike draft shop (featured agent + scouting). */}
+            {career || league || cup ? (
               <TransferMarket />
             ) : (
               <>
@@ -415,6 +431,7 @@ export default function App() {
               onPlay={playRound}
             />
             {league && <LeagueTable />}
+            {cup && <CupBracket />}
           </div>
         )}
 
