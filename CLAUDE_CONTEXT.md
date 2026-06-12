@@ -10,12 +10,12 @@
 > division economy table + NEW sponsorship (local + global/TV) & disciplinary fines,
 > calibrated net-neutral). Standard == today; sim preserved (Classic **36.8%**, career
 > champ ~66% / sacked ~1% / PL median £526M / max £1462M). persistence **v28**,
-> **371 tests**, build green, persistence **v29**. PILLAR 5 (Manager career — "a
-> sacking is NOT game over; apply for jobs matching reputation") FULLY SHIPPED +
-> LIVE-VERIFIED: sacking → Job Market → take over a new club with its inherited real
-> squad; career continues. Pillars 1 & 3 also live-verified this session. REMAINING:
-> Pillar 2 (Start Menu, approved mock). See §3 "START HERE" → "⭐⭐⭐ STRATEGIC
-> RE-FOUNDATION".)
+> **371 tests**, build green, persistence **v29**. ⭐ THE 5-PILLAR STRATEGIC
+> RE-FOUNDATION IS COMPLETE — all of Difficulty Matrix (P4), Financial Balancing
+> Array (P1), Unknown-pool start (P3), Manager career/job market (P5, "a sacking is
+> NOT game over"), and the Start Menu front door + difficulty picker (P2) are
+> shipped & live-verified. Classic 36.8% + career economy preserved throughout.
+> Nothing pushed. See §3 "START HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
 
 ---
 
@@ -838,14 +838,19 @@ make the game a "world-class" FM. We discussed architecture before building; the
     - **Optional future polish:** difficulty tie-in (Hardcore = harsher rep hit / fewer
       offers — currently difficulty-agnostic); a unified cross-club trophy cabinet view;
       reputation shown in the Career Hub.
-- **Pillar 2 — Start Menu + mode demotion (mock APPROVED, build pending).** A real front door (Resume
-  one-click / New Career w/ **difficulty picker** + club identity / Quick Classic /
-  Tutorial), branching on the existing `onboarded` flag + a resumable-save check.
-  Demote (don't delete) the extra modes behind a "More ways to play" entry (decision
-  #2). **This is where the difficulty PICKER lands** (engine wired since P4) — and
-  where the CONSOLIDATED LIVE VERIFICATION happens (one careful destructive-test
-  session w/ save backup: new career → pick Hardcore → see grey squad + sponsorship
-  inbox → play a match → fines/payout → wage cap → restore save).
+- **Pillar 2 — Start Menu + mode demotion ✅ SHIPPED + LIVE-VERIFIED (commit `f206b06`).**
+  `components/run/StartMenu.tsx` (App-level, z-55, shown on load, hidden during a
+  match): one-click **Resume** hero that reads the live run back (mode/career division +
+  season + matchweek + bankroll); **New Career** → a dedicated **difficulty picker**
+  step (Easy/Standard/Hardcore cards from `DifficultyConfig.effects`, Standard
+  pre-selected) → `startCareer(picked)`; **Quick Classic**; and the demoted modes
+  (Endless/Cup/Scenarios/Daily) behind **"More ways to play"** → the existing
+  NewRunModal (decision #2). How-to-play + Records links. The **RETRO GAFFER logo is
+  the home button** back to the menu; NewRunModal's `onStarted` dismisses it;
+  first-time visitors hit onboarding (z-70) first. This is where the difficulty
+  engine (wired since P4) finally becomes reachable in normal play. Live-verified
+  (Resume summary correct, difficulty matrix renders, Resume enters game, logo
+  returns, no console errors, R7 save untouched).
 
 **Anti-bloat principle reaffirmed:** the codebase is v28 / 347 tests — the lever is
 CONSOLIDATION (declarative tables, reuse overlay/ModeConfig/persistence patterns), not
