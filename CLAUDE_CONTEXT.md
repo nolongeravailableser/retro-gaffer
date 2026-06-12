@@ -10,8 +10,10 @@
 > division economy table + NEW sponsorship (local + global/TV) & disciplinary fines,
 > calibrated net-neutral). Standard == today; sim preserved (Classic **36.8%**, career
 > champ ~66% / sacked ~1% / PL median £526M / max £1462M). persistence **v28**,
-> **355 tests**, build green. NEXT: Pillar 3 (unknown-pool start). See §3 "START
-> HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
+> **359 tests**, build green. P3 unknown-pool start ALSO shipped (a new career
+> begins with grey generated journeymen). NEXT + LAST: Pillar 2 (Start Menu +
+> difficulty picker + mode demotion + the consolidated live verification). See §3
+> "START HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
 
 ---
 
@@ -789,12 +791,23 @@ make the game a "world-class" FM. We discussed architecture before building; the
     Pillar 2** — the new observable surfaces (difficulty picker, Hardcore cap/sacking,
     high-tier sponsorship/fines) need the Start-Menu picker to be UI-reachable; verify
     them together then.
-- **Pillar 3 — Unknown-pool starting squad (NEXT).** `generateUnknowns(seed, tier)` (sibling
-  of `generateYouth`) seeds a grey XI at `startCareer` via the existing pool overlay
-  (real = players.json, generated = overlay). Unknowns are the floor (decision #3).
-- **Pillar 2 — Start Menu + mode demotion.** A real front door (Resume one-click /
-  New Career w/ difficulty + club identity / Quick Classic / Tutorial), branching on
-  the existing `onboarded` flag + a resumable-save check. Demote the extra modes.
+- **Pillar 3 — Unknown-pool starting squad ✅ SHIPPED.** `generateUnknowns(seed)` in
+  `lib/career.ts` — a deterministic 15-man grey squad (2 GK/5 DEF/5 MID/3 FWD), rated
+  below the free-agent floor (overall < 64), `unknown-…` ids that never collide with
+  the real pool, tagged 'unknown'. `startCareer` seeds it via the existing overlay
+  (real = players.json, generated = overlay), snapshots into `career.roster` (survives
+  reload — rehydrate re-registers), auto-fields a legal XI + bench. App routes the
+  non-empty new squad to Tactics → you land on your grey XI; every real signing is an
+  upgrade (decision #3). No persistence change. Sim drafts directly → untouched.
+  career.test (3) + careerLeague (1). Live visual check batched into Pillar 2.
+- **Pillar 2 — Start Menu + mode demotion (NEXT + LAST).** A real front door (Resume
+  one-click / New Career w/ **difficulty picker** + club identity / Quick Classic /
+  Tutorial), branching on the existing `onboarded` flag + a resumable-save check.
+  Demote (don't delete) the extra modes behind a "More ways to play" entry (decision
+  #2). **This is where the difficulty PICKER lands** (engine wired since P4) — and
+  where the CONSOLIDATED LIVE VERIFICATION happens (one careful destructive-test
+  session w/ save backup: new career → pick Hardcore → see grey squad + sponsorship
+  inbox → play a match → fines/payout → wage cap → restore save).
 
 **Anti-bloat principle reaffirmed:** the codebase is v28 / 347 tests — the lever is
 CONSOLIDATION (declarative tables, reuse overlay/ModeConfig/persistence patterns), not
