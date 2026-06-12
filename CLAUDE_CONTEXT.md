@@ -888,12 +888,19 @@ round-robin league** (11 matchweeks) → finish 1st to win.
   NEW Classic runs are draft leagues. The old ladder resolve path is still intact.
 - **Live-verified:** drafted Grobbelaar/Pirlo/Guardiola/Ronaldinho/Giggs (str 1909 vs
   AI 1953-1964), played MW1, table + AI fixtures resolved, no console errors.
-- **REMAINING / follow-ups:** (1) no Monte-Carlo balance sim for the draft-league
-  economy yet (draft engine is unit-tested; `CLASSIC_DRAFT_BUDGET` could be tuned).
-  (2) HUD lives-hearts + bankroll are vestigial chrome for a league (cosmetic). (3) the
-  Transfers tab for a post-draft classic-league run may still show the gacha shop
-  (unused in play — you play from Tactics/Season). (4) Not pushed — user may want to
-  play it first.
+- **Debugged + balanced (commits `e387fb3`, `f13b684`):** a full playthrough fixed two
+  real stranding bugs (the board didn't surface affordable players when budget ran low
+  — both for a needed role and for depth at £0; now it surfaces affordable + a
+  last-resort, so the squad ALWAYS fills). Cosmetic: replay label "New Classic", HUD
+  hides lives-hearts in a league. **Balance sim (`tests/draft.sim.ts`, via `npm run
+  sim`):** 120 seasons/difficulty through the real draft+engine; asserts the draft
+  never strands (0/360). **Perf:** `aiPick` was O(pool²)/pick (laggy in-game + a slow
+  sim) → one-pass `reserveCost` + lazy `aiPick` (snappy). **Difficulty-scaled rivals:**
+  AI budget = `AI_DRAFT_BUDGET(120)/startBankrollMult` (weaker clubs on Easy, richer on
+  Hardcore) → clean curve: Easy champ 15%/top3 48%, Std 13%/30%, Hard 4%/18%.
+- **REMAINING:** (1) vestigial bankroll/economy during the league season (cosmetic —
+  no spending post-draft). (2) the Transfers tab for a post-draft classic-league run may
+  still show the gacha shop (unused — you play from Tactics/Season).
 
 ---
 
