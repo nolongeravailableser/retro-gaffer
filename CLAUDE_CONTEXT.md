@@ -4,11 +4,14 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **Last updated:** 2026-06-12 (NEW STRATEGIC DIRECTION — a 4-pillar re-foundation
-> began. **Pillar 4 (Operational Difficulty Matrix) SHIPPED**: Easy/Standard/Hardcore
-> with board sacking teeth + difficulty-scaled opening budget. Standard == today
-> (sim untouched). persistence **v28**, **347 tests**, build green, Classic **36.8%**,
-> career Standard 67% champ / 1.3% sacked (unchanged by design). See §3 "START HERE" →
-> "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
+> in progress. **Pillars 4 + 1 SHIPPED.** P4 Operational Difficulty Matrix
+> (Easy/Standard/Hardcore: board sacking teeth, difficulty-scaled budget, hard wage
+> ceiling). P1 Financial Balancing Array (`lib/finance.ts`: one declarative per-
+> division economy table + NEW sponsorship (local + global/TV) & disciplinary fines,
+> calibrated net-neutral). Standard == today; sim preserved (Classic **36.8%**, career
+> champ ~66% / sacked ~1% / PL median £526M / max £1462M). persistence **v28**,
+> **355 tests**, build green. NEXT: Pillar 3 (unknown-pool start). See §3 "START
+> HERE" → "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
 
 ---
 
@@ -761,13 +764,32 @@ make the game a "world-class" FM. We discussed architecture before building; the
     Pillar 1 (finances); agentInflation → negotiation polish; rivalAggression → market.
     The **difficulty PICKER UI** lands with the Start Menu (Pillar 2) — for now
     difficulty defaults to Standard (no regression) and is fully engine-wired.
-- **Pillar 1 — Real-World Financial Balancing Array (NEXT).** Consolidate the ~8
-  scattered tier constants (baseStrength, tierMult, WAGE_TIER_K, MARKET_TIER_K, upkeep,
-  matchday, capacity) into ONE declarative `Division` economic profile; ADD the two
-  genuinely-new streams: **sponsorship** (season-level, local flat + global reputation-
-  gated for the top tiers) and **fines** (disciplinary overhead tied to the existing
-  card system). PROPORTIONAL scaling. Re-gate `npm run sim` (Classic 36.8% sacred).
-- **Pillar 3 — Unknown-pool starting squad.** `generateUnknowns(seed, tier)` (sibling
+- **Pillar 1 — Real-World Financial Balancing Array ✅ SHIPPED.** `src/lib/finance.ts`
+  is the ONE declarative source of truth for every division's economy. Commits:
+  - **1a (consolidation):** `DIVISION_FINANCE` table holds per-tier prizeMult/wageMult/
+    marketMult (computed by the SAME formulas → behaviour-neutral) PLUS the new fields.
+    `wages.ts`/`market.ts` re-export thin aliases (`tierMult`, `wageTierMult`,
+    `marketTierMult`, `MARKET_TIER_K`, `WAGE_TIER_K`, `LEAGUE_NEUTRAL_TIER`) so every
+    call site is untouched. Sim provably identical. `finance.test.ts` (5).
+  - **1b/1c (sponsorship + fines):** season-level **sponsorship** (`sponsorLocal` every
+    club + reputation-gated `sponsorGlobal`/TV money, only the top flight) banked in
+    startCareer/advanceCareerSeason with a `sponsorshipMessage` inbox note; per-match
+    **disciplinary fines** (`disciplinaryFine`, red = 2 yellows, tier-scaled) counted
+    from side-A card events in `resolveLeagueRound`, shown in the payout breakdown
+    (`lastIncome.fine`). Calibrated so each tier's sponsorship ≈ its average fines
+    (texture without runaway; top runs a slight deficit = hoarding brake, bottom a
+    slight surplus = solvency cushion; a DISCIPLINED squad keeps the surplus). Sim
+    mirrors both → economy preserved (PL median £546M→£526M, max £1620M→£1462M,
+    Classic 36.8%). +2 tests.
+  - **1d (wage cap):** the difficulty budget lever — `signPlayer` enforces a hard
+    wage ceiling = `wageBudget × difficulty.wageBudgetMult` (Easy lenient, Standard
+    at-budget, Hardcore tight → galáctico-stacking gated). `difficulty.wageCap()`.
+    signPlayer isn't in the sim → economy unchanged. +1 test.
+  - **NO persistence change** (all derived). **Live browser verification deferred to
+    Pillar 2** — the new observable surfaces (difficulty picker, Hardcore cap/sacking,
+    high-tier sponsorship/fines) need the Start-Menu picker to be UI-reachable; verify
+    them together then.
+- **Pillar 3 — Unknown-pool starting squad (NEXT).** `generateUnknowns(seed, tier)` (sibling
   of `generateYouth`) seeds a grey XI at `startCareer` via the existing pool overlay
   (real = players.json, generated = overlay). Unknowns are the floor (decision #3).
 - **Pillar 2 — Start Menu + mode demotion.** A real front door (Resume one-click /
