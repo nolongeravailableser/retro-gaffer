@@ -5,9 +5,22 @@
 >
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
 > live-playtest QA + a trap fix + a **career economy retighten** + **contract-renewal
-> money sink**. All career-only/economy; Classic untouched. Gates: **389 tests + balance
-> sims**, tsc + build green, persistence **v30** (no bump — all derived), **Classic
-> ladder 36.8%** preserved. (HEAD `46fd64e` + a docs commit; pushing as a batch.)
+> money sink** + a **domestic cup inside Career**. All career-only; Classic untouched.
+> Gates: **394 tests + balance sims**, tsc + build green, persistence **v30** (no bump —
+> cup reuses the existing persisted `s.cup` + a rehydrate backfill), **Classic ladder
+> 36.8%** preserved. (HEAD `ef8d098`; difficulty/trap/economy/renewals already PUSHED as
+> `6d626b9`; the cup commit is local — pushing next.)
+>
+> **Domestic cup in Career (commit `ef8d098`):** a parallel knockout interleaved with the
+> league — QF/SF/Final at matchweeks 6/12/18 as EXTRA midweek ties (the league matchweek
+> doesn't advance on a cup tie). Reuses `lib/cup.ts`. **Glory, not gold:** no prize money
+> (economy untouched), but injuries carry and a final win is logged as a Cup title
+> (`SeasonRecord.cupWon` → `careerHonours.cupTitles` → `managerReputation`). New
+> `careerCupDue`/`cupChampion`/`CAREER_CUP_ROUND_WEEKS` (cup.ts); `resolveCareerCupRound`
+> in the store (never ends the run / never advances the matchweek); standalone Cup mode
+> keeps its own path (`s.cup && !s.career`). UI: career-aware `CupBracket`, cup-framed
+> `SeasonPanel`, "🏆 Play Cup Tie" CTA, Cups in the CareerHub honours. Live-verified the
+> full interleave end-to-end.
 >
 > **Economy arc (this session):** the harder climb lengthened careers → an inflated
 > top-tier hoard (T1 median £618M, 91% hoarding >£400M). Two moves: (1) **retighten** —
@@ -794,8 +807,9 @@ programmatically** from existing single position (confirm before building).
 > Today I want to: **[PICK ONE — fill this in]**
 >   (a) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
 >       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
->   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
->       international call-ups, set-piece/tactics depth;
+>   (c) a **new feature** — the domestic cup is DONE (✅ `ef8d098`); remaining ideas:
+>       loans, international call-ups, set-piece/tactics depth, or a continental/European
+>       cup gated on a high league finish;
 >   (d) a **full QA sweep** (draft tournament + a multi-season manager career w/ a
 >       sacking & job switch + a standalone League/Cup run);
 >   (e) **more money-matters depth** — contract-renewal bonuses now ship (the standing
