@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 29;
+export const CURRENT_VERSION = 30;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -186,6 +186,8 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
     : { ...s, difficulty: 'standard' }),
   // Manager career / job market: existing saves have no pending offers.
   29: (s) => ('jobMarket' in (s as object) ? s : { ...s, jobMarket: null }),
+  // Classic draft league: existing saves have no in-progress draft.
+  30: (s) => ('draft' in (s as object) ? s : { ...s, draft: null }),
 };
 
 /** Upgrade a saved blob from its version to CURRENT_VERSION. */

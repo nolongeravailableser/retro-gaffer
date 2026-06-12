@@ -18,6 +18,7 @@
  */
 
 import { Rng } from './rng';
+import { roundRobin, YOU, type LeagueState, type LeagueClub } from './league';
 import type { Role } from './types';
 
 /** A player as the draft sees it — id, role, rating (atk+def), and £m value. */
@@ -32,6 +33,13 @@ export interface DraftablePlayer {
 export const DRAFT_NEED: Record<Role, number> = { GK: 1, DEF: 4, MID: 4, FWD: 2 };
 /** Total players each team drafts (a legal XI + three for the bench). */
 export const DRAFT_SQUAD_SIZE = 14;
+
+/**
+ * Baseline draft budget (£m) for a Classic team — enough to draft a competitive
+ * 14-man squad from the pool. YOUR budget scales from this by difficulty; AI
+ * clubs get this with a little seeded spread. Tuned for a fair, varied league.
+ */
+export const CLASSIC_DRAFT_BUDGET = 150;
 
 export interface DraftTeam {
   id: string;
@@ -156,6 +164,32 @@ export function canPick(state: DraftState, teamIdx: number, playerId: string): b
 }
 
 /**
+ * Whether a team may draft a player in the UI. ROLE-FIRST: while required roles
+ * are unfilled you may only draft those roles (so a legal XI is built early, when
+ * cheap players are plentiful — no stranding yourself with a lopsided squad). A
+ * needed-role pick is allowed within the reserve guard, OR as a last resort if
+ * it's the cheapest available of that role (so you can ALWAYS complete an XI,
+ * even if a depleted market means dipping the budget). Once the XI is complete,
+ * any affordable player is fair game for depth.
+ */
+export function pickableInDraft(state: DraftState, teamIdx: number, playerId: string): boolean {
+  const team = state.teams[teamIdx];
+  const p = state.meta[playerId];
+  if (!team || !p || !state.pool.includes(playerId)) return false;
+  const needs = unmetNeeds(state, team);
+  const neededRoles = new Set(Object.keys(needs) as Role[]);
+  if (neededRoles.size) {
+    if (!neededRoles.has(p.role)) return false; // fill required roles first
+    if (canPick(state, teamIdx, playerId)) return true;
+    const cheapestOfRole = Math.min(
+      ...state.pool.filter((id) => state.meta[id].role === p.role).map((id) => state.meta[id].value)
+    );
+    return p.value === cheapestOfRole; // last resort — always completable
+  }
+  return p.value <= team.budget; // XI complete → depth, simple affordability
+}
+
+/**
  * The AI's pick for the team on the clock. Prefers players that fill a still-
  * needed required role (completing a legal XI first), then takes the best
  * available it can sensibly afford — with a little seeded variety so clubs don't
@@ -213,4 +247,21 @@ export function applyPick(state: DraftState, playerId: string): DraftState {
 /** A drafted club's strength (ATK+DEF) — the sum of its roster's ratings. */
 export function draftedStrength(state: DraftState, teamIdx: number): number {
   return state.teams[teamIdx].roster.reduce((s, id) => s + (state.meta[id]?.rating ?? 0), 0);
+}
+
+/**
+ * Turn a completed draft into a Classic league: each team becomes a club with
+ * the squad it drafted (so the AI you face is literally the squad it built), and
+ * a single round-robin fixture list (every pair once → a quick season). The
+ * first team is always YOU.
+ */
+export function leagueFromDraft(state: DraftState): LeagueState {
+  const clubs: LeagueClub[] = state.teams.map((t, i) => ({
+    id: i === 0 ? YOU : t.id,
+    name: t.name,
+    strength: draftedStrength(state, i),
+    squad: [...t.roster],
+  }));
+  const fixtures = roundRobin(clubs.map((c) => c.id));
+  return { clubs, fixtures, results: {}, matchweek: 1 };
 }

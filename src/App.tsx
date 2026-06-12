@@ -51,6 +51,7 @@ import CrestBadge from '@/components/ui/CrestBadge';
 import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import StartMenu from '@/components/run/StartMenu';
+import DraftRoom from '@/components/run/DraftRoom';
 import JobMarket from '@/components/career/JobMarket';
 import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
@@ -511,6 +512,8 @@ export default function App() {
 
       <CareerReview />
       <RunOverModal onNewRun={() => setNewRunOpen(true)} />
+      {/* Classic draft (z-65): snake-draft your squad against the AI clubs. */}
+      <DraftRoom />
       {/* Sacked → the Job Market (z-65, above the run-over overlay). A manager's
           career is never over; apply for a club matching your reputation. */}
       <JobMarket />

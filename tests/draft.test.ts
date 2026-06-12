@@ -5,6 +5,7 @@ import {
   currentTeam,
   draftComplete,
   canPick,
+  pickableInDraft,
   aiPick,
   applyPick,
   draftedStrength,
@@ -138,5 +139,37 @@ describe('canPick — affordability + reserve guard', () => {
     const state = generateDraft('s', [{ id: 'YOU', name: 'You', budget: 60 }], pool);
     expect(canPick(state, 0, 'star')).toBe(false); // the splurge strands you
     expect(canPick(state, 0, 'gk1')).toBe(true); // a £3 role-filler is fine
+  });
+});
+
+describe('pickableInDraft — role-first for the player', () => {
+  const pool: DraftablePlayer[] = [
+    { id: 'gk1', role: 'GK', rating: 90, value: 3 },
+    { id: 'gkExp', role: 'GK', rating: 200, value: 99 }, // unaffordable GK
+    { id: 'd1', role: 'DEF', rating: 90, value: 3 },
+    { id: 'm1', role: 'MID', rating: 90, value: 3 },
+    { id: 'mStar', role: 'MID', rating: 200, value: 10 }, // affordable but not yet needed
+    { id: 'f1', role: 'FWD', rating: 90, value: 3 },
+  ];
+
+  it('only lets you draft still-needed roles until your XI is complete', () => {
+    const state = generateDraft('s', [{ id: 'YOU', name: 'You', budget: 100 }], pool);
+    // Fresh squad needs every role → a MID is pickable (needed)…
+    expect(pickableInDraft(state, 0, 'm1')).toBe(true);
+    // …but after filling all four MID slots, further MIDs are NOT pickable while
+    // GK/DEF/FWD are still required (role-first).
+    let s = state;
+    for (const id of ['m1', 'mStar']) s = applyPick(s, id); // 2 MIDs
+    // Still needs 2 more MID actually (DRAFT_NEED.MID=4), so MID still pickable.
+    expect(pickableInDraft(s, 0, 'gk1')).toBe(true); // GK needed → pickable
+  });
+
+  it('last resort: the cheapest needed-role player is always pickable, even over budget', () => {
+    // Budget too small for the only (expensive) GK, but you NEED a GK → the
+    // cheapest available GK is pickable anyway so you can complete a legal XI.
+    const tight: DraftablePlayer[] = [{ id: 'onlyGk', role: 'GK', rating: 200, value: 99 }];
+    const state = generateDraft('s', [{ id: 'YOU', name: 'You', budget: 5 }], tight);
+    expect(canPick(state, 0, 'onlyGk')).toBe(false); // can't afford under the guard
+    expect(pickableInDraft(state, 0, 'onlyGk')).toBe(true); // …but it's the last resort
   });
 });

@@ -56,6 +56,7 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const startCup = useGameStore((s) => s.startCup);
 
   const startRun = useGameStore((s) => s.startRun);
+  const startClassicDraft = useGameStore((s) => s.startClassicDraft);
   const startLeague = useGameStore((s) => s.startLeague);
   const startScenario = useGameStore((s) => s.startScenario);
   const startCareer = useGameStore((s) => s.startCareer);
@@ -150,6 +151,9 @@ export default function RunOverModal({ onNewRun }: RunOverModalProps) {
   const replay = () => {
     if (scenarioId) startScenario(scenarioId);
     else if (career) startCareer();
+    // A Classic draft league also has `league` set — check the mode first so
+    // replaying Classic starts a fresh DRAFT, not a standalone League.
+    else if (mode === 'classic') startClassicDraft();
     else if (league) startLeague();
     else if (cup) startCup();
     else if (daily) newDailyRun();

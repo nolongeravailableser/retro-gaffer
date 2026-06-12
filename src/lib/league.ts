@@ -156,7 +156,7 @@ export interface TableRow {
   points: number;
 }
 
-const CLUB_NAMES = [
+export const CLUB_NAMES = [
   'Northgate Rovers', 'Selby Athletic', 'Marsh Town', 'Kingsford United',
   'Pemberton FC', 'Ravenhill City', 'Ashcombe Wanderers', 'Dewsworth Albion',
   'Halloway Town', 'Brockmoor FC', 'Thornbury United', 'Castleford Park',

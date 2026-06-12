@@ -50,6 +50,7 @@ import {
   nextTier,
   division,
   CLUB_SQUAD_NEED,
+  CLUB_NAMES,
   isWindowOpen,
   nextWindowOpensAt,
   BOTTOM_TIER,
@@ -57,6 +58,18 @@ import {
   type LeagueState,
   type LeagueClub,
 } from '@/lib/league';
+import {
+  generateDraft,
+  applyPick,
+  aiPick,
+  pickableInDraft,
+  currentTeam,
+  draftComplete,
+  leagueFromDraft,
+  CLASSIC_DRAFT_BUDGET,
+  type DraftState,
+  type DraftablePlayer,
+} from '@/lib/draft';
 import {
   generateCup,
   playerTie,
@@ -105,6 +118,7 @@ import {
   isFreeAgent,
   rivalBids,
   aiClubSigning,
+  baseValue,
   FREE_AGENT_MAX_OVERALL,
   CAREER_STARTING_BANKROLL,
   type BidderClub,
@@ -220,6 +234,42 @@ function leagueWithSquads(seed: string | number, strength: number): LeagueState 
   const lg = generateLeague(seed, strength, LEAGUE_TEAMS);
   assignClubSquads(lg.clubs, POOL);
   return lg;
+}
+
+/** Run AI draft picks until it's the player's turn (team 0) or the draft ends. */
+function advanceAiDraft(draft: DraftState): DraftState {
+  let d = draft;
+  while (!draftComplete(d) && currentTeam(d) !== 0) {
+    const t = currentTeam(d)!;
+    const pick = aiPick(d, t);
+    if (!pick) break;
+    d = applyPick(d, pick);
+  }
+  return d;
+}
+
+/**
+ * The Classic draft is done: turn the drafted teams into a single-round-robin
+ * league (you face the squads everyone built) and field your drafted XI.
+ */
+function finishClassicDraft(draft: DraftState): Partial<GameState> {
+  const league = leagueFromDraft(draft);
+  const owned = [...draft.teams[0].roster];
+  const byRole: Record<string, string[]> = {};
+  for (const id of owned) {
+    const r = getPlayer(id)?.role;
+    if (r) (byRole[r] ??= []).push(id);
+  }
+  const xi: (string | null)[] = emptyXi();
+  for (let i = 0; i < XI_SIZE; i++) {
+    const q = byRole[slotRole(DEFAULT_FORMATION, i)];
+    if (q && q.length) xi[i] = q.shift()!;
+  }
+  const bench: string[] = [];
+  for (const ids of Object.values(byRole)) {
+    for (const id of ids) if (bench.length < BENCH_SIZE) bench.push(id);
+  }
+  return { draft: null, league, owned, xi, bench };
 }
 
 type ShopSlots = (string | null)[];
@@ -338,6 +388,8 @@ interface GameState {
   league: LeagueState | null;
   /** Active Cup knockout state (bracket), or null. */
   cup: CupState | null;
+  /** In-progress Classic draft (snake-draft a squad vs AI clubs), or null. */
+  draft: DraftState | null;
   /** FM-style club inbox (Career/League): results, injuries, board notes, bids.
    *  Newest first; empty outside the simulation modes. */
   inbox: InboxMessage[];
@@ -488,6 +540,10 @@ interface GameState {
   startLeague: () => void;
   /** Begin a new standalone Cup knockout. */
   startCup: () => void;
+  /** Begin a new Classic run: snake-draft a squad vs AI clubs, then a league. */
+  startClassicDraft: (difficulty?: DifficultyId) => void;
+  /** Make your pick in the Classic draft (then the AI clubs pick around you). */
+  draftPick: (playerId: string) => void;
   /** Start an authored scenario by id (prebuilt squad + fixed start state). */
   startScenario: (id: string) => void;
   /** Begin a new Career at the chosen difficulty (defaults to the current one). */
@@ -548,6 +604,7 @@ function freshRun(
     jobMarket: null as Vacancy[] | null,
     league: null as LeagueState | null,
     cup: null as CupState | null,
+    draft: null as DraftState | null,
     inbox: [] as InboxMessage[],
     training: DEFAULT_FOCUS as TrainingFocus,
     sharpness: {} as Record<string, number>,
@@ -600,6 +657,7 @@ function saveSlice(s: GameState) {
     jobMarket: s.jobMarket,
     league: s.league,
     cup: s.cup,
+    draft: s.draft,
     inbox: s.inbox,
     training: s.training,
     sharpness: s.sharpness,
@@ -2008,6 +2066,63 @@ export const useGameStore = create<GameState>()(
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,
           };
+        }),
+
+      // Begin a Classic run: a snake draft for your squad against 11 AI clubs,
+      // each with a budget (yours scales with difficulty). When the draft ends
+      // the drafted squads become a single-round-robin league — win it to win.
+      startClassicDraft: (difficulty) =>
+        set((s) => {
+          const fresh = freshRun(null, 'classic', null);
+          clearOverlay();
+          const diffId = difficulty ?? s.difficulty;
+          const cfg = getDifficulty(diffId);
+          const rng = new Rng(`${fresh.runSeed}-classicdraft`);
+          const names = [...CLUB_NAMES];
+          const teams: Array<{ id: string; name: string; budget: number }> = [
+            { id: YOU, name: s.clubName ?? 'Your XI', budget: Math.round(CLASSIC_DRAFT_BUDGET * cfg.startBankrollMult) },
+          ];
+          for (let i = 0; i < LEAGUE_TEAMS - 1; i++) {
+            const name = names.length ? names.splice(rng.int(0, names.length - 1), 1)[0] : `Club ${i + 1}`;
+            teams.push({ id: `ai${i}`, name, budget: Math.round(CLASSIC_DRAFT_BUDGET * (0.8 + rng.next() * 0.4)) });
+          }
+          const players: DraftablePlayer[] = POOL.map((p) => ({
+            id: p.id,
+            role: p.role,
+            rating: p.stats.attack + p.stats.defense,
+            value: Math.max(1, baseValue(p)),
+          }));
+          // Advance any AI clubs that pick before your first turn.
+          const draft = advanceAiDraft(generateDraft(fresh.runSeed, teams, players));
+          return {
+            ...fresh,
+            difficulty: diffId,
+            draft,
+            best: s.best,
+            scenarioStars: s.scenarioStars,
+            careerBest: s.careerBest,
+          };
+        }),
+
+      // Make your pick in the Classic draft; the AI clubs then pick around you.
+      draftPick: (playerId) =>
+        set((s) => {
+          if (!s.draft || currentTeam(s.draft) !== 0) return {};
+          if (!pickableInDraft(s.draft, 0, playerId)) {
+            return {
+              notice: "That pick would leave you unable to field a full XI within budget.",
+              noticeKind: 'error',
+            };
+          }
+          const draft = advanceAiDraft(applyPick(s.draft, playerId));
+          if (draftComplete(draft)) {
+            return {
+              ...finishClassicDraft(draft),
+              notice: 'Draft complete — your squad is set. Play the season!',
+              noticeKind: 'success',
+            };
+          }
+          return { draft };
         }),
 
       // Start an authored scenario: a fresh run overridden with its fixed state.

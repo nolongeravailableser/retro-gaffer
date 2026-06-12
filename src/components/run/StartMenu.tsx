@@ -53,9 +53,10 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
   const cup = useGameStore((s) => s.cup);
   const difficulty = useGameStore((s) => s.difficulty);
   const startCareer = useGameStore((s) => s.startCareer);
-  const startRun = useGameStore((s) => s.startRun);
+  const startClassicDraft = useGameStore((s) => s.startClassicDraft);
 
   const [view, setView] = useState<'main' | 'difficulty' | 'records'>('main');
+  const [pendingMode, setPendingMode] = useState<'career' | 'classic'>('career');
   const [picked, setPicked] = useState<DifficultyId>(difficulty);
 
   const hasRun =
@@ -109,7 +110,7 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setView('difficulty')}
+                onClick={() => { setPendingMode('career'); setPicked(difficulty); setView('difficulty'); }}
                 className="flex items-center gap-3 rounded-xl border border-crt-dim bg-pitch-900/50 px-4 py-3 text-left transition hover:border-crt-green/60"
               >
                 <Trophy className="shrink-0 text-chrome" size={22} />
@@ -120,13 +121,13 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
               </button>
               <button
                 type="button"
-                onClick={() => { startRun('classic'); onEnter('transfers'); }}
+                onClick={() => { setPendingMode('classic'); setPicked(difficulty); setView('difficulty'); }}
                 className="flex items-center gap-3 rounded-xl border border-crt-dim bg-pitch-900/50 px-4 py-3 text-left transition hover:border-crt-green/60"
               >
                 <Zap className="shrink-0 text-chrome" size={22} />
                 <div>
                   <p className="font-display text-sm text-chrome">Quick classic</p>
-                  <p className="text-[11px] text-chrome-muted">12-round climb</p>
+                  <p className="text-[11px] text-chrome-muted">Draft a squad, win the league</p>
                 </div>
               </button>
             </div>
@@ -164,7 +165,9 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
               <button type="button" onClick={() => setView('main')} aria-label="Back" className="text-chrome-muted hover:text-chrome">
                 <ChevronLeft size={20} />
               </button>
-              <p className="font-display text-sm text-chrome">New career — choose difficulty</p>
+              <p className="font-display text-sm text-chrome">
+                {pendingMode === 'classic' ? 'Quick classic' : 'New career'} — choose difficulty
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -202,10 +205,13 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
 
             <button
               type="button"
-              onClick={() => { startCareer(picked); onEnter('formation'); }}
+              onClick={() => {
+                if (pendingMode === 'classic') { startClassicDraft(picked); onEnter('formation'); }
+                else { startCareer(picked); onEnter('formation'); }
+              }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-crt-green bg-pitch-900/70 py-3 font-display text-crt-green shadow-glow transition hover:bg-pitch-900"
             >
-              Start career <ArrowRight size={16} />
+              {pendingMode === 'classic' ? 'Start draft' : 'Start career'} <ArrowRight size={16} />
             </button>
           </div>
         )}

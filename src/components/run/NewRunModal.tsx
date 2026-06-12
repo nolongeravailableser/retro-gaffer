@@ -31,6 +31,7 @@ export default function NewRunModal({ open, onClose, onStarted }: NewRunModalPro
   const startCareer = useGameStore((s) => s.startCareer);
   const startLeague = useGameStore((s) => s.startLeague);
   const startCup = useGameStore((s) => s.startCup);
+  const startClassicDraft = useGameStore((s) => s.startClassicDraft);
   const runStatus = useGameStore((s) => s.runStatus);
   const round = useGameStore((s) => s.round);
   const ownedCount = useGameStore((s) => s.owned.length);
@@ -63,6 +64,13 @@ export default function NewRunModal({ open, onClose, onStarted }: NewRunModalPro
     }
     if (mode === 'cup') {
       startCup();
+      onStarted?.();
+      onClose();
+      return;
+    }
+    if (mode === 'classic') {
+      // Classic is now a draft league (uses the current difficulty for the budget).
+      startClassicDraft();
       onStarted?.();
       onClose();
       return;
