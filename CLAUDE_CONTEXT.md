@@ -3,10 +3,24 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (end of a huge session — **everything below is SHIPPED &
-> PUSHED to prod; working tree clean; HEAD `5398b48`**). Gates: **386 tests + balance
-> sims**, tsc + build green, persistence **v30**, **Classic ladder 36.8%** & career
-> economy preserved throughout.
+> **Last updated:** 2026-06-12 (later session — added a **Career difficulty rebalance**,
+> COMMITTED locally as HEAD `54dc692`, **NOT pushed** (working tree clean). Everything
+> before it is SHIPPED & PUSHED. Gates: **386 tests + balance sims**, tsc + build green,
+> persistence **v30** (no bump — all derived), **Classic ladder 36.8%** preserved.
+>
+> **Difficulty rebalance (this session, committed `54dc692`):** the difficulty dial now
+> bites on the PITCH. New `DifficultyConfig.aiStrengthMult` scales the AI clubs you face
+> (Easy 0.95 / Standard 1.07 / Hardcore 1.18), wired into every Career league-gen site
+> (`careerLeagueBase` in the store). Standard is now a real contest (champ 64%→**40%**
+> over a dynasty, contested climb, real relegation risk) instead of a near-guaranteed
+> march; Easy is a gentle power-fantasy (78%), Hardcore brutal (8% champ / 80% sacked,
+> PL still reachable 60%). Hardcore board teeth softened to grace 2 / threshold 22 so its
+> failures are earned on the pitch. Also fixed a **latent board-confidence bug**: the
+> season W/D/L `record` accumulated across the whole career (old glory propped up
+> confidence) — now reset per season in `advanceCareerSeason` (matches the sim). The
+> career sim (`tests/career.sim.ts`) is now **difficulty-aware** with a guarded
+> difficulty-sweep (`npm run sim`). No persistence change. **User decision (locked via
+> AskUserQuestion): "Make Standard a real contest."**
 >
 > **What shipped this session:**
 > 1. **5-PILLAR STRATEGIC RE-FOUNDATION** (all live): P4 Difficulty Matrix
@@ -742,18 +756,64 @@ programmatically** from existing single position (confirm before building).
 > persistence change → bump CURRENT_VERSION + add a migration). Work autonomously; only
 > pause for a genuine product/design fork, phrased as a yes/no question.
 >
+> **✅ DONE this session — (b) Career balance/feel.** The 22-match career was too easy
+> (champ ~67%, sacked ~1.3%); now retuned via a new `aiStrengthMult` difficulty lever +
+> a board-confidence bug fix (see header block + the §3 detail). Committed `54dc692`,
+> **not pushed** — push when you're happy (`git push origin main` auto-deploys to prod).
+>
 > Today I want to: **[PICK ONE — fill this in]**
->   (a) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
->       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%) if
->       they feel off; maybe nudge a backup-GK / depth hint in the draft;
->   (b) **balance/feel of Career** — the home-and-away (22-match) career is on the easy
->       side (champ ~67%, sacked ~1.3%); add tension via the difficulty dial or tuning;
+>   (a) **push** `54dc692` (the difficulty rebalance) to prod, or first **live-playtest**
+>       a Hardcore career end-to-end (tougher AI + a board sacking + the job market) to
+>       confirm the new tension feels right before pushing;
+>   (a′) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
+>       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
 >   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
 >       international call-ups, set-piece/tactics depth;
->   (d) a **full QA sweep** of the changed game (draft tournament + a multi-season
->       manager career w/ a sacking & job switch + a standalone League/Cup run).
-> If I haven't said, recommend one and proceed. (My lean: a quick play-test of the
-> draft tournament + Career to surface feel issues, then tune.)
+>   (d) a **full QA sweep** (draft tournament + a multi-season manager career w/ a
+>       sacking & job switch + a standalone League/Cup run);
+>   (e) **economy retighten** — the harder climb nudged T1 median bankroll £526M→£618M
+>       (longer careers accumulate more; still bounded, no runaway). A quick wage/upkeep
+>       sweep in `career.sim.ts` could pull it back if it bothers you.
+> If I haven't said, recommend one and proceed.
+
+### ⭐ CAREER DIFFICULTY REBALANCE (2026-06-12, committed `54dc692`, NOT pushed)
+
+The home-and-away career was too easy (champ ~67%/dynasty, sacked ~1.3%). Root cause
+(found via a new difficulty-aware career sim): the difficulty dial only touched the
+BUDGET/BOARD, never the football — promotion rates were ~identical across Easy/Std/Hard
+because the budget/wage levers don't dent your dominance over the low-division AI bases
+(T5 900 … T1 1650), and Hardcore's tension was a board technicality (promoted-but-sacked).
+
+- **New lever `DifficultyConfig.aiStrengthMult`** (`lib/difficulty.ts`) scales the AI
+  clubs you face in Career: **Easy 0.95 / Standard 1.07 / Hardcore 1.18**. Wired via a
+  new `careerLeagueBase(tier, difficulty)` helper in the store at every Career
+  league-gen site (`startCareer`, `advanceCareerSeason`, `takeJob`, rehydrate);
+  standalone League keeps the neutral `LEAGUE_BASE_STRENGTH` (unaffected). Since the
+  player's matchweek opponent + AI-vs-AI both derive from `club.strength` (← the league
+  base), one multiplier scales the whole division. Only NEW leagues are affected
+  (existing in-progress leagues keep their baked strengths → no migration).
+- **Hardcore board teeth softened**: graceSeasons 1→2, sackThreshold 35→22, so failures
+  are earned on the pitch (relegations) rather than a confidence technicality.
+- **Latent bug fixed**: the season W/D/L `record` (used for board confidence) accumulated
+  across the WHOLE career — old promotions propped up confidence so a catastrophic season
+  couldn't floor it (and `pos` was current-season while `formScore` was all-time —
+  incoherent). Now reset per season in `advanceCareerSeason` (`takeJob` already did).
+  Only affects Hardcore (Easy/Standard have `sackThreshold 0` → board never sacks on
+  form). Persisted-but-self-correcting → no version bump.
+- **Balance (career sim, difficulty-aware, 250+ dynasties/difficulty, `npm run sim`):**
+  Standard champ **64%→40%**, contested climb (T5 80% / T4 70% / T3 54% / Championship→PL
+  38% / title 7%/season), real relegation risk (PL 17%, T2 11%). Easy 78% champ (gentle).
+  Hardcore 8% champ / **80% sacked** but PL reachable 60%, ~11 seasons before the axe.
+  **Classic 36.8% untouched** (separate `balance.sim.ts`); Draft League 0-stranded.
+  Economy bounded (T1 median £618M, was £526M — longer careers accumulate more; not a
+  runaway). The difficulty sweep now GUARDS the tension gradient (asserts champ
+  easy>std>hard, sacked hard>std, Standard ∈ (20,55)%, Hardcore PL>20%).
+- **UI:** the StartMenu difficulty picker shows a headline competition line per tier
+  ("A genuine contest…", "A brutal division…"); live-verified the picker renders.
+- Tests: `difficulty.test.ts` (aiStrengthMult monotonic + Standard contest assertions),
+  `careerLeague.test.ts` (board-teeth path updated for grace 2). **386 tests**, build green.
+- **Not yet wired** (future): `rivalAggression` (market poaching pressure), `agentInflation`
+  (negotiation) — still parked with their natural pillars.
 
 ### ⭐⭐⭐ STRATEGIC RE-FOUNDATION (2026-06-12, user-approved) — COMPLETE & PUSHED (+ Classic Draft-Tournament rework, also pushed)
 
