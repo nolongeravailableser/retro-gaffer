@@ -119,6 +119,71 @@ export interface BidderClub {
   needsRoles: Role[];
 }
 
+// --- Living market: AI clubs sign players too ------------------------------
+
+/** Per-matchweek chance that some rival club makes a signing of its own. */
+export const AI_SIGNING_CHANCE = 0.3;
+/** Strength a rival gains from a signing = rating × this, capped (a depth buy,
+ *  not a transformation — kept modest since the balance sim can't model it). */
+export const AI_SIGN_FACTOR = 0.5;
+export const AI_SIGN_MAX_GAIN = 100;
+
+export interface AiSigning {
+  clubId: string;
+  clubName: string;
+  playerId: string;
+  playerName: string;
+  /** Strength the club gains (folded into its rating). */
+  strengthGain: number;
+}
+
+/** A market candidate the AI can sign (open-market quality). */
+export interface AiCandidate {
+  id: string;
+  name: string;
+  /** attack + defense (matches club.strength units). */
+  rating: number;
+}
+
+/**
+ * Decide whether a rival club signs a player this matchweek — pure & seeded so
+ * it never perturbs match results. Hungrier (weaker) clubs are likelier to act,
+ * and they sign the best available candidate of a role they're short in (which
+ * then leaves your market). Returns null when no signing happens.
+ */
+export function aiClubSigning(
+  bidders: readonly BidderClub[],
+  candidatesByRole: Record<string, readonly AiCandidate[]>,
+  seed: string | number
+): AiSigning | null {
+  const rng = new Rng(`${seed}-aimkt`);
+  if (rng.next() >= AI_SIGNING_CHANCE) return null;
+  // Any club can strengthen (squads here start role-balanced, so signings are
+  // depth/upgrade buys, not just gap-filling) — but only if SOMETHING is available.
+  const rolesWithCandidates = Object.keys(candidatesByRole).filter(
+    (r) => (candidatesByRole[r]?.length ?? 0) > 0
+  );
+  if (bidders.length === 0 || rolesWithCandidates.length === 0) return null;
+
+  // Weight toward weaker clubs (they're hungriest for reinforcements).
+  const weights = bidders.map((c) => 1 / Math.max(1, c.strength));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rng.next() * total;
+  let club = bidders[bidders.length - 1];
+  for (let i = 0; i < bidders.length; i++) {
+    r -= weights[i];
+    if (r <= 0) { club = bidders[i]; break; }
+  }
+
+  // Prefer a role the club is genuinely short in; else strengthen any role.
+  const needed = club.needsRoles.filter((rl) => (candidatesByRole[rl]?.length ?? 0) > 0);
+  const roleOptions = needed.length ? needed : rolesWithCandidates;
+  const role = roleOptions[rng.int(0, roleOptions.length - 1)];
+  const cand = candidatesByRole[role][0]; // best available for that role
+  const strengthGain = Math.min(AI_SIGN_MAX_GAIN, Math.round(cand.rating * AI_SIGN_FACTOR));
+  return { clubId: club.id, clubName: club.name, playerId: cand.id, playerName: cand.name, strengthGain };
+}
+
 /**
  * Generate this matchweek's incoming bids for your squad — pure & deterministic
  * (seeded). Your best players draw interest; a bidder is chosen with a bias

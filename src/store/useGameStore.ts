@@ -54,6 +54,7 @@ import {
   BOTTOM_TIER,
   YOU,
   type LeagueState,
+  type LeagueClub,
 } from '@/lib/league';
 import {
   generateCup,
@@ -93,8 +94,11 @@ import {
   poachFee,
   isFreeAgent,
   rivalBids,
+  aiClubSigning,
+  FREE_AGENT_MAX_OVERALL,
   CAREER_STARTING_BANKROLL,
   type BidderClub,
+  type AiCandidate,
 } from '@/lib/market';
 import { relicBuyDiscount, relicHasFreeRefresh } from '@/lib/relics';
 import {
@@ -113,6 +117,7 @@ import {
   moraleMessage,
   expectationMessage,
   confidenceWarning,
+  signingMessage,
   type InboxMessage,
 } from '@/lib/inbox';
 import { morale as playerMorale, moraleBand } from '@/lib/morale';
@@ -796,6 +801,8 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   // --- Inbox: post this matchweek's result, any injuries, and a season verdict
   // so the player has a persistent record (FM-style). Stamped with the matchweek.
   const newMsgs: InboxMessage[] = [];
+  // A rival's own signing this week may rewrite the league's clubs (living market).
+  let aiClubsOverride: LeagueClub[] | null = null;
   if (pf) {
     const oppId = pf.home === YOU ? pf.away : pf.home;
     const oppName = league.clubs.find((c) => c.id === oppId)?.name ?? 'the opposition';
@@ -829,6 +836,27 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       });
     const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${nextMw}`, openOffers);
     for (const b of bids) newMsgs.push(offerMessage(nextMw, b));
+
+    // Living market: a rival may sign an open-market player of its own — they
+    // strengthen and that target leaves your market. Seeded separately so match
+    // results are untouched.
+    const ownedSet = new Set(s.owned);
+    const clubOwned = allClubOwnedIds(newLeague);
+    const candidatesByRole: Record<string, AiCandidate[]> = {};
+    for (const p of POOL) {
+      if (ownedSet.has(p.id) || clubOwned.has(p.id) || overall(p) < FREE_AGENT_MAX_OVERALL) continue;
+      (candidatesByRole[p.role] ??= []).push({ id: p.id, name: p.name, rating: p.stats.attack + p.stats.defense });
+    }
+    for (const arr of Object.values(candidatesByRole)) arr.sort((a, b) => b.rating - a.rating);
+    const aiSign = aiClubSigning(bidders, candidatesByRole, `${s.runSeed}-aimkt-${nextMw}`);
+    if (aiSign) {
+      aiClubsOverride = newLeague.clubs.map((c) =>
+        c.id === aiSign.clubId
+          ? { ...c, squad: [...(c.squad ?? []), aiSign.playerId], strength: c.strength + aiSign.strengthGain }
+          : c
+      );
+      newMsgs.push(signingMessage(nextMw, aiSign.clubName, aiSign.playerId, aiSign.playerName));
+    }
   }
 
   // Morale (man-management): flag at most ONE newly-unhappy player per matchweek
@@ -865,7 +893,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   const inbox = pushMessages(s.inbox, newMsgs);
 
   return {
-    league: newLeague,
+    league: aiClubsOverride ? { ...newLeague, clubs: aiClubsOverride } : newLeague,
     inbox,
     round: nextMw,
     bankroll,

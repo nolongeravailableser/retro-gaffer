@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + rivals-re-sign-after-poach DONE & PUSHED**. persistence **v27**, **327 tests**, build green, Classic byte-identical (sim 36.8%). Next Future-Edge: AI clubs bidding for free agents / each other, memory-carrying inbox, fan/finance loop. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core: Next-Up COMPLETE; **Future-Edge: board confidence + rivals-re-sign-after-poach + AI clubs sign over the season (living market) DONE & PUSHED**. persistence **v27**, **330 tests**, build green, Classic byte-identical (sim 36.8%). Next Future-Edge: memory-carrying inbox, fan/finance loop. See §3 "START HERE")
 
 ---
 
@@ -768,11 +768,21 @@ segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
   living transfer-market AI, memory-carrying inbox interactions, player dynamics,
   fan/finance loop) — all ride the Inbox + retro-minimal UI.
 - **Future Edge (the "FM killers"):** living board confidence — **✅ DONE**;
-  living transfer-market AI — **STARTED** (rivals re-sign after a poach — ✅ DONE;
-  still TODO: AI clubs bidding for free agents / against each other, rivals
-  re-signing after a Bosman); memory-carrying inbox interactions (the
-  press-conference killer); lightweight player dynamics; fan/finance reinvestment
-  loop. All ride the **Inbox** + retro-minimal UI.
+  **living transfer-market AI — ✅ DONE** (rivals re-sign after a poach + AI clubs
+  sign over the season); memory-carrying inbox interactions (the press-conference
+  killer) — TODO; lightweight player dynamics — TODO; fan/finance reinvestment
+  loop — TODO. All ride the **Inbox** + retro-minimal UI.
+
+**Future-Edge: AI clubs sign over the season (living market) — ✅ DONE.**
+`lib/market.ts` `aiClubSigning` (pure, seeded, 3 tests): each matchweek (window
+open, separate seed stream so match results are untouched) a rival may sign the
+best available open-market player (≥64) — weighted toward weaker clubs; signs to
+fill a gap if it has one, else for DEPTH (clubs start role-balanced, so the strict
+needs-gating was initially a dead feature — caught live, fixed to allow depth
+buys). The club strengthens (`AI_SIGN_FACTOR`=0.5, capped +100) and that target
+leaves YOUR market (`signingMessage` inbox note). Applied in `resolveLeagueRound`
+(folds into the returned league clubs). Store-only → Classic 36.8% untouched.
+Verified live: "Dewsworth Albion strengthen — signed Sergi Roberto" (squad 14→15).
 
 **Future-Edge: rivals re-sign after a poach — ✅ DONE.** In `signPlayer`'s poach
 branch (store), when you prise a player from a rival the club now REACTS: it

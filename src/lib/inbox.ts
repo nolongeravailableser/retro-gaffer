@@ -135,6 +135,18 @@ export function confidenceWarning(week: number, season: number): InboxMessage {
   };
 }
 
+/** A rival club has made a signing of its own (the living market moves). */
+export function signingMessage(week: number, clubName: string, playerId: string, playerName: string): InboxMessage {
+  return {
+    id: `aimkt-${week}-${playerId}`,
+    week,
+    kind: 'transfer',
+    title: `${clubName} strengthen`,
+    body: `${clubName} have signed ${playerName} from the open market — one fewer target for you.`,
+    read: false,
+  };
+}
+
 /** Players who left the club on free transfers (expired contracts / Bosman). */
 export function departureMessage(week: number, season: number, names: readonly string[]): InboxMessage {
   const n = names.length;

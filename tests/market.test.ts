@@ -3,6 +3,7 @@ import {
   baseValue, marketValue, marketSellValue, marketTierMult, MARKET_SELL_RATE,
   transferFee, isFreeAgent, FREE_AGENT_MAX_OVERALL,
   rivalBids, OFFER_MIN_OVERALL, MAX_OFFERS_PER_WEEK, type BidderClub,
+  aiClubSigning, type AiCandidate,
 } from '@/lib/market';
 import { overall } from '@/lib/wages';
 import { TOP_TIER, BOTTOM_TIER } from '@/lib/league';
@@ -94,5 +95,40 @@ describe('rivalBids — incoming offers for your players', () => {
       }
     }
     expect(sawBid).toBe(true);
+  });
+});
+
+describe('aiClubSigning — living market', () => {
+  const bidders: BidderClub[] = [
+    { id: 'ai0', name: 'Strong FC', strength: 1600, needsRoles: ['FWD'] },
+    { id: 'ai1', name: 'Weak FC', strength: 400, needsRoles: ['FWD'] },
+  ];
+  const candidatesByRole: Record<string, AiCandidate[]> = {
+    FWD: [{ id: 'star', name: 'Star', rating: 180 }, { id: 'sub', name: 'Sub', rating: 140 }],
+  };
+
+  it('is deterministic and signs the best candidate for a needed role', () => {
+    // Find a seed that fires (chance is 0.3) and assert the shape.
+    let fired = null;
+    for (let i = 0; i < 50 && !fired; i++) fired = aiClubSigning(bidders, candidatesByRole, `s-${i}`);
+    expect(fired).not.toBeNull();
+    expect(fired!.playerId).toBe('star'); // best available for FWD
+    expect(fired!.strengthGain).toBeGreaterThan(0);
+    // Same seed → same result.
+    const seed = (() => { for (let i = 0; i < 50; i++) if (aiClubSigning(bidders, candidatesByRole, `s-${i}`)) return `s-${i}`; })()!;
+    expect(aiClubSigning(bidders, candidatesByRole, seed)).toEqual(aiClubSigning(bidders, candidatesByRole, seed));
+  });
+
+  it('a full (no-needs) club can still strengthen for depth', () => {
+    const noNeed: BidderClub[] = [{ id: 'ai0', name: 'A', strength: 1000, needsRoles: [] }];
+    let fired = null;
+    for (let i = 0; i < 50 && !fired; i++) fired = aiClubSigning(noNeed, candidatesByRole, `n-${i}`);
+    expect(fired).not.toBeNull(); // signs for depth even with no gap
+    expect(fired!.playerId).toBe('star');
+  });
+
+  it('returns null when there are no candidates at all', () => {
+    for (let i = 0; i < 30; i++) expect(aiClubSigning(bidders, { FWD: [] }, `e-${i}`)).toBeNull();
+    for (let i = 0; i < 30; i++) expect(aiClubSigning(bidders, {}, `z-${i}`)).toBeNull();
   });
 });
