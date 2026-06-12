@@ -130,6 +130,12 @@ import {
   pledgePayoff,
 } from '@/lib/board';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
+import {
+  getDifficulty,
+  canSack,
+  DEFAULT_DIFFICULTY,
+  type DifficultyId,
+} from '@/lib/difficulty';
 import { Rng } from '@/lib/rng';
 import {
   SHOP_SIZE,
@@ -327,6 +333,8 @@ interface GameState {
   fatigue: Record<string, number>;
   /** Most seasons completed in a single career — persisted across careers. */
   careerBest: number;
+  /** Operational difficulty for Career runs (board patience, budgets, market). */
+  difficulty: DifficultyId;
   /** Every player id ever signed — an all-time "club legends" collection. */
   collection: string[];
   /** Best score per scored mode ('endless', 'daily') — persisted across runs. */
@@ -464,8 +472,10 @@ interface GameState {
   startCup: () => void;
   /** Start an authored scenario by id (prebuilt squad + fixed start state). */
   startScenario: (id: string) => void;
-  /** Begin a new Career: multiple seasons, persistent squad, board objectives. */
-  startCareer: () => void;
+  /** Begin a new Career at the chosen difficulty (defaults to the current one). */
+  startCareer: (difficulty?: DifficultyId) => void;
+  /** Set the operational difficulty (start-menu pick; persisted top-level). */
+  setDifficulty: (difficulty: DifficultyId) => void;
   /** Pay to reveal an academy prospect's exact potential during the review. */
   scoutYouth: (youthId: string) => void;
   /** Renew an expiring player's contract in the review (toggle on/off). */
@@ -572,6 +582,7 @@ function saveSlice(s: GameState) {
     sharpness: s.sharpness,
     fatigue: s.fatigue,
     careerBest: s.careerBest,
+    difficulty: s.difficulty,
     collection: s.collection,
     bestScore: s.bestScore,
     clubName: s.clubName,
@@ -754,6 +765,17 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         { season: career.season, tier: career.tier, finishPos: pos, clubs, outcome: outcomeSeason },
       ],
     };
+    // Board teeth (difficulty-gated): on Hardcore, a season of sustained low
+    // confidence gets you fired even without relegation. Standard/Easy keep
+    // sackThreshold 0 → this never fires → the balance sim (always Standard) is
+    // untouched. Promotion/champion always survives regardless of confidence.
+    const diffCfg = getDifficulty(s.difficulty);
+    const endConfidence = boardConfidence(pos, clubs, record);
+    const boardSack =
+      outcomeSeason !== 'promoted' &&
+      outcomeSeason !== 'champion' &&
+      canSack(diffCfg, endConfidence, career.season);
+
     if (outcomeSeason === 'champion') {
       // Won the top division — the ultimate. Career ends in glory.
       runStatus = 'won';
@@ -764,6 +786,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       runStatus = 'lost';
       careerBest = Math.max(s.careerBest, career.season - 1);
       seasonNote = `Relegated from the ${divName}. The board has sacked you.`;
+    } else if (boardSack) {
+      // The board ran out of patience — fired on form (Hardcore only).
+      runStatus = 'lost';
+      careerBest = Math.max(s.careerBest, career.season - 1);
+      seasonNote = `The board has lost patience — you've been sacked after finishing ${ordinal(pos)} in the ${divName}.`;
     } else {
       // Promoted / stayed / relegated (but survived) → between-seasons review.
       careerBest = Math.max(s.careerBest, career.season);
@@ -1030,6 +1057,7 @@ export const useGameStore = create<GameState>()(
       best: { round: 0 },
       scenarioStars: {},
       careerBest: 0,
+      difficulty: DEFAULT_DIFFICULTY,
       collection: [],
       bestScore: {},
       dailyCompleted: null,
@@ -1967,17 +1995,23 @@ export const useGameStore = create<GameState>()(
       // season 1. Each season is a league in the club's current division; finish
       // high to climb, finish in the drop zone to fall — win the top tier to win
       // it all. (freshRun clears the prior career's aged/youth overlay.)
-      startCareer: () =>
+      startCareer: (difficulty) =>
         set((s) => {
           const fresh = freshRun(null, 'league', null);
           const tier = BOTTOM_TIER;
           const league = leagueWithSquads(fresh.runSeed, division(tier).baseStrength);
+          // Difficulty dictates the opening kitty: Easy starts richer, Hardcore
+          // leaner. Defaults to the current top-level setting (start-menu pick).
+          const diffId = difficulty ?? s.difficulty;
+          const cfg = getDifficulty(diffId);
+          const opening = Math.round(CAREER_STARTING_BANKROLL * cfg.startBankrollMult);
           return {
             ...fresh,
+            difficulty: diffId,
             // Modest opening transfer kitty — field the side with free agents
             // (overall < 64) and spend this on a few quality upgrades.
-            bankroll: CAREER_STARTING_BANKROLL,
-            peakBankroll: CAREER_STARTING_BANKROLL,
+            bankroll: opening,
+            peakBankroll: opening,
             league,
             career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
             careerReview: null,
@@ -1988,6 +2022,8 @@ export const useGameStore = create<GameState>()(
             careerBest: s.careerBest,
           };
         }),
+
+      setDifficulty: (difficulty) => set({ difficulty }),
 
       // Pay to scout a prospect — reveals their exact potential in the review.
       scoutYouth: (youthId) =>

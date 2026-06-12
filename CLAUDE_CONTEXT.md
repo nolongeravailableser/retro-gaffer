@@ -3,7 +3,12 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap COMPLETE + a **full-season integration QA pass** that found & **fixed a real soft-lock** (auto-pick now fields out of position when the window's shut and a role is short). persistence **v27**, **340 tests**, build green, Classic 36.8%. Played a National-League season to MW14 clean (£113M, 9-1-3); economy/income/inbox all healthy. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (NEW STRATEGIC DIRECTION — a 4-pillar re-foundation
+> began. **Pillar 4 (Operational Difficulty Matrix) SHIPPED**: Easy/Standard/Hardcore
+> with board sacking teeth + difficulty-scaled opening budget. Standard == today
+> (sim untouched). persistence **v28**, **347 tests**, build green, Classic **36.8%**,
+> career Standard 67% champ / 1.3% sacked (unchanged by design). See §3 "START HERE" →
+> "⭐⭐⭐ STRATEGIC RE-FOUNDATION".)
 
 ---
 
@@ -720,6 +725,60 @@ programmatically** from existing single position (confirm before building).
 >   (d) another **QA sweep** (a full standalone-League season + a full Cup run +
 >       a multi-season career to exercise contracts/Bosman/youth/promotion together).
 > If I haven't said, recommend one and proceed.
+
+### ⭐⭐⭐ STRATEGIC RE-FOUNDATION (2026-06-12, user-approved) — IN PROGRESS
+
+After the FM-core roadmap completed, the user set a 4-pillar strategic direction to
+make the game a "world-class" FM. We discussed architecture before building; the
+**four locked design decisions** (via AskUserQuestion):
+1. **Economy scale = PROPORTIONAL** — keep the compressed £ scale (£35M start);
+   mirror the *ratios* between divisions, NOT literal real-world £ figures (a ~200×
+   spread would break every tuned constant + persisted bankroll).
+2. **Modes = DEMOTE, don't delete** — Classic + Career are the two front-door modes;
+   Endless/Cup/Scenarios/Daily move behind a low-key "More ways to play" entry
+   (keeps the Daily leaderboard backend; no save/regression risk).
+3. **Unknown pool = unknowns are the FLOOR** — a new Career starts with a procedurally
+   generated grey XI; EVERY real player (incl. the cheap 4.8 lower-league signings)
+   becomes a market *upgrade*. Cleanest "signing a real player is a win" identity.
+4. **Sequencing = difficulty first**, then economy → unknown-pool → start-menu, each
+   a separately gated milestone.
+
+**The four pillars:**
+- **Pillar 4 — Operational Difficulty Matrix ✅ SHIPPED (engine).** `src/lib/difficulty.ts`
+  (pure, 5 tests): `DifficultyId` (easy/standard/hardcore), `DifficultyConfig`,
+  `DIFFICULTIES`, `getDifficulty`, `canSack(cfg, confidence, season)`. Difficulty
+  dictates CLUB LIMITATIONS, not match-AI cleverness: board patience (graceSeasons +
+  sackThreshold), opening budget (startBankrollMult), wage ceiling (wageBudgetMult),
+  market volatility (agentInflation, rivalAggression). **Wired now:** top-level
+  persisted `difficulty` (v28 migration → 'standard'); `startCareer(difficulty?)`
+  scales the opening kitty; `resolveLeagueRound` gives the board TEETH — on Hardcore a
+  season of sustained low confidence (`boardConfidence < sackThreshold`, past the grace
+  window) SACKS you even without relegation (the teeth `board.ts` was scaffolded for).
+  `setDifficulty` action for the future picker. **Standard reproduces today exactly**
+  (mult ×1, sackThreshold 0) → the career sim (always Standard) + Classic are
+  byte-untouched. Integration A/B test: Standard survives a relegation, Hardcore sacks.
+  - **NOT YET wired (land with their natural pillar):** wageBudgetMult hard cap →
+    Pillar 1 (finances); agentInflation → negotiation polish; rivalAggression → market.
+    The **difficulty PICKER UI** lands with the Start Menu (Pillar 2) — for now
+    difficulty defaults to Standard (no regression) and is fully engine-wired.
+- **Pillar 1 — Real-World Financial Balancing Array (NEXT).** Consolidate the ~8
+  scattered tier constants (baseStrength, tierMult, WAGE_TIER_K, MARKET_TIER_K, upkeep,
+  matchday, capacity) into ONE declarative `Division` economic profile; ADD the two
+  genuinely-new streams: **sponsorship** (season-level, local flat + global reputation-
+  gated for the top tiers) and **fines** (disciplinary overhead tied to the existing
+  card system). PROPORTIONAL scaling. Re-gate `npm run sim` (Classic 36.8% sacred).
+- **Pillar 3 — Unknown-pool starting squad.** `generateUnknowns(seed, tier)` (sibling
+  of `generateYouth`) seeds a grey XI at `startCareer` via the existing pool overlay
+  (real = players.json, generated = overlay). Unknowns are the floor (decision #3).
+- **Pillar 2 — Start Menu + mode demotion.** A real front door (Resume one-click /
+  New Career w/ difficulty + club identity / Quick Classic / Tutorial), branching on
+  the existing `onboarded` flag + a resumable-save check. Demote the extra modes.
+
+**Anti-bloat principle reaffirmed:** the codebase is v28 / 347 tests — the lever is
+CONSOLIDATION (declarative tables, reuse overlay/ModeConfig/persistence patterns), not
+parallel systems. Mode demotion is the one move that genuinely cuts surface area.
+
+---
 
 **Status (2026-06-12):** the **entire FM-core roadmap is shipped & PUSHED** — the
 FM-feel transfer batch (tasks 1–4 + Inbox) AND both roadmap tiers: Next-Up

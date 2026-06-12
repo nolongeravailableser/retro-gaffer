@@ -249,3 +249,41 @@ describe('career pyramid', () => {
     expect(s.inbox.some((m) => m.id === 'board-payoff-1')).toBe(true);
   });
 });
+
+describe('career difficulty — board teeth', () => {
+  it('the opening kitty scales with difficulty', () => {
+    useGameStore.getState().startCareer('easy');
+    const easy = useGameStore.getState().bankroll;
+    useGameStore.getState().startCareer('standard');
+    const standard = useGameStore.getState().bankroll;
+    useGameStore.getState().startCareer('hardcore');
+    const hardcore = useGameStore.getState().bankroll;
+    expect(easy).toBeGreaterThan(standard);
+    expect(standard).toBeGreaterThan(hardcore);
+    // Difficulty persists on the run state.
+    expect(useGameStore.getState().difficulty).toBe('hardcore');
+  });
+
+  it('Hardcore fires you for a relegation past the grace period; Standard survives it', () => {
+    // Standard: climb to League Two (S2), then a disastrous season → relegated,
+    // but the board keeps you on (a between-seasons review, run still playing).
+    useGameStore.getState().startCareer('standard');
+    playSeason('win'); // S1 won → promoted
+    useGameStore.getState().advanceCareerSeason(null); // now S2, tier 4
+    playSeason('loss'); // dead last → relegated (not the bottom tier)
+    const std = useGameStore.getState();
+    expect(std.runStatus).toBe('playing');
+    expect(std.careerReview?.outcome).toBe('relegated');
+
+    // Hardcore, identical path: past the 1-season grace, the same collapse gets
+    // you sacked instead — the run ends.
+    useGameStore.getState().startCareer('hardcore');
+    playSeason('win'); // S1 won (grace season) → promoted
+    useGameStore.getState().advanceCareerSeason(null); // now S2, tier 4
+    playSeason('loss'); // dead last, confidence floored → board sacks you
+    const hc = useGameStore.getState();
+    expect(hc.runStatus).toBe('lost');
+    expect(hc.careerReview).toBeNull();
+    expect(hc.inbox.some((m) => m.kind === 'board' && /sacked/i.test(m.body ?? ''))).toBe(true);
+  });
+});

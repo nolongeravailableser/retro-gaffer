@@ -20,7 +20,7 @@ import { STARTING_LIVES } from '@/lib/ladder';
 export const SAVE_KEY = 'gaffer-run';
 export const LEGACY_KEY = 'gaffer-run-v7';
 /** Current persisted-state generation (see the migration map). */
-export const CURRENT_VERSION = 27;
+export const CURRENT_VERSION = 28;
 
 /** Bottom-tier value at the v21 migration (National League). Frozen here so the
  *  migration stays stable even if the pyramid is later re-tiered. */
@@ -180,6 +180,10 @@ const MIGRATIONS: Record<number, (s: Save) => Save> = {
   },
   // Cup mode: existing saves have no active cup.
   27: (s) => ('cup' in (s as object) ? s : { ...s, cup: null }),
+  // Operational difficulty: existing saves play on Standard (today's behaviour).
+  28: (s) => (typeof (s as { difficulty?: unknown }).difficulty === 'string'
+    ? s
+    : { ...s, difficulty: 'standard' }),
 };
 
 /** Upgrade a saved blob from its version to CURRENT_VERSION. */
