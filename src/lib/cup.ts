@@ -78,6 +78,33 @@ export function playerTie(state: CupState): CupTie | null {
   return cupTies(state).find((t) => t.home === YOU || t.away === YOU) ?? null;
 }
 
+// --- Career integration: a domestic cup interleaved with the league season ----
+
+/**
+ * League matchweeks each knockout round is played on, for the Career cup. The cup
+ * is an interleaved EXTRA tie (a midweek game) — the league matchweek does NOT
+ * advance on a cup tie, so a season is its 22 league games plus up to one tie per
+ * round survived. One entry per round (CUP_SIZE 8 → QF/SF/Final at 6/12/18).
+ */
+export const CAREER_CUP_ROUND_WEEKS = [6, 12, 18];
+
+/**
+ * Is the player's cup tie due now, given the league matchweek? True only while the
+ * player is still in the cup and the current round's matchweek has arrived — so the
+ * opponent/resolve logic plays the cup tie instead of the league fixture this game.
+ */
+export function careerCupDue(state: CupState, leagueMatchweek: number): boolean {
+  if (state.round > state.rounds) return false; // cup concluded
+  if (!playerTie(state)) return false; // eliminated / no tie this round
+  const at = CAREER_CUP_ROUND_WEEKS[state.round - 1];
+  return at !== undefined && leagueMatchweek >= at;
+}
+
+/** Did YOU lift the trophy (sole survivor after the final)? */
+export function cupChampion(state: CupState): boolean {
+  return state.round > state.rounds && state.alive.length === 1 && state.alive[0] === YOU;
+}
+
 /** Decide a tie's winner from a score — level ties go to seeded "penalties". */
 export function tieWinner(home: string, away: string, res: LeagueResult, seed: string | number): string {
   if (res.home > res.away) return home;

@@ -79,10 +79,10 @@ describe('careerHonours', () => {
   it('tallies titles, promotions, relegations and the peak tier from history', () => {
     const history: SeasonRecord[] = [
       rec({ season: 1, tier: 5, finishPos: 1, outcome: 'promoted' }), // title + promotion
-      rec({ season: 2, tier: 4, finishPos: 8, outcome: 'stay' }),
+      rec({ season: 2, tier: 4, finishPos: 8, outcome: 'stay', cupWon: true }), // a cup run
       rec({ season: 3, tier: 4, finishPos: 11, outcome: 'relegated' }),
       rec({ season: 4, tier: 5, finishPos: 1, outcome: 'promoted' }), // another title + promotion
-      rec({ season: 5, tier: 1, finishPos: 1, outcome: 'champion' }), // the big one
+      rec({ season: 5, tier: 1, finishPos: 1, outcome: 'champion', cupWon: true }), // a double
     ];
     const h = careerHonours(history);
     expect(h.divisionTitles).toBe(3); // three 1st-place finishes
@@ -91,6 +91,7 @@ describe('careerHonours', () => {
     expect(h.relegations).toBe(1);
     expect(h.seasonsPlayed).toBe(5);
     expect(h.highestTier).toBe(1);
+    expect(h.cupTitles).toBe(2); // two domestic cups lifted
   });
 
   it('handles an empty history', () => {

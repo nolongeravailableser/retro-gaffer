@@ -16,7 +16,7 @@ import type { MatchTeam } from '@/lib/engine';
 import { buildRoundOpponent } from '@/lib/ladder';
 import { generateOpponent } from '@/lib/opponent';
 import { playerFixture, YOU } from '@/lib/league';
-import { playerTie as cupPlayerTie } from '@/lib/cup';
+import { playerTie as cupPlayerTie, careerCupDue } from '@/lib/cup';
 import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
@@ -191,8 +191,11 @@ export default function App() {
 
   const roundOpponent = useMemo<MatchTeam | null>(() => {
     if (!playerTeam || runStatus !== 'playing') return null;
-    // Cup: face this round's knockout opponent (its club's strength).
-    if (cup) {
+    // Cup: face this round's knockout opponent. In standalone Cup mode the cup IS
+    // the run; in a Career it's only your match when a tie is due this matchweek
+    // (an interleaved midweek game) — otherwise fall through to the league fixture.
+    const cupTie = !!cup && (!career || (!!league && careerCupDue(cup, league.matchweek)));
+    if (cup && cupTie) {
       const tie = cupPlayerTie(cup);
       if (!tie) return null;
       const oppId = tie.home === YOU ? tie.away : tie.home;
@@ -221,7 +224,7 @@ export default function App() {
       roundTarget: config.roundTarget,
       bosses: config.bosses,
     });
-  }, [playerTeam, round, runSeed, runStatus, config, league, cup]);
+  }, [playerTeam, round, runSeed, runStatus, config, league, cup, career]);
 
   const ready = filled === XI_SIZE;
 

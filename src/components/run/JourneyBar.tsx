@@ -1,6 +1,7 @@
 import { Play, ShoppingCart, Users, ChevronRight, Wand2, Check } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { XI_SIZE } from '@/lib/types';
+import { careerCupDue } from '@/lib/cup';
 import type { Journey, JourneyStage } from '@/lib/journey';
 
 interface JourneyBarProps {
@@ -40,6 +41,10 @@ export default function JourneyBar({
   // Career/League sign from the browsable market — the one-tap helper fills the
   // XI with free agents; Classic & co. auto-buy from the draft shop offers.
   const isMarket = useGameStore((s) => s.career !== null || s.league !== null);
+  // In a Career, the next match is a knockout when a cup tie is due this matchweek.
+  const cupTieDue = useGameStore(
+    (s) => !!s.cup && !!s.league && !!s.career && careerCupDue(s.cup, s.league.matchweek)
+  );
 
   const { stage } = journey;
   const stageIdx = STEPS.findIndex((s) => s.stage === stage);
@@ -49,11 +54,13 @@ export default function JourneyBar({
       ? 'Sign players'
       : stage === 'pick'
         ? `Pick your XI · ${filled}/${XI_SIZE}`
-        : careerSeason && round === 1
-          ? `Start Season ${careerSeason}`
-          : onTargetTab
-            ? `Kick off — Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`
-            : `Ready! Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`;
+        : cupTieDue
+          ? '🏆 Play Cup Tie'
+          : careerSeason && round === 1
+            ? `Start Season ${careerSeason}`
+            : onTargetTab
+              ? `Kick off — Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`
+              : `Ready! Play ${isMarket ? 'Matchweek' : 'Round'} ${round}`;
 
   const PrimaryIcon = stage === 'sign' ? ShoppingCart : stage === 'pick' ? Users : Play;
 

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { BOTTOM_TIER, division, totalWeeks } from '@/lib/league';
 import { overall } from '@/lib/wages';
-import { reviewBonus } from '@/lib/career';
+import { reviewBonus, careerHonours } from '@/lib/career';
+import { cupChampion } from '@/lib/cup';
 import { PLEDGE_BONUS } from '@/lib/board';
 import { seasonSponsorship } from '@/lib/finance';
 import { CAREER_STARTING_BANKROLL, renewalCost } from '@/lib/market';
@@ -20,14 +21,20 @@ function res(outcome: 'win' | 'loss', a: number, b: number): MatchResult {
   return { events: [], score: { a, b }, xg: { a, b }, outcome, suspensions: [], injuries: [] };
 }
 
-/** Play out the rest of the current season with a fixed per-week outcome. */
+/**
+ * Play out the rest of the current season with a fixed per-week outcome. Loops
+ * until the season actually RESOLVES (a review opens / the job market opens / the
+ * run ends) rather than a fixed count — the Career cup interleaves extra midweek
+ * ties that don't advance the league matchweek, so the season can take more than
+ * `totalWeeks` resolveRound calls.
+ */
 function playSeason(outcome: 'win' | 'loss') {
-  const { resolveRound } = useGameStore.getState();
-  const weeks = totalWeeks(useGameStore.getState().league!);
-  for (let w = 0; w < weeks; w++) {
-    // 11 player wins → 33 pts is unbeatable (every AI that could match it lost
-    // to us); 11 losses → 0 pts is dead last.
-    resolveRound(outcome === 'win' ? res('win', 3, 0) : res('loss', 0, 2));
+  for (let i = 0; i < 40; i++) {
+    const s = useGameStore.getState();
+    if (!s.league || s.runStatus !== 'playing' || s.careerReview || s.jobMarket) break;
+    if (s.league.matchweek > totalWeeks(s.league)) break;
+    // 11 player wins → 33 pts is unbeatable; 11 losses → 0 pts is dead last.
+    s.resolveRound(outcome === 'win' ? res('win', 3, 0) : res('loss', 0, 2));
   }
 }
 
@@ -287,6 +294,57 @@ describe('career pyramid', () => {
     expect(s.careerReview!.bonus).toBe(reviewBonus('promoted') + PLEDGE_BONUS);
     // The board posts a payoff note it "remembered".
     expect(s.inbox.some((m) => m.id === 'board-payoff-1')).toBe(true);
+  });
+});
+
+describe('career — domestic cup (interleaved)', () => {
+  it('a due cup tie resolves without advancing the league or ending the run', () => {
+    useGameStore.getState().startCareer('standard');
+    let s = useGameStore.getState();
+    expect(s.cup).not.toBeNull();
+    expect(s.cup!.round).toBe(1);
+    // Jump to the first cup round-week (the QF) and play — routes to the cup.
+    useGameStore.setState({ league: { ...s.league!, matchweek: 6 } });
+    useGameStore.getState().resolveRound(res('win', 3, 0));
+    s = useGameStore.getState();
+    expect(s.runStatus).toBe('playing'); // a cup result never ends a career
+    expect(s.league!.matchweek).toBe(6); // the league fixture still waits
+    expect(s.cup!.round).toBe(2); // through to the next round
+    expect(s.inbox.some((m) => /^cup-/.test(m.id))).toBe(true);
+    // The very next match is the LEAGUE fixture (matchweek now advances).
+    useGameStore.getState().resolveRound(res('win', 2, 0));
+    expect(useGameStore.getState().league!.matchweek).toBe(7);
+  });
+
+  it('a cup KO ends the cup run, not the career', () => {
+    useGameStore.getState().startCareer('standard');
+    const s = useGameStore.getState();
+    useGameStore.setState({ league: { ...s.league!, matchweek: 6 } });
+    useGameStore.getState().resolveRound(res('loss', 0, 2));
+    const after = useGameStore.getState();
+    expect(after.runStatus).toBe('playing'); // career continues
+    expect(after.league!.matchweek).toBe(6); // league untouched
+    // Eliminated → no more cup ties; the next match is the league (advances).
+    useGameStore.setState({ league: { ...after.league!, matchweek: 12 } });
+    useGameStore.getState().resolveRound(res('win', 1, 0));
+    expect(useGameStore.getState().league!.matchweek).toBe(13);
+  });
+
+  it('winning all three rounds lifts the trophy and logs it as a Cup title', () => {
+    useGameStore.getState().startCareer('standard');
+    for (const wk of [6, 12, 18]) {
+      const s = useGameStore.getState();
+      useGameStore.setState({ league: { ...s.league!, matchweek: wk } });
+      useGameStore.getState().resolveRound(res('win', 2, 0)); // win each tie
+    }
+    expect(cupChampion(useGameStore.getState().cup!)).toBe(true);
+    // Finish the league season → the season record captures the cup win.
+    const s = useGameStore.getState();
+    useGameStore.setState({ league: { ...s.league!, matchweek: totalWeeks(s.league!) } });
+    useGameStore.getState().resolveRound(res('win', 1, 0)); // season ends
+    const hist = useGameStore.getState().career!.history;
+    expect(hist.at(-1)!.cupWon).toBe(true);
+    expect(careerHonours(hist).cupTitles).toBe(1);
   });
 });
 

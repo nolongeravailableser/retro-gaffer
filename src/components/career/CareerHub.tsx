@@ -179,6 +179,7 @@ export default function CareerHub() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { Icon: Crown, label: 'Div. titles', value: honours.divisionTitles, color: 'text-crt-amber' },
+            { Icon: Trophy, label: 'Cups', value: honours.cupTitles, color: 'text-crt-amber' },
             { Icon: ArrowUpCircle, label: 'Promotions', value: honours.promotions, color: 'text-crt-green' },
             { Icon: Star, label: 'Top tier', value: division(bestTier).name, color: 'text-chrome' },
             { Icon: Briefcase, label: 'Clubs managed', value: honours.clubsManaged, color: 'text-chrome' },

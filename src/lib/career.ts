@@ -43,6 +43,9 @@ export interface SeasonRecord {
   /** The club managed that season (Manager career spans clubs). Optional — legacy
    *  records predate it. */
   club?: string;
+  /** Whether you lifted the domestic Cup that season. Optional — legacy records
+   *  (and seasons before the cup shipped) predate it. */
+  cupWon?: boolean;
 }
 
 export interface CareerState {
@@ -73,6 +76,8 @@ export interface CareerHonours {
   highestTier: number;
   /** Distinct clubs managed across the career (Manager career spans clubs). */
   clubsManaged: number;
+  /** Domestic Cups lifted across the career. */
+  cupTitles: number;
 }
 
 export function careerHonours(history: readonly SeasonRecord[]): CareerHonours {
@@ -87,6 +92,7 @@ export function careerHonours(history: readonly SeasonRecord[]): CareerHonours {
     // At least the current club once a season's been played, even on legacy
     // records that predate the per-season club field.
     clubsManaged: Math.max(clubs.size, history.length ? 1 : 0),
+    cupTitles: history.filter((r) => r.cupWon).length,
   };
 }
 

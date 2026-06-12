@@ -26,7 +26,7 @@ import {
   PROMOTION_SPOTS,
   RELEGATION_SPOTS,
 } from '@/lib/league';
-import { roundName as cupRoundName } from '@/lib/cup';
+import { roundName as cupRoundName, careerCupDue } from '@/lib/cup';
 import { FACILITIES, FACILITY_IDS, MAX_LEVEL } from '@/lib/stadium';
 import { runScore, formatScore } from '@/lib/score';
 import { MATCH_REWARD } from '@/lib/economy';
@@ -76,6 +76,9 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
   const cup = useGameStore((s) => s.cup);
+  // In a Career the cup is interleaved: when a tie is due this matchweek, the next
+  // match is a knockout (glory, no league points/payouts) — frame the panel for it.
+  const cupTieDue = !!cup && !!league && !!career && careerCupDue(cup, league.matchweek);
   const careerBest = useGameStore((s) => s.careerBest);
   const clubName = useGameStore((s) => s.clubName);
   const startRun = useGameStore((s) => s.startRun);
@@ -311,7 +314,12 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
       )}
       <div className="mb-3 flex items-center justify-between">
         <div>
-          {league ? (
+          {cupTieDue && cup ? (
+            <>
+              <p className="text-xs uppercase tracking-wide text-crt-amber">🏆 The Cup</p>
+              <h2 className="font-display text-xl">{cupRoundName(cup.round, cup.rounds)}</h2>
+            </>
+          ) : league ? (
             <>
               <p className="text-xs uppercase tracking-wide text-chrome-muted">
                 Matchweek {Math.min(league.matchweek, leagueWeeks)}/{leagueWeeks}
@@ -410,7 +418,15 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
         </button>
       )}
 
-      {/* Match Stakes — explicit outcome payouts */}
+      {/* Match Stakes — a Cup knockout has no league payouts (glory only). */}
+      {cupTieDue ? (
+        <div className="mb-3 rounded-lg border border-crt-amber/30 bg-crt-amber/5 px-3 py-2.5 text-center">
+          <p className="font-display text-sm text-crt-amber">🏆 Knockout tie — win or you’re out of the Cup</p>
+          <p className="mt-1 text-[10px] text-chrome-muted">
+            Glory &amp; reputation, not prize money — a result won’t touch the league table or the bank, but injuries carry.
+          </p>
+        </div>
+      ) : (
       <div className="mb-3 rounded-lg border border-white/10 bg-pitch-800/50 px-3 py-2.5">
         <p className="mb-2 flex items-center gap-1.5 text-[11px] font-display uppercase tracking-wide text-chrome-muted">
           <TrendingUp size={13} className="text-crt-green" />
@@ -450,8 +466,10 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           </p>
         )}
       </div>
+      )}
 
-      {/* Gaffer's Gamble */}
+      {/* Gaffer's Gamble — not in a Cup tie (a knockout has no wager economy). */}
+      {!cupTieDue && (
       <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-crt-amber/30 bg-crt-amber/5 px-2.5 py-1.5">
         <span className="flex items-center gap-1.5 text-xs text-crt-amber">
           <Dice5 size={14} />
@@ -492,6 +510,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           />
         </div>
       </div>
+      )}
 
       {lastIncome && (
         <p className="mb-3 text-[11px] text-crt-green/80">
@@ -522,7 +541,11 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
         ].join(' ')}
       >
         <Play size={18} />
-        {canPlay ? `Play Round ${round}` : `Fill your XI (${filled}/${XI_SIZE})`}
+        {canPlay
+          ? cupTieDue
+            ? '🏆 Play Cup Tie'
+            : `Play Round ${round}`
+          : `Fill your XI (${filled}/${XI_SIZE})`}
       </motion.button>
       )}
     </div>

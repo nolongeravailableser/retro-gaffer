@@ -26,7 +26,10 @@ export function managerReputation(h: CareerHonours): number {
   const tierScore = Number.isFinite(h.highestTier)
     ? ((BOTTOM_TIER - h.highestTier) / Math.max(1, BOTTOM_TIER - TOP_TIER)) * 55
     : 0;
-  const honourScore = Math.min(30, h.divisionTitles * 8 + h.promotions * 5 + (h.championOfEngland ? 10 : 0));
+  const honourScore = Math.min(
+    30,
+    h.divisionTitles * 8 + h.promotions * 5 + (h.championOfEngland ? 10 : 0) + h.cupTitles * 6
+  );
   const tenureScore = Math.min(15, h.seasonsPlayed * 1.5);
   const setback = Math.min(15, h.relegations * 3);
   return Math.max(0, Math.min(100, Math.round(tierScore + honourScore + tenureScore - setback)));

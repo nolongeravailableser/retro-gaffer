@@ -78,6 +78,8 @@ import {
   playerTie,
   resolveCupRound as resolveCupBracket,
   roundName as cupRoundName,
+  careerCupDue,
+  cupChampion,
   CUP_SIZE,
   type CupState,
 } from '@/lib/cup';
@@ -249,6 +251,21 @@ function leagueWithSquads(seed: string | number, strength: number): LeagueState 
  */
 function careerLeagueBase(tier: number, difficultyId: string | null | undefined): number {
   return Math.round(division(tier).baseStrength * getDifficulty(difficultyId).aiStrengthMult);
+}
+
+/**
+ * Whether a Career domestic-cup tie is the player's NEXT match — interleaved as an
+ * extra midweek game (the league fixture waits; the matchweek doesn't advance on a
+ * cup tie). False in standalone Cup mode, where `s.cup` IS the whole run rather than
+ * a career sidebar, so the dispatch keeps the two paths cleanly separate.
+ */
+function careerCupTieDue(s: GameState): boolean {
+  return !!(s.career && s.cup && s.league && careerCupDue(s.cup, s.league.matchweek));
+}
+
+/** A fresh domestic cup for a Career season — AI clubs at the division's level. */
+function careerCup(seed: string | number, tier: number, difficultyId: string | null | undefined): CupState {
+  return generateCup(seed, careerLeagueBase(tier, difficultyId), CUP_SIZE);
 }
 
 /** Run AI draft picks until it's the player's turn (team 0) or the draft ends. */
@@ -876,7 +893,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       ...career,
       history: [
         ...career.history,
-        { season: career.season, tier: career.tier, finishPos: pos, clubs, outcome: outcomeSeason, club: s.clubName ?? undefined },
+        {
+          season: career.season, tier: career.tier, finishPos: pos, clubs,
+          outcome: outcomeSeason, club: s.clubName ?? undefined,
+          cupWon: s.cup ? cupChampion(s.cup) : undefined,
+        },
       ],
     };
     // Board teeth (difficulty-gated): on Hardcore, a season of sustained low
@@ -1166,6 +1187,73 @@ function resolveCupRoundState(s: GameState, result: MatchResult): Partial<GameSt
     lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep: 0, wager: wagerDelta },
     notice: note,
     noticeKind: runStatus === 'lost' ? 'info' : 'success',
+    selectedPlayerId: null,
+  };
+}
+
+/**
+ * Resolve a CAREER domestic-cup tie (interleaved with the league). Unlike the
+ * standalone Cup mode, this NEVER ends the run and NEVER touches the league
+ * matchweek — it's a midweek sidebar. Glory, not gold: no prize money (so the
+ * tuned career economy is untouched), but the trophy, reputation and honours are
+ * real, and injuries/suspensions from the tie carry to the league (a deep cup run
+ * risks tiring/breaking your stars). Win the final → recorded as a Cup title at
+ * season end (cupChampion, read into the SeasonRecord).
+ */
+function resolveCareerCupRound(s: GameState, result: MatchResult): Partial<GameState> {
+  const cup = s.cup!;
+  const career = s.career!;
+  const tie = playerTie(cup);
+  const playerResult =
+    tie && tie.home === YOU
+      ? { home: result.score.a, away: result.score.b }
+      : { home: result.score.b, away: result.score.a };
+  const seed = `${s.runSeed}-cup-s${career.season}`;
+  const { alive, results, playerThrough } = resolveCupBracket(cup, playerResult, seed);
+  const newCup: CupState = { ...cup, alive, results, round: playerThrough ? cup.round + 1 : cup.round };
+  const thisRoundName = cupRoundName(cup.round, cup.rounds);
+  const wonCup = cupChampion(newCup);
+
+  // Discipline & fitness carry to the league (decrement existing, add new).
+  const suspensions = result.suspensions ?? [];
+  const newInjuries: Record<string, number> = {};
+  for (const [id, r] of Object.entries(s.injuries)) if (r > 1) newInjuries[id] = r - 1;
+  for (const inj of result.injuries ?? []) {
+    if (inj.rounds > 0) newInjuries[inj.playerId] = Math.max(newInjuries[inj.playerId] ?? 0, inj.rounds);
+  }
+
+  // Apps/goals from the cup count toward player histories.
+  const xiPlayers = s.xi.map((id) => (id ? getPlayer(id) : null)).filter((p): p is Player => !!p);
+  const playerHistory = accrueHistory(s.playerHistory, result.events, xiPlayers, {
+    goalsConceded: result.score.b,
+    outcome: result.outcome,
+    seed: `M-${s.runSeed}-cup-${career.season}-${cup.round}`,
+  });
+
+  const week = s.league ? s.league.matchweek : cup.round;
+  const note = !playerThrough
+    ? `Knocked out of the Cup in the ${thisRoundName}.`
+    : wonCup
+      ? '🏆 CUP WINNERS! You lifted the domestic Cup!'
+      : `Into the ${cupRoundName(cup.round + 1, cup.rounds)} of the Cup!`;
+  const msg: InboxMessage = {
+    id: `cup-s${career.season}-r${cup.round}`,
+    week,
+    kind: 'board',
+    title: wonCup ? 'Cup glory!' : playerThrough ? 'Cup progress' : 'Cup exit',
+    body: note,
+    read: false,
+  };
+
+  return {
+    cup: newCup,
+    suspensions,
+    injuries: newInjuries,
+    playerHistory,
+    inbox: pushMessages(s.inbox, [msg]),
+    runStatus: 'playing',
+    notice: note,
+    noticeKind: playerThrough ? 'success' : 'info',
     selectedPlayerId: null,
   };
 }
@@ -1598,8 +1686,12 @@ export const useGameStore = create<GameState>()(
       resolveRound: (result) =>
         set((s) => {
           if (s.runStatus !== 'playing') return {};
-          // Cup + League resolve on their own paths (bracket / table, no lives).
-          if (s.cup) return resolveCupRoundState(s, result);
+          // Career domestic cup (interleaved): a due tie resolves on its own path
+          // before the league fixture (the matchweek doesn't advance).
+          if (careerCupTieDue(s)) return resolveCareerCupRound(s, result);
+          // Standalone Cup mode (no career): the bracket IS the whole run.
+          if (s.cup && !s.career) return resolveCupRoundState(s, result);
+          // League / Career league season (table, no lives).
           if (s.league) return resolveLeagueRound(s, result);
           const config = runConfig(s);
           const boss = getBoss(s.round, config.bosses);
@@ -2258,6 +2350,9 @@ export const useGameStore = create<GameState>()(
             xi,
             bench,
             league,
+            // A domestic cup runs alongside the league all season (interleaved
+            // midweek ties — glory + reputation, no prize money).
+            cup: careerCup(`${fresh.runSeed}-s1`, tier, diffId),
             career: { season: 1, tier, meta, roster, facilities: newFacilities(), history: [] },
             careerReview: null,
             // The board lays out its expectation for the opening season + the
@@ -2328,6 +2423,7 @@ export const useGameStore = create<GameState>()(
               history: s.career.history, // the manager's story carries across clubs
             },
             league,
+            cup: careerCup(`${seed}-s${nextSeason}`, tier, s.difficulty),
             owned,
             xi,
             bench,
@@ -2498,6 +2594,7 @@ export const useGameStore = create<GameState>()(
             },
             careerReview: null,
             league,
+            cup: careerCup(`${seed}-s${nextSeason}`, tier, s.difficulty),
             owned,
             xi,
             bench,
@@ -2579,6 +2676,11 @@ export const useGameStore = create<GameState>()(
         if (state.career && !state.league) {
           state.league = leagueWithSquads(state.runSeed, careerLeagueBase(state.career.tier, state.difficulty));
           state.round = state.league.matchweek;
+        }
+        // A pre-cup career has no domestic cup yet — backfill one for the current
+        // season (idempotent: only when missing, so an in-progress cup is preserved).
+        if (state.career && !state.cup) {
+          state.cup = careerCup(`${state.runSeed}-s${state.career.season}`, state.career.tier, state.difficulty);
         }
         // A pre-Phase-B league has clubs but no squads — draft them so the
         // transfer market's poach/free-agent split works (idempotent: only when
