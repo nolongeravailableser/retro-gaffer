@@ -3,10 +3,27 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (later session — added a **Career difficulty rebalance**,
-> COMMITTED locally as HEAD `54dc692`, **NOT pushed** (working tree clean). Everything
-> before it is SHIPPED & PUSHED. Gates: **386 tests + balance sims**, tsc + build green,
-> persistence **v30** (no bump — all derived), **Classic ladder 36.8%** preserved.
+> **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
+> live-playtest QA + a trap fix it surfaced. COMMITTED locally, HEAD `762452b`, **NOT
+> pushed** (working tree clean). Everything before `54dc692` is SHIPPED & PUSHED. Gates:
+> **387 tests + balance sims**, tsc + build green, persistence **v30** (no bump — all
+> derived), **Classic ladder 36.8%** preserved.
+>
+> **Live playthrough QA (this session):** played a full Hardcore season end-to-end —
+> verified tougher AI (youStrength 1062 = 900×1.18), contested matches (MW1 lost 1-2,
+> xG near-even), full match flow, a **season-end sacking** (bottom-3 in the National
+> League), the **Job Market** (2 vacancies), and **takeJob** → inherited a real squad at
+> a new club with the new league also at Hardcore strength. All correct.
+>
+> **Trap fix it surfaced (commit `762452b`):** a thin squad hit by bans/injuries (more
+> common now on Hardcore) could be told to "sign a MID" with the transfer window shut —
+> reading like a soft-lock. Root cause: `journeyFor` gated on per-role counts (ignoring
+> that any outfielder can play any outfield slot out of position), and `pickBestXI`'s
+> crisis cover would park the backup GK in midfield (high-DEF keeper won on raw
+> roleScore). Fixed: journey legality is now KEEPER-LINE based (≥1 GK + enough
+> outfielders total → fieldable in ANY formation, out of position); Auto-Pick never
+> crosses the keeper line. Live-verified (2 MIDs in a 4-4-2 → a FWD+DEF fill the MID
+> slots, no GK outfield, Play ready). journey/autopick unit tests cover both.
 >
 > **Difficulty rebalance (this session, committed `54dc692`):** the difficulty dial now
 > bites on the PITCH. New `DifficultyConfig.aiStrengthMult` scales the AI clubs you face
@@ -756,15 +773,16 @@ programmatically** from existing single position (confirm before building).
 > persistence change → bump CURRENT_VERSION + add a migration). Work autonomously; only
 > pause for a genuine product/design fork, phrased as a yes/no question.
 >
-> **✅ DONE this session — (b) Career balance/feel.** The 22-match career was too easy
-> (champ ~67%, sacked ~1.3%); now retuned via a new `aiStrengthMult` difficulty lever +
-> a board-confidence bug fix (see header block + the §3 detail). Committed `54dc692`,
-> **not pushed** — push when you're happy (`git push origin main` auto-deploys to prod).
+> **✅ DONE this session — (b) Career balance/feel + a live Hardcore playthrough QA.**
+> The 22-match career was too easy (champ ~67%, sacked ~1.3%); retuned via a new
+> `aiStrengthMult` difficulty lever + a board-confidence bug fix, then **live-playtested
+> a full Hardcore season** (sacking + job market + takeJob all verified) which surfaced
+> and got a **thin-squad XI trap fix**. Three local commits (`54dc692` rebalance,
+> `64a3782`/this docs, `762452b` trap fix), **NOT pushed** — push when happy
+> (`git push origin main` auto-deploys to prod).
 >
 > Today I want to: **[PICK ONE — fill this in]**
->   (a) **push** `54dc692` (the difficulty rebalance) to prod, or first **live-playtest**
->       a Hardcore career end-to-end (tougher AI + a board sacking + the job market) to
->       confirm the new tension feels right before pushing;
+>   (a) **push** the three local commits to prod (difficulty rebalance + trap fix);
 >   (a′) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
 >       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
 >   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
