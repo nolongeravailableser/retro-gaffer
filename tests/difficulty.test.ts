@@ -3,6 +3,7 @@ import {
   DIFFICULTIES,
   getDifficulty,
   canSack,
+  wageCap,
   DEFAULT_DIFFICULTY,
 } from '@/lib/difficulty';
 
@@ -35,6 +36,13 @@ describe('difficulty matrix', () => {
     expect(getDifficulty('nonsense').id).toBe('standard');
     expect(getDifficulty(null).id).toBe('standard');
     expect(getDifficulty('hardcore').id).toBe('hardcore');
+  });
+
+  it('the wage ceiling tightens as difficulty rises', () => {
+    const budget = 30; // £30M/round soft budget
+    expect(wageCap(budget, DIFFICULTIES.easy)).toBeGreaterThan(wageCap(budget, DIFFICULTIES.standard));
+    expect(wageCap(budget, DIFFICULTIES.standard)).toBeGreaterThan(wageCap(budget, DIFFICULTIES.hardcore));
+    expect(wageCap(budget, DIFFICULTIES.standard)).toBe(budget); // standard == the soft budget
   });
 
   describe('canSack — board confidence teeth', () => {

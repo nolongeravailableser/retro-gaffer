@@ -122,3 +122,12 @@ export function canSack(
   if (season <= cfg.graceSeasons) return false; // immunity window
   return confidence < cfg.sackThreshold;
 }
+
+/**
+ * The hard wage ceiling (£m/round) for a difficulty, given the club's soft wage
+ * budget. Easy is lenient (≥ budget, rarely binds); Hardcore tightens below it.
+ * A signing whose wages would push the bill over this is refused.
+ */
+export function wageCap(softBudget: number, cfg: DifficultyConfig): number {
+  return softBudget * cfg.wageBudgetMult;
+}

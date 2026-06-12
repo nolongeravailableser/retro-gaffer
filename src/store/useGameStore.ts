@@ -29,7 +29,7 @@ import {
   maxWager,
   lifeBuybackCost,
 } from '@/lib/ladder';
-import { wageBill, divisionMult, tierMult, wageTierMult, overall, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { wageBill, divisionMult, tierMult, wageTierMult, overall, wageBudget, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { seasonSponsorship, disciplinaryFine } from '@/lib/finance';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
@@ -135,6 +135,7 @@ import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import {
   getDifficulty,
   canSack,
+  wageCap,
   DEFAULT_DIFFICULTY,
   type DifficultyId,
 } from '@/lib/difficulty';
@@ -1173,6 +1174,23 @@ export const useGameStore = create<GameState>()(
         const check = checkBuy(s.bankroll, s.owned.length, { ...player, cost: fee });
         if (!check.ok) {
           set({ notice: check.reason ?? 'Cannot sign', noticeKind: 'error' });
+          return;
+        }
+        // Hard wage ceiling (difficulty-scaled): even if you can afford the FEE,
+        // the recurring WAGES must fit the budget. The squad's projected wage bill
+        // (career-scaled) can't exceed the difficulty's cap on the soft budget —
+        // Easy is lenient, Hardcore tight. The budget reflects funds left after the
+        // fee. Career/League only (Classic has no wage market).
+        const capTier = s.career ? s.career.tier : LEAGUE_NEUTRAL_TIER;
+        const projectedBill =
+          wageBill([...s.owned.map(getPlayer).filter((p): p is Player => !!p), player]) *
+          (s.career ? wageTierMult(s.career.tier) : 1);
+        const cap = wageCap(wageBudget(s.bankroll - fee, tierMult(capTier)), getDifficulty(s.difficulty));
+        if (projectedBill > cap) {
+          set({
+            notice: `Over the wage ceiling — ${player.name}'s wages would push the bill past your £${cap.toFixed(1)}M/round budget.`,
+            noticeKind: 'error',
+          });
           return;
         }
         // Auto-assign: first empty matching XI slot, else bench.
