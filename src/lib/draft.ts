@@ -41,6 +41,16 @@ export const DRAFT_SQUAD_SIZE = 14;
  */
 export const CLASSIC_DRAFT_BUDGET = 150;
 
+/**
+ * AI clubs' baseline draft budget (£m), with a seeded ±spread per club. Set a
+ * notch BELOW the Standard player budget so difficulty reads cleanly: Standard
+ * is a real edge, Easy dominates, Hardcore is an underdog. Tuned via the sim.
+ */
+export const AI_DRAFT_BUDGET = 120;
+/** AI budget spread: each club gets AI_DRAFT_BUDGET × (this lo … hi). */
+export const AI_BUDGET_LO = 0.85;
+export const AI_BUDGET_HI = 1.25;
+
 export interface DraftTeam {
   id: string;
   name: string;
@@ -131,17 +141,26 @@ function unmetNeeds(state: DraftState, team: DraftTeam): Partial<Record<Role, nu
  */
 function reserveCost(state: DraftState, team: DraftTeam, excludeId?: string): number {
   const needs = unmetNeeds(state, team);
-  let reserve = 0;
-  // Cheapest available per role, in ascending order, so multiple slots of the
-  // same role reserve the N cheapest (not the same one twice).
-  for (const [role, count] of Object.entries(needs) as [Role, number][]) {
-    const cheapest = state.pool
-      .filter((id) => id !== excludeId && state.meta[id]?.role === role)
-      .map((id) => state.meta[id].value)
-      .sort((a, b) => a - b)
-      .slice(0, count);
-    for (const c of cheapest) reserve += c;
+  if (!Object.keys(needs).length) return 0;
+  // One pass over the pool, keeping only the `count` cheapest values per needed
+  // role (a tiny capped, sorted list) — avoids sorting the whole pool per role.
+  const cheapest: Partial<Record<Role, number[]>> = {};
+  for (const id of state.pool) {
+    if (id === excludeId) continue;
+    const m = state.meta[id];
+    const count = needs[m.role as Role];
+    if (!count) continue;
+    const arr = (cheapest[m.role as Role] ??= []);
+    if (arr.length < count) {
+      arr.push(m.value);
+      arr.sort((a, b) => a - b);
+    } else if (m.value < arr[arr.length - 1]) {
+      arr[arr.length - 1] = m.value;
+      arr.sort((a, b) => a - b);
+    }
   }
+  let reserve = 0;
+  for (const role in cheapest) for (const v of cheapest[role as Role]!) reserve += v;
   return reserve;
 }
 
@@ -204,28 +223,33 @@ export function aiPick(state: DraftState, teamIdx: number): string | null {
   const team = state.teams[teamIdx];
   const needs = unmetNeeds(state, team);
   const neededRoles = new Set(Object.keys(needs) as Role[]);
-  let pickable = state.pool.filter((id) => canPick(state, teamIdx, id));
-  // While required roles are open, restrict to them (field a legal XI first).
-  if (neededRoles.size) {
-    const needed = pickable.filter((id) => neededRoles.has(state.meta[id].role));
-    if (needed.length) pickable = needed;
+  // Role-first candidate set, best-rated first.
+  let candidates = neededRoles.size
+    ? state.pool.filter((id) => neededRoles.has(state.meta[id].role))
+    : state.pool.slice();
+  if (!candidates.length) candidates = state.pool.slice();
+  candidates.sort((a, b) => state.meta[b].rating - state.meta[a].rating);
+  // Lazily collect the top few that pass the reserve guard — usually the very
+  // top (early budgets are ample), so this checks only a handful, not the whole
+  // pool. Seeded pick among them so clubs don't draft identically.
+  const top: string[] = [];
+  for (const id of candidates) {
+    if (canPick(state, teamIdx, id)) {
+      top.push(id);
+      if (top.length >= 3) break;
+    }
   }
-  if (pickable.length === 0) {
+  if (top.length === 0) {
     // Safety net (a depleted pool can't satisfy the budget guard): complete the
-    // squad anyway with the cheapest still-needed player, then cheapest overall.
-    // Fielding a legal XI comes before staying perfectly under budget.
+    // squad with the cheapest still-needed player, then cheapest overall.
     const needFirst = neededRoles.size
       ? state.pool.filter((id) => neededRoles.has(state.meta[id].role))
       : [];
-    const fallback = (needFirst.length ? needFirst : state.pool)
+    const fallback = (needFirst.length ? needFirst : state.pool.slice())
       .sort((a, b) => state.meta[a].value - state.meta[b].value);
     return fallback[0] ?? null;
   }
-  const candidates = pickable.sort((a, b) => state.meta[b].rating - state.meta[a].rating);
-  // Seeded pick from the top few, so the strongest player usually goes but the
-  // draft isn't perfectly deterministic-greedy for every club.
   const rng = new Rng(`${state.pick}-${team.id}-aipick`);
-  const top = candidates.slice(0, Math.min(3, candidates.length));
   return top[rng.int(0, top.length - 1)];
 }
 

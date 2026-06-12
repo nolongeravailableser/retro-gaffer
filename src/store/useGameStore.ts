@@ -67,6 +67,9 @@ import {
   draftComplete,
   leagueFromDraft,
   CLASSIC_DRAFT_BUDGET,
+  AI_DRAFT_BUDGET,
+  AI_BUDGET_LO,
+  AI_BUDGET_HI,
   type DraftState,
   type DraftablePlayer,
 } from '@/lib/draft';
@@ -2082,9 +2085,13 @@ export const useGameStore = create<GameState>()(
           const teams: Array<{ id: string; name: string; budget: number }> = [
             { id: YOU, name: s.clubName ?? 'Your XI', budget: Math.round(CLASSIC_DRAFT_BUDGET * cfg.startBankrollMult) },
           ];
+          // Rivals are weaker on Easy and richer on Hardcore (difficulty = club
+          // limitations) — the inverse of your own budget multiplier.
+          const aiBase = AI_DRAFT_BUDGET / cfg.startBankrollMult;
           for (let i = 0; i < LEAGUE_TEAMS - 1; i++) {
             const name = names.length ? names.splice(rng.int(0, names.length - 1), 1)[0] : `Club ${i + 1}`;
-            teams.push({ id: `ai${i}`, name, budget: Math.round(CLASSIC_DRAFT_BUDGET * (0.8 + rng.next() * 0.4)) });
+            const budget = Math.round(aiBase * (AI_BUDGET_LO + rng.next() * (AI_BUDGET_HI - AI_BUDGET_LO)));
+            teams.push({ id: `ai${i}`, name, budget });
           }
           const players: DraftablePlayer[] = POOL.map((p) => ({
             id: p.id,
