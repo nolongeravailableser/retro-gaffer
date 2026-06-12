@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Play, Trophy, Zap, MoreHorizontal, HelpCircle, Award,
+  Play, Trophy, Zap, MoreHorizontal, HelpCircle, Award, CalendarDays,
   ChevronLeft, ArrowRight, Smile, ShieldHalf, Flame, Check,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { division } from '@/lib/league';
+import { division, totalWeeks } from '@/lib/league';
 import { getMode } from '@/lib/modes';
 import { DIFFICULTIES, type DifficultyId } from '@/lib/difficulty';
+import { getMutator, dailyMutator } from '@/lib/mutators';
+import { dailyKey } from '@/lib/daily';
+import { runConfig } from '@/lib/scenarios';
 import CrestBadge from '@/components/ui/CrestBadge';
 import RecordsPanel from '@/components/records/RecordsPanel';
 import { DEFAULT_KIT } from '@/lib/kits';

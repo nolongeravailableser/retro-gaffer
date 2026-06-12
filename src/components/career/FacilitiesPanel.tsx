@@ -88,6 +88,12 @@ export default function FacilitiesPanel({ bare = false }: FacilitiesPanelProps) 
                   ))}
                   <span className="ml-1 text-[10px] text-chrome-muted">Lvl {level}/{MAX_LEVEL}</span>
                 </div>
+                {/* What the NEXT level buys — the upgrade decision, not made blind. */}
+                {!maxed && (
+                  <p className="mt-0.5 text-[10px] text-chrome-muted/80">
+                    Lvl {level} → {level + 1}: <span className="text-chrome-muted">{effectLabel(id, level + 1, streak)}</span>
+                  </p>
+                )}
               </div>
               <button
                 type="button"

@@ -104,6 +104,9 @@ export default function CareerHub() {
             <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full bg-crt-amber" style={{ width: `${rep}%` }} />
             </div>
+            <p className="mt-1 text-[10px] text-chrome-muted/80">
+              Reputation opens bigger jobs after a sacking — titles and promotions raise it, relegations dent it.
+            </p>
           </div>
         </div>
       </div>
@@ -176,7 +179,7 @@ export default function CareerHub() {
         <p className="mb-2 flex items-center gap-1.5 font-display text-sm text-chrome">
           <Trophy size={15} className="text-crt-amber" /> Honours
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {[
             { Icon: Crown, label: 'Div. titles', value: honours.divisionTitles, color: 'text-crt-amber' },
             { Icon: Trophy, label: 'Cups', value: honours.cupTitles, color: 'text-crt-amber' },
@@ -239,6 +242,11 @@ export default function CareerHub() {
                   <span className={`flex shrink-0 items-center gap-1 font-display text-[11px] ${b.color}`}>
                     <b.Icon size={13} /> {b.label}
                   </span>
+                  {rec.cupWon && (
+                    <span className="shrink-0 rounded-full bg-crt-amber px-1.5 py-px font-data text-[9px] font-bold text-pitch-950" title="Won the domestic Cup">
+                      🏆 CUP
+                    </span>
+                  )}
                 </li>
               );
             })}
