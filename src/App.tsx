@@ -50,6 +50,7 @@ import JourneyBar from '@/components/run/JourneyBar';
 import CrestBadge from '@/components/ui/CrestBadge';
 import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
+import StartMenu from '@/components/run/StartMenu';
 import JobMarket from '@/components/career/JobMarket';
 import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
@@ -110,6 +111,9 @@ export default function App() {
   const [matchMode, setMatchMode] = useState<MatchMode>('ladder');
   const [challenge, setChallenge] = useState<OpponentTeam | null>(null);
   const [newRunOpen, setNewRunOpen] = useState(false);
+  // Front door (Pillar 2): on load the manager lands on the Start Menu and
+  // resumes / starts a run from there. The logo returns here any time.
+  const [showStartMenu, setShowStartMenu] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -312,13 +316,18 @@ export default function App() {
     // pb-20 on mobile to clear the fixed bottom nav; sm:pb-0 on desktop
     <div className="mx-auto min-h-full max-w-5xl px-4 pb-20 sm:pb-8">
       <header className="pt-5 pb-4 flex flex-col items-center gap-3 text-center">
-        <div className="flex items-center gap-2 text-crt-green animate-flicker">
+        <button
+          type="button"
+          onClick={() => setShowStartMenu(true)}
+          aria-label="Main menu"
+          className="flex items-center gap-2 text-crt-green animate-flicker transition hover:opacity-80"
+        >
           <Trophy size={20} />
           <h1 className="font-display text-2xl tracking-wide sm:text-3xl">
             RETRO GAFFER
           </h1>
           <Sparkles size={20} />
-        </div>
+        </button>
         {clubName && (
           <p className="-mt-1 flex items-center gap-1.5 font-display text-sm text-chrome">
             <CrestBadge name={clubName} kit={kit ?? DEFAULT_KIT} size={20} />
@@ -494,9 +503,10 @@ export default function App() {
         onClose={() => setNewRunOpen(false)}
         // Land where the journey starts: an empty squad begins on Transfers
         // (sign players); a prebuilt one (career season 2+) on Tactics.
-        onStarted={() =>
-          setActiveTab(useGameStore.getState().owned.length === 0 ? 'transfers' : 'formation')
-        }
+        onStarted={() => {
+          setActiveTab(useGameStore.getState().owned.length === 0 ? 'transfers' : 'formation');
+          setShowStartMenu(false);
+        }}
       />
 
       <CareerReview />
@@ -504,6 +514,18 @@ export default function App() {
       {/* Sacked → the Job Market (z-65, above the run-over overlay). A manager's
           career is never over; apply for a club matching your reputation. */}
       <JobMarket />
+      {/* The front door (z-55): one-click Resume + New Career (difficulty) +
+          Quick Classic + the demoted modes. Hidden while a match is open. */}
+      {showStartMenu && !matchOpen && (
+        <StartMenu
+          onEnter={(tab) => {
+            if (tab) setActiveTab(tab);
+            setShowStartMenu(false);
+          }}
+          onMoreModes={() => setNewRunOpen(true)}
+          onTutorial={() => setTutorialOpen(true)}
+        />
+      )}
       {(!onboarded || tutorialOpen) && (
         <OnboardingModal
           tutorialOnly={onboarded}
