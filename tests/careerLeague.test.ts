@@ -4,8 +4,10 @@ import { BOTTOM_TIER, division, totalWeeks } from '@/lib/league';
 import { overall } from '@/lib/wages';
 import { reviewBonus } from '@/lib/career';
 import { PLEDGE_BONUS } from '@/lib/board';
+import { seasonSponsorship } from '@/lib/finance';
+import { CAREER_STARTING_BANKROLL } from '@/lib/market';
 import { POOL } from '@/data/pool';
-import type { MatchResult } from '@/lib/types';
+import type { MatchEvent, MatchResult } from '@/lib/types';
 
 /**
  * Integration coverage for the Career → league pyramid: drive whole seasons
@@ -247,6 +249,42 @@ describe('career pyramid', () => {
     expect(s.careerReview!.bonus).toBe(reviewBonus('promoted') + PLEDGE_BONUS);
     // The board posts a payoff note it "remembered".
     expect(s.inbox.some((m) => m.id === 'board-payoff-1')).toBe(true);
+  });
+});
+
+describe('career finances — sponsorship & fines', () => {
+  it('banks the season sponsorship at kickoff with an inbox note', () => {
+    useGameStore.getState().startCareer('standard');
+    const s = useGameStore.getState();
+    // Standard kitty (×1) + the National League's modest local sponsorship.
+    expect(s.bankroll).toBe(CAREER_STARTING_BANKROLL + seasonSponsorship(BOTTOM_TIER));
+    expect(s.inbox.some((m) => m.id === 'sponsor-1')).toBe(true);
+  });
+
+  it('a rash of bookings costs more than a clean match (disciplinary fines)', () => {
+    const yellow = (i: number): MatchEvent => ({
+      minute: i + 1, side: 'A', kind: 'yellow', text: 'booked',
+    });
+    const win = (events: MatchEvent[]): MatchResult => ({
+      events, score: { a: 1, b: 0 }, xg: { a: 1, b: 0 }, outcome: 'win', suspensions: [], injuries: [],
+    });
+
+    // A clean win.
+    useGameStore.getState().startCareer('standard');
+    const before1 = useGameStore.getState().bankroll;
+    useGameStore.getState().resolveRound(win([]));
+    const cleanNet = useGameStore.getState().bankroll - before1;
+
+    // The same win, but with a flurry of cards — identical kickoff state, so the
+    // only difference is the disciplinary fine.
+    useGameStore.getState().startCareer('standard');
+    const before2 = useGameStore.getState().bankroll;
+    expect(before2).toBe(before1); // same opening funds → clean comparison
+    useGameStore.getState().resolveRound(win(Array.from({ length: 13 }, (_, i) => yellow(i))));
+    const cardedNet = useGameStore.getState().bankroll - before2;
+
+    expect(cleanNet - cardedNet).toBeGreaterThan(0); // bookings cost real money
+    expect(useGameStore.getState().lastIncome?.fine).toBeGreaterThan(0);
   });
 });
 

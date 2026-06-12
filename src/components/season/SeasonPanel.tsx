@@ -227,7 +227,8 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
       lastIncome.interest +
       lastIncome.streak -
       lastIncome.wage -
-      lastIncome.upkeep +
+      lastIncome.upkeep -
+      (lastIncome.fine ?? 0) +
       lastIncome.wager
     : 0;
   const boss = getBoss(round, config.bosses);
@@ -498,6 +499,7 @@ export default function SeasonPanel({ roundOpponent, canPlay, filled, hidePlay =
           {lastIncome.income} round · £{lastIncome.interest} int · £{lastIncome.streak} streak
           {lastIncome.wage ? ` · −£${lastIncome.wage} wages` : ''}
           {lastIncome.upkeep ? ` · −£${lastIncome.upkeep} upkeep` : ''}
+          {lastIncome.fine ? ` · −£${lastIncome.fine} fines` : ''}
           {lastIncome.wager ? ` · ${lastIncome.wager > 0 ? '+' : '−'}£${Math.abs(lastIncome.wager)} bet` : ''})
         </p>
       )}

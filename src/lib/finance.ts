@@ -75,12 +75,18 @@ export function marketTierMult(tier: number): number {
  * the top. Fines scale with the division (a PL booking costs more than a
  * non-league one). Proportional placeholders — tuned against the sim when wired.
  */
+// Calibrated against the career sim so each tier's season sponsorship and its
+// average-discipline fines roughly cancel (texture without runaway): a season's
+// fines ≈ (~2.85 bookings/match × 22 matches × 0.5 season-scale) × finePerCard
+// ≈ 31 × finePerCard, so finePerCard ≈ sponsorship / 31 nets neutral. Tuned so
+// the top tier runs a slight deficit (a brake on hoarding) and the bottom a
+// slight surplus (a solvency cushion). A DISCIPLINED squad keeps the surplus.
 const SPONSOR_FINE: Record<number, { sponsorLocal: number; sponsorGlobal: number; finePerCard: number }> = {
-  5: { sponsorLocal: 3, sponsorGlobal: 0, finePerCard: 0.2 }, // National League
-  4: { sponsorLocal: 5, sponsorGlobal: 0, finePerCard: 0.3 }, // League Two
-  3: { sponsorLocal: 8, sponsorGlobal: 0, finePerCard: 0.5 }, // League One
-  2: { sponsorLocal: 12, sponsorGlobal: 20, finePerCard: 0.7 }, // Championship
-  1: { sponsorLocal: 18, sponsorGlobal: 60, finePerCard: 1.0 }, // Premier League
+  5: { sponsorLocal: 3, sponsorGlobal: 0, finePerCard: 0.08 }, // National League
+  4: { sponsorLocal: 5, sponsorGlobal: 0, finePerCard: 0.14 }, // League Two
+  3: { sponsorLocal: 8, sponsorGlobal: 0, finePerCard: 0.25 }, // League One
+  2: { sponsorLocal: 12, sponsorGlobal: 20, finePerCard: 1.1 }, // Championship
+  1: { sponsorLocal: 18, sponsorGlobal: 60, finePerCard: 2.6 }, // Premier League
 };
 
 // --- The consolidated table --------------------------------------------------

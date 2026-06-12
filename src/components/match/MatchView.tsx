@@ -382,7 +382,7 @@ export default function MatchView({
   const xgShown = result ? result.xg : { a: Math.round(live.xg.a * 100) / 100, b: Math.round(live.xg.b * 100) / 100 };
   const payoutNet = lastIncome
     ? lastIncome.reward + lastIncome.income + lastIncome.interest +
-      lastIncome.streak - lastIncome.wage - lastIncome.upkeep + lastIncome.wager
+      lastIncome.streak - lastIncome.wage - lastIncome.upkeep - (lastIncome.fine ?? 0) + lastIncome.wager
     : 0;
 
   const hasSuspensions = !!result && result.suspensions.length > 0;
@@ -730,6 +730,7 @@ export default function MatchView({
                       {lastIncome.streak ? ` · £${lastIncome.streak} streak` : ''}
                       {lastIncome.wage ? ` · −£${lastIncome.wage} wages` : ''}
                       {lastIncome.upkeep ? ` · −£${lastIncome.upkeep} upkeep` : ''}
+                      {lastIncome.fine ? ` · −£${lastIncome.fine} fines` : ''}
                       {lastIncome.wager
                         ? ` · ${lastIncome.wager > 0 ? '+' : '−'}£${Math.abs(lastIncome.wager)} bet`
                         : ''}

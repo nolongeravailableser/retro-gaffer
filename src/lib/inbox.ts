@@ -115,6 +115,23 @@ export function boardMessage(week: number, title: string, body: string): InboxMe
   return { id: `board-${week}`, week, kind: 'board', title, body, read: false };
 }
 
+/** The commercial team confirms the season's sponsorship income (once per season). */
+export function sponsorshipMessage(
+  week: number,
+  season: number,
+  divName: string,
+  amount: number
+): InboxMessage {
+  return {
+    id: `sponsor-${season}`,
+    week,
+    kind: 'board',
+    title: 'Sponsorship secured',
+    body: `Commercial deals for the ${divName} season are worth £${amount}M.`,
+    read: false,
+  };
+}
+
 /** The board's pre-season expectation — an interactive pledge (once per season). */
 export function expectationMessage(week: number, season: number, expectation: string): InboxMessage {
   return {

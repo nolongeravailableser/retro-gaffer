@@ -30,6 +30,7 @@ import {
   lifeBuybackCost,
 } from '@/lib/ladder';
 import { wageBill, divisionMult, tierMult, wageTierMult, overall, LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
+import { seasonSponsorship, disciplinaryFine } from '@/lib/finance';
 import { dailyKey, dailySeed } from '@/lib/daily';
 import { getBoss } from '@/lib/bosses';
 import { drawEvent, type GameEvent } from '@/lib/events';
@@ -116,6 +117,7 @@ import {
   departureMessage,
   moraleMessage,
   expectationMessage,
+  sponsorshipMessage,
   confidenceWarning,
   signingMessage,
   pledgePayoffMessage,
@@ -372,6 +374,8 @@ interface GameState {
     wage: number;
     /** Facility running costs (career only; 0 otherwise). */
     upkeep: number;
+    /** Disciplinary fines for this match's bookings (career only; 0 otherwise). */
+    fine?: number;
     wager: number;
   } | null;
   /** Stake placed on the upcoming match (Gaffer's Gamble). */
@@ -687,8 +691,19 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   // Career: facility running costs — the money sink that keeps wealth meaningful
   // at the top (a big club costs real cash to run every week).
   const upkeep = s.career ? Math.round(facilityUpkeep(s.career.facilities, dm) * scale) : 0;
+  // Disciplinary fines (career only): your bookings cost real money, scaled by
+  // the division — a discipline tax that's the natural counterweight to the
+  // season's sponsorship income. A red counts double. Side A = your team only.
+  let yellows = 0;
+  let reds = 0;
+  for (const e of result.events) {
+    if (e.side !== 'A') continue;
+    if (e.kind === 'yellow') yellows++;
+    else if (e.kind === 'red') reds++;
+  }
+  const fine = s.career ? Math.round(disciplinaryFine(yellows, reds, s.career.tier) * scale) : 0;
   const wagerDelta = outcome === 'win' ? s.wager : outcome === 'loss' ? -s.wager : 0;
-  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep + wagerDelta);
+  const bankroll = Math.max(0, s.bankroll + reward + roundIncome + intr + sb - wage - upkeep - fine + wagerDelta);
 
   // Discipline & fitness (same rules as the ladder). The medical centre shaves
   // rounds off new injuries (career only) — a bad enough knock can heal at once.
@@ -958,7 +973,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     runStatus,
     peakBankroll: Math.max(s.peakBankroll, bankroll),
     bestStreak: Math.max(s.bestStreak, newStreak),
-    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, wager: wagerDelta },
+    lastIncome: { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, fine, wager: wagerDelta },
     notice: seasonNote ?? achievementNote,
     noticeKind: 'success',
     selectedPlayerId: null,
@@ -2004,7 +2019,11 @@ export const useGameStore = create<GameState>()(
           // leaner. Defaults to the current top-level setting (start-menu pick).
           const diffId = difficulty ?? s.difficulty;
           const cfg = getDifficulty(diffId);
-          const opening = Math.round(CAREER_STARTING_BANKROLL * cfg.startBankrollMult);
+          // Opening funds = the difficulty-scaled transfer kitty + the division's
+          // season sponsorship (small in the National League — the big global/TV
+          // money only comes with the top flight).
+          const sponsorship = seasonSponsorship(tier);
+          const opening = Math.round(CAREER_STARTING_BANKROLL * cfg.startBankrollMult) + sponsorship;
           return {
             ...fresh,
             difficulty: diffId,
@@ -2015,8 +2034,12 @@ export const useGameStore = create<GameState>()(
             league,
             career: { season: 1, tier, meta: {}, roster: {}, facilities: newFacilities(), history: [] },
             careerReview: null,
-            // The board lays out its expectation for the opening season.
-            inbox: [expectationMessage(1, 1, boardExpectation(tier))],
+            // The board lays out its expectation for the opening season + the
+            // commercial team confirms the season's sponsorship.
+            inbox: [
+              expectationMessage(1, 1, boardExpectation(tier)),
+              sponsorshipMessage(1, 1, division(tier).name, sponsorship),
+            ],
             best: s.best,
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,
@@ -2116,11 +2139,15 @@ export const useGameStore = create<GameState>()(
           // Apply promotion/relegation: the review already resolved which tier we
           // play in next. A fresh league is generated for that division.
           const tier = review.toTier;
+          // Next season's sponsorship, banked at the new division's rate (a
+          // promotion to a richer tier is a real commercial windfall).
+          const sponsorship = seasonSponsorship(tier);
           // Inbox: out-of-contract departures (Bosman) + the new season's board
-          // expectation (scaled to the division you'll play in).
+          // expectation (scaled to the division you'll play in) + sponsorship.
           const inbox = pushMessages(s.inbox, [
             ...(departedNames.length ? [departureMessage(1, nextSeason, departedNames)] : []),
             expectationMessage(1, nextSeason, boardExpectation(tier)),
+            sponsorshipMessage(1, nextSeason, division(tier).name, sponsorship),
           ]);
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
@@ -2149,7 +2176,7 @@ export const useGameStore = create<GameState>()(
             bench,
             inbox,
             collection,
-            bankroll: s.bankroll + review.bonus,
+            bankroll: s.bankroll + review.bonus + sponsorship,
             round: 1,
             lives: startLives,
             streak: 0,

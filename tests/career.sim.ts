@@ -29,6 +29,7 @@ import {
 } from '@/lib/league';
 import { drawShop, MATCH_REWARD } from '@/lib/economy';
 import { transferFee, marketSellValue, CAREER_STARTING_BANKROLL } from '@/lib/market';
+import { seasonSponsorship, disciplinaryFine } from '@/lib/finance';
 import { Rng } from '@/lib/rng';
 import type { Player, Role } from '@/lib/types';
 
@@ -199,7 +200,17 @@ function playMatchweek(c: Career, league: LeagueState, mw: number, results: Reco
     const sb = outcome === 'win' ? Math.round(streakBonus(c.streak) * scale) : 0;
     const wage = Math.round(wageBill(c.owned.map((id) => cur(c, id))) * wageTierMult(c.tier) * scale);
     const upkeep = Math.round(upkeepFor(c) * scale);
-    c.bankroll = Math.max(0, c.bankroll + reward + income + intr + sb - wage - upkeep);
+    // Disciplinary fines — count side-A bookings from the real match events,
+    // scaled by division (mirrors resolveLeagueRound). The discipline tax that
+    // counterweights sponsorship.
+    let yellows = 0, reds = 0;
+    for (const e of result.events) {
+      if (e.side !== 'A') continue;
+      if (e.kind === 'yellow') yellows++;
+      else if (e.kind === 'red') reds++;
+    }
+    const fine = Math.round(disciplinaryFine(yellows, reds, c.tier) * scale);
+    c.bankroll = Math.max(0, c.bankroll + reward + income + intr + sb - wage - upkeep - fine);
   }
   Object.assign(results, simAiWeek(league, mw, c.seed));
 }
@@ -229,6 +240,9 @@ function simulateCareer(seed: number): CareerResult {
   let seasonsToPL: number | null = null;
 
   for (; c.season <= SEASON_CAP; c.season++) {
+    // Season sponsorship is banked up front (mirrors startCareer /
+    // advanceCareerSeason) — part of the budget you draft + develop against.
+    c.bankroll += seasonSponsorship(c.tier);
     draft(c);
     developClub(c);
     if (c.owned.length < 11) { return finish('sacked'); } // couldn't field a side (shouldn't happen)
