@@ -99,3 +99,49 @@ export function generateVacancies(
   }
   return out;
 }
+
+// --- Taking over a club: inherit its real squad ----------------------------
+
+/** Minimal player shape the squad drafter reads (avoids a Player import cycle). */
+interface RatedPlayer {
+  id: string;
+  role: string;
+  stats: { attack: number; defense: number };
+}
+
+/** Role targets for an inherited squad (14 — a full XI + cover). */
+const INHERIT_NEED: Record<string, number> = { GK: 1, DEF: 5, MID: 5, FWD: 3 };
+
+/**
+ * Draft the squad you inherit when you take over a club — REAL pool players
+ * matched to the club's stature. Each role is filled with players whose rating
+ * sits near the club's per-player budget (`strength / squadSize`), so a
+ * Championship side hands you Championship-grade players and a non-league side
+ * hands you journeymen. Seeded for run-to-run variety; never picks a duplicate.
+ * Returns owned player ids. Pure.
+ */
+export function draftInheritedSquad(
+  targetStrength: number,
+  pool: readonly RatedPlayer[],
+  seed: string | number
+): string[] {
+  const size = Object.values(INHERIT_NEED).reduce((a, b) => a + b, 0);
+  const budget = targetStrength / size; // per-player attack+defense target
+  const rng = new Rng(`${seed}-inherit`);
+  const squad: string[] = [];
+  for (const [role, need] of Object.entries(INHERIT_NEED)) {
+    const cands = pool
+      .filter((p) => p.role === role)
+      .map((p) => ({ id: p.id, r: p.stats.attack + p.stats.defense }))
+      .sort((a, b) => Math.abs(a.r - budget) - Math.abs(b.r - budget)); // closest to budget first
+    // Sample from the closest ~3× the needed count, so the squad is stature-
+    // matched but not identical every run.
+    const window = cands.slice(0, Math.min(cands.length, Math.max(need, need * 3)));
+    for (let i = window.length - 1; i > 0; i--) {
+      const j = rng.int(0, i);
+      [window[i], window[j]] = [window[j], window[i]];
+    }
+    for (let k = 0; k < need && k < window.length; k++) squad.push(window[k].id);
+  }
+  return squad;
+}

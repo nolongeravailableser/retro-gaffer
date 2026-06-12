@@ -88,11 +88,13 @@ describe('career pyramid', () => {
     expect(s.careerReview).toBeNull();
   });
 
-  it('finishing in the bottom-tier drop zone ends the career (sacked)', () => {
+  it('finishing in the bottom-tier drop zone opens the job market (not game over)', () => {
     playSeason('loss');
     const s = useGameStore.getState();
-    expect(s.runStatus).toBe('lost');
-    expect(s.careerReview).toBeNull(); // no review — the run is over
+    // A manager's career is never over — a sacking opens the job market instead.
+    expect(s.runStatus).toBe('playing');
+    expect(s.jobMarket).not.toBeNull();
+    expect(s.careerReview).toBeNull(); // no between-seasons review on a sacking
     expect(s.career!.tier).toBe(BOTTOM_TIER);
   });
 
@@ -329,14 +331,43 @@ describe('career difficulty — board teeth', () => {
     expect(std.careerReview?.outcome).toBe('relegated');
 
     // Hardcore, identical path: past the 1-season grace, the same collapse gets
-    // you sacked instead — the run ends.
+    // you sacked — but a manager's career isn't over: the JOB MARKET opens.
     useGameStore.getState().startCareer('hardcore');
     playSeason('win'); // S1 won (grace season) → promoted
     useGameStore.getState().advanceCareerSeason(null); // now S2, tier 4
     playSeason('loss'); // dead last, confidence floored → board sacks you
     const hc = useGameStore.getState();
-    expect(hc.runStatus).toBe('lost');
-    expect(hc.careerReview).toBeNull();
+    expect(hc.runStatus).toBe('playing'); // NOT game over
+    expect(hc.jobMarket).not.toBeNull(); // the job market opened instead
+    expect(hc.careerReview).toBeNull(); // no between-seasons review on a sacking
     expect(hc.inbox.some((m) => m.kind === 'board' && /sacked/i.test(m.body ?? ''))).toBe(true);
+  });
+
+  it('applying for a job continues the manager career at a new club', () => {
+    // Get sacked on Hardcore → the job market opens.
+    useGameStore.getState().startCareer('hardcore');
+    playSeason('win');
+    useGameStore.getState().advanceCareerSeason(null);
+    playSeason('loss');
+    const sacked = useGameStore.getState();
+    expect(sacked.jobMarket).not.toBeNull();
+    const seasonBefore = sacked.career!.season;
+    const historyLen = sacked.career!.history.length; // includes the sacked season
+
+    // Apply for the first vacancy — take over that club.
+    const vacancy = sacked.jobMarket![0];
+    useGameStore.getState().takeJob(vacancy);
+    const after = useGameStore.getState();
+
+    expect(after.jobMarket).toBeNull(); // market cleared
+    expect(after.runStatus).toBe('playing'); // career continues
+    expect(after.clubName).toBe(vacancy.clubName); // you manage the new club
+    expect(after.career!.tier).toBe(vacancy.tier); // in its division
+    expect(after.career!.season).toBe(seasonBefore + 1); // a new season
+    expect(after.career!.history.length).toBe(historyLen); // history carried, not reset
+    expect(after.owned.length).toBeGreaterThanOrEqual(11); // inherited a full squad
+    expect(after.xi.filter((x) => x !== null)).toHaveLength(11); // fielded
+    expect(after.league!.matchweek).toBe(1); // fresh season at the new club
+    expect(after.record).toEqual({ w: 0, d: 0, l: 0 }); // record reset
   });
 });

@@ -75,11 +75,19 @@ import {
   reviewBonus,
   newMeta,
   resolveContracts,
+  careerHonours,
   YOUTH_INTAKE,
   SCOUT_YOUTH_COST,
   type CareerState,
+  type CareerMeta,
   type ReviewState,
 } from '@/lib/career';
+import {
+  managerReputation,
+  generateVacancies,
+  draftInheritedSquad,
+  type Vacancy,
+} from '@/lib/jobs';
 import {
   newFacilities,
   upgradeCost,
@@ -322,6 +330,10 @@ interface GameState {
   career: CareerState | null;
   /** Between-seasons review (board verdict + youth intake), or null. */
   careerReview: ReviewState | null;
+  /** Pending job offers after a sacking (Manager career): non-null ⇒ show the
+   *  Job Market screen and let the manager apply for a new club. Persisted so a
+   *  reload mid-decision is safe. */
+  jobMarket: Vacancy[] | null;
   /** Active League-Season state (table/fixtures/results), or null. */
   league: LeagueState | null;
   /** Active Cup knockout state (bracket), or null. */
@@ -482,6 +494,9 @@ interface GameState {
   startCareer: (difficulty?: DifficultyId) => void;
   /** Set the operational difficulty (start-menu pick; persisted top-level). */
   setDifficulty: (difficulty: DifficultyId) => void;
+  /** Apply for a vacancy from the Job Market — take over the club and continue
+   *  your manager career (inherits its squad, its division, a fresh budget). */
+  takeJob: (vacancy: Vacancy) => void;
   /** Pay to reveal an academy prospect's exact potential during the review. */
   scoutYouth: (youthId: string) => void;
   /** Renew an expiring player's contract in the review (toggle on/off). */
@@ -530,6 +545,7 @@ function freshRun(
     scenario: null as string | null,
     career: null as CareerState | null,
     careerReview: null as ReviewState | null,
+    jobMarket: null as Vacancy[] | null,
     league: null as LeagueState | null,
     cup: null as CupState | null,
     inbox: [] as InboxMessage[],
@@ -581,6 +597,7 @@ function saveSlice(s: GameState) {
     scenarioStars: s.scenarioStars,
     career: s.career,
     careerReview: s.careerReview,
+    jobMarket: s.jobMarket,
     league: s.league,
     cup: s.cup,
     inbox: s.inbox,
@@ -759,6 +776,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   let runStatus: GameState['runStatus'] = 'playing';
   let careerBest = s.careerBest;
   let careerReview: ReviewState | null = null;
+  let jobMarket: Vacancy[] | null = null;
   let seasonNote: string | null = null;
   let careerOut: CareerState | undefined;
 
@@ -798,16 +816,18 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       runStatus = 'won';
       careerBest = Math.max(s.careerBest, career.season);
       seasonNote = `🏆 CHAMPIONS OF ENGLAND! You won the ${divName}!`;
-    } else if (outcomeSeason === 'sacked') {
-      // Relegated out of the bottom tier — nowhere lower. Sacked; career over.
-      runStatus = 'lost';
-      careerBest = Math.max(s.careerBest, career.season - 1);
-      seasonNote = `Relegated from the ${divName}. The board has sacked you.`;
-    } else if (boardSack) {
-      // The board ran out of patience — fired on form (Hardcore only).
-      runStatus = 'lost';
-      careerBest = Math.max(s.careerBest, career.season - 1);
-      seasonNote = `The board has lost patience — you've been sacked after finishing ${ordinal(pos)} in the ${divName}.`;
+    } else if (outcomeSeason === 'sacked' || boardSack) {
+      // Sacked — but a manager's career isn't over. You enter the JOB MARKET and
+      // apply for a new club matching your reputation (never game over). The
+      // logged history drives reputation; takeJob continues the career. No
+      // between-seasons review on a sacking — the job hunt replaces it.
+      careerBest = Math.max(s.careerBest, career.season);
+      seasonNote =
+        outcomeSeason === 'sacked'
+          ? `Relegated from the ${divName} — the board has sacked you. Time to find a new club.`
+          : `The board lost patience after ${ordinal(pos)} in the ${divName} — you're sacked. Time to find a new club.`;
+      const rep = managerReputation(careerHonours(careerOut.history));
+      jobMarket = generateVacancies(rep, `${s.runSeed}-jobs-${career.season}`);
     } else {
       // Promoted / stayed / relegated (but survived) → between-seasons review.
       careerBest = Math.max(s.careerBest, career.season);
@@ -969,6 +989,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     playerHistory,
     achievements,
     careerReview,
+    jobMarket,
     careerBest,
     ...(careerOut && { career: careerOut }),
     wager: 0,
@@ -2098,6 +2119,84 @@ export const useGameStore = create<GameState>()(
         }),
 
       setDifficulty: (difficulty) => set({ difficulty }),
+
+      // Apply for a Job Market vacancy: take over the club and continue the
+      // manager career. You inherit its stature-matched real squad, its division
+      // and a fresh tier-scaled budget; reputation + history carry across clubs.
+      takeJob: (vacancy) =>
+        set((s) => {
+          if (!s.career || !s.jobMarket) return {};
+          const tier = vacancy.tier;
+          const seed = nextSeed(s.shopSeed);
+          // Inherit the club's real squad (the previous club's generated players
+          // are left behind — clear the overlay).
+          clearOverlay();
+          const owned = draftInheritedSquad(vacancy.strength, POOL, `${seed}-${vacancy.id}`);
+          const meta: Record<string, CareerMeta> = {};
+          for (const id of owned) meta[id] = newMeta();
+          registerPlayers(owned.map(getPlayer).filter((p): p is Player => !!p));
+          // Field a legal XI in the default formation; the rest to the bench.
+          const byRole: Record<string, string[]> = {};
+          for (const id of owned) {
+            const r = getPlayer(id)?.role;
+            if (r) (byRole[r] ??= []).push(id);
+          }
+          const xi: (string | null)[] = emptyXi();
+          for (let i = 0; i < XI_SIZE; i++) {
+            const q = byRole[slotRole(DEFAULT_FORMATION, i)];
+            if (q && q.length) xi[i] = q.shift()!;
+          }
+          const bench: string[] = [];
+          for (const ids of Object.values(byRole)) {
+            for (const id of ids) if (bench.length < BENCH_SIZE) bench.push(id);
+          }
+          // New club, new division: AI clubs at the division's level, a fresh
+          // tier-scaled budget + season sponsorship. Facilities start bare — every
+          // job is a rebuild project.
+          const league = leagueWithSquads(seed, division(tier).baseStrength);
+          const sponsorship = seasonSponsorship(tier);
+          const budget = Math.round(CAREER_STARTING_BANKROLL * tierMult(tier)) + sponsorship;
+          const nextSeason = s.career.season + 1;
+          const inbox = pushMessages(s.inbox, [
+            boardMessage(1, 'A new appointment', `You've been appointed manager of ${vacancy.clubName} in the ${division(tier).name}.`),
+            expectationMessage(1, nextSeason, boardExpectation(tier)),
+            sponsorshipMessage(1, nextSeason, division(tier).name, sponsorship),
+          ]);
+          return {
+            jobMarket: null,
+            clubName: vacancy.clubName, // you manage this club now (kit stays your brand)
+            career: {
+              season: nextSeason,
+              tier,
+              meta,
+              roster: {}, // inherited players are real pool players — no overlay needed
+              facilities: newFacilities(),
+              history: s.career.history, // the manager's story carries across clubs
+            },
+            league,
+            owned,
+            xi,
+            bench,
+            inbox,
+            bankroll: budget,
+            peakBankroll: Math.max(s.peakBankroll, budget),
+            shopSeed: seed,
+            round: 1,
+            streak: 0,
+            record: { w: 0, d: 0, l: 0 },
+            suspensions: [],
+            injuries: {},
+            sharpness: {},
+            fatigue: {},
+            roundMods: NO_MODIFIERS,
+            event: null,
+            wager: 0,
+            lastIncome: null,
+            runStatus: 'playing' as const,
+            notice: `Appointed manager of ${vacancy.clubName}!`,
+            noticeKind: 'success' as NoticeKind,
+          };
+        }),
 
       // Pay to scout a prospect — reveals their exact potential in the review.
       scoutYouth: (youthId) =>

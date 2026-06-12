@@ -4,10 +4,12 @@ import {
   reputationCeilingTier,
   reputationLabel,
   generateVacancies,
+  draftInheritedSquad,
   VACANCY_COUNT,
 } from '@/lib/jobs';
-import { BOTTOM_TIER, TOP_TIER } from '@/lib/league';
+import { BOTTOM_TIER, TOP_TIER, division } from '@/lib/league';
 import { careerHonours } from '@/lib/career';
+import { POOL } from '@/data/pool';
 import type { SeasonRecord } from '@/lib/career';
 
 const rec = (tier: number, finishPos: number, outcome: SeasonRecord['outcome']): SeasonRecord => ({
@@ -80,5 +82,33 @@ describe('job market — vacancies', () => {
     expect(generateVacancies(50, 'same')).toEqual(generateVacancies(50, 'same'));
     const names = generateVacancies(50, 'names').map((v) => v.clubName);
     expect(new Set(names).size).toBe(names.length); // no duplicate clubs in one list
+  });
+});
+
+describe('inherited squad — taking over a club', () => {
+  const rating = (id: string) => {
+    const p = POOL.find((q) => q.id === id)!;
+    return p.stats.attack + p.stats.defense;
+  };
+
+  it('drafts a legal 14-man squad of real players, no duplicates', () => {
+    const squad = draftInheritedSquad(division(2).baseStrength, POOL, 'seed');
+    expect(squad).toHaveLength(14);
+    expect(new Set(squad).size).toBe(14); // no dupes
+    const role = (id: string) => POOL.find((p) => p.id === id)!.role;
+    expect(squad.filter((id) => role(id) === 'GK').length).toBe(1);
+    expect(squad.filter((id) => role(id) === 'DEF').length).toBe(5);
+    expect(squad.every((id) => POOL.some((p) => p.id === id))).toBe(true); // all real
+  });
+
+  it('matches the club’s stature — a bigger club inherits better players', () => {
+    const avg = (ids: string[]) => ids.reduce((s, id) => s + rating(id), 0) / ids.length;
+    const nonLeague = avg(draftInheritedSquad(division(BOTTOM_TIER).baseStrength, POOL, 's'));
+    const topFlight = avg(draftInheritedSquad(division(TOP_TIER).baseStrength, POOL, 's'));
+    expect(topFlight).toBeGreaterThan(nonLeague);
+  });
+
+  it('is deterministic per seed', () => {
+    expect(draftInheritedSquad(1200, POOL, 'x')).toEqual(draftInheritedSquad(1200, POOL, 'x'));
   });
 });

@@ -50,6 +50,7 @@ import JourneyBar from '@/components/run/JourneyBar';
 import CrestBadge from '@/components/ui/CrestBadge';
 import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
+import JobMarket from '@/components/career/JobMarket';
 import ClubSettings from '@/components/run/ClubSettings';
 import CareerHub from '@/components/career/CareerHub';
 import TransferMarket from '@/components/shop/TransferMarket';
@@ -500,6 +501,9 @@ export default function App() {
 
       <CareerReview />
       <RunOverModal onNewRun={() => setNewRunOpen(true)} />
+      {/* Sacked → the Job Market (z-65, above the run-over overlay). A manager's
+          career is never over; apply for a club matching your reputation. */}
+      <JobMarket />
       {(!onboarded || tutorialOpen) && (
         <OnboardingModal
           tutorialOnly={onboarded}
