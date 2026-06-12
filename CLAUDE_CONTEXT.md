@@ -3,6 +3,22 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
+> **⚡ UI REDESIGN IN PROGRESS (2026-06-12, user-approved "build it and push to live").**
+> Full proposal + per-screen rationale: `design-mockups/index.html` (10 standalone HTML
+> mockups — throwaway visuals, not wired to the app). Build order: P1 chrome →
+> P2 Home hero → P3 Squad → P4 Market → P5 Match → P6 Club hub → P7 front door/
+> onboarding/draft. Each phase gates on tsc + vitest + build + e2e (+ `npm run sim`
+> when lib/store is touched) before pushing to main (auto-deploys).
+> **P1 SHIPPED:** one-row `TopBar` (absorbs old header+Hud+New Game/Daily → ☰ menu,
+> toasts ported) + 4-tab `MainNav` (Home/Squad/Market/Club — stable across modes;
+> Draft locks Market instead of hiding 5 tabs) + `ClubTab` pill sub-nav hosting
+> Records/Challenges/Compete/Settings (+ Career hub pill). Old TabNav/Hud deleted.
+> Tab ids renamed (`formation/transfers/season/…` → `home/squad/market/club`) —
+> StartMenu/App routing updated. Tailwind gained `surface-1/2/3`, `tier-*`, `font-data`
+> (IBM Plex Mono, added to the font link). **e2e smoke was STALE on main** (StartMenu
+> z-55 blocks `kickoff-cta` after onboarding skip — pre-existing fail); rewritten to go
+> through the real front door (new testids `menu-new-career`, `start-pending-mode`).
+>
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
 > live-playtest QA + a trap fix + a **career economy retighten** + **contract-renewal
 > money sink** + a **domestic cup inside Career**. All career-only; Classic untouched.

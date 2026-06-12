@@ -11,7 +11,7 @@ import { DIFFICULTIES, type DifficultyId } from '@/lib/difficulty';
 import CrestBadge from '@/components/ui/CrestBadge';
 import RecordsPanel from '@/components/records/RecordsPanel';
 import { DEFAULT_KIT } from '@/lib/kits';
-import type { Tab } from '@/components/nav/TabNav';
+import type { Tab } from '@/components/nav/MainNav';
 
 interface StartMenuProps {
   /** Dismiss the menu and enter the game, optionally routing to a tab. */
@@ -110,6 +110,7 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
+                data-testid="menu-new-career"
                 onClick={() => { setPendingMode('career'); setPicked(difficulty); setView('difficulty'); }}
                 className="flex items-center gap-3 rounded-xl border border-crt-dim bg-pitch-900/50 px-4 py-3 text-left transition hover:border-crt-green/60"
               >
@@ -205,9 +206,10 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
 
             <button
               type="button"
+              data-testid="start-pending-mode"
               onClick={() => {
-                if (pendingMode === 'classic') { startClassicDraft(picked); onEnter('formation'); }
-                else { startCareer(picked); onEnter('formation'); }
+                if (pendingMode === 'classic') { startClassicDraft(picked); onEnter('squad'); }
+                else { startCareer(picked); onEnter('squad'); }
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-crt-green bg-pitch-900/70 py-3 font-display text-crt-green shadow-glow transition hover:bg-pitch-900"
             >

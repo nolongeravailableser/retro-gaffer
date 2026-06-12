@@ -23,9 +23,27 @@ export default {
           DEFAULT: '#e6e8e3',
           muted: '#9aa39b',
         },
+        // Redesign elevation steps — cards layer on these instead of borders
+        // doing all the work (design-mockups/05-system.html).
+        surface: {
+          1: '#0c1d12',
+          2: '#12271a',
+          3: '#1a3322',
+        },
+        // Player-quality tiers (OVR badges, stat colours) — one scale everywhere.
+        tier: {
+          elite: '#4ade80',
+          good: '#a3e635',
+          ok: '#fbbf24',
+          low: '#fb923c',
+          poor: '#f87171',
+        },
       },
       fontFamily: {
         ticker: ['"VT323"', '"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        // Data readouts (scores, money, table numbers) — readable at 12px where
+        // VT323 isn't. The ticker font stays for match-feed flavour.
+        data: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
         display: ['"Oswald"', '"Bebas Neue"', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

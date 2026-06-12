@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Sparkles, Play, Swords, X } from 'lucide-react';
+import { Play, Swords, X, Lock } from 'lucide-react';
 import {
   DndContext,
   PointerSensor,
@@ -42,32 +42,23 @@ import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
 import LeagueTable from '@/components/league/LeagueTable';
 import EventBanner from '@/components/season/EventBanner';
-import SavePanel from '@/components/save/SavePanel';
 import MatchView from '@/components/match/MatchView';
 import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
 import JourneyBar from '@/components/run/JourneyBar';
-import CrestBadge from '@/components/ui/CrestBadge';
-import { DEFAULT_KIT } from '@/lib/kits';
 import OnboardingModal from '@/components/run/OnboardingModal';
 import StartMenu from '@/components/run/StartMenu';
 import DraftRoom from '@/components/run/DraftRoom';
 import JobMarket from '@/components/career/JobMarket';
-import ClubSettings from '@/components/run/ClubSettings';
-import CareerHub from '@/components/career/CareerHub';
 import TransferMarket from '@/components/shop/TransferMarket';
 import InboxPanel from '@/components/inbox/InboxPanel';
 import TrainingPanel from '@/components/training/TrainingPanel';
 import CupBracket from '@/components/cup/CupBracket';
 import { unreadCount } from '@/lib/inbox';
-import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import CareerReview from '@/components/career/CareerReview';
-import RecordsPanel from '@/components/records/RecordsPanel';
-import DailyLeaderboard from '@/components/records/DailyLeaderboard';
-import { dailyKey } from '@/lib/daily';
-import PvpPanel from '@/components/pvp/PvpPanel';
-import Hud from '@/components/ui/Hud';
-import TabNav, { type Tab } from '@/components/nav/TabNav';
+import ClubTab from '@/components/club/ClubTab';
+import TopBar from '@/components/nav/TopBar';
+import MainNav, { type Tab } from '@/components/nav/MainNav';
 
 type MatchMode = 'ladder' | 'pvp';
 
@@ -101,10 +92,8 @@ export default function App() {
   const inbox = useGameStore((s) => s.inbox);
   const markInboxRead = useGameStore((s) => s.markInboxRead);
   const clubName = useGameStore((s) => s.clubName);
-  const managerName = useGameStore((s) => s.managerName);
-  const kit = useGameStore((s) => s.kit);
   const onboarded = useGameStore((s) => s.onboarded);
-  const [activeTab, setActiveTab] = useState<Tab>('formation');
+  const [activeTab, setActiveTab] = useState<Tab>('home');
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [matchOpen, setMatchOpen] = useState(false);
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
@@ -113,7 +102,7 @@ export default function App() {
   const [challenge, setChallenge] = useState<OpponentTeam | null>(null);
   const [newRunOpen, setNewRunOpen] = useState(false);
   // Front door (Pillar 2): on load the manager lands on the Start Menu and
-  // resumes / starts a run from there. The logo returns here any time.
+  // resumes / starts a run from there. The club identity returns here any time.
   const [showStartMenu, setShowStartMenu] = useState(true);
 
   const sensors = useSensors(
@@ -288,39 +277,28 @@ export default function App() {
     return journeyFor(fieldable, formation, filled);
   }, [owned, suspensions, injuries, formation, filled]);
 
-  // The Inbox is a Career/League feature; Classic keeps its 7 tabs.
+  // The Inbox is a Career/League feature; it renders on the Home tab.
   const showInbox = !!(career || league);
   const inboxUnread = unreadCount(inbox);
 
-  // Classic Draft League is a focused tournament — hide the tabs that don't apply
-  // (no transfers, inbox, challenges, compete or records mid-tournament).
+  // Classic Draft League is a focused closed tournament — the Market is locked
+  // (no transfers in or out) and the Club tab slims down to Settings. The tab
+  // SET never changes (4 stable tabs), only the content explains itself.
   const draftTournament = mode === 'classic' && !career && !!league;
-  const hiddenTabs: Tab[] | undefined = draftTournament
-    ? ['transfers', 'inbox', 'challenges', 'pvp', 'records']
-    : undefined;
-  // If a now-hidden tab is active (e.g. on starting the tournament), bounce home.
-  useEffect(() => {
-    if (hiddenTabs?.includes(activeTab)) setActiveTab('formation');
-  }, [hiddenTabs, activeTab]);
 
-  // Opening the Inbox marks everything read (clears the badge).
+  // Opening the Home tab marks the feed read (clears the badge).
   useEffect(() => {
-    if (activeTab === 'inbox' && inboxUnread > 0) markInboxRead();
-  }, [activeTab, inboxUnread, markInboxRead]);
-
-  // The Inbox tab vanishes outside Career/League — don't strand the user on it.
-  useEffect(() => {
-    if (activeTab === 'inbox' && !showInbox) setActiveTab('formation');
-  }, [activeTab, showInbox]);
+    if (activeTab === 'home' && showInbox && inboxUnread > 0) markInboxRead();
+  }, [activeTab, showInbox, inboxUnread, markInboxRead]);
 
   const showJourney = runStatus === 'playing' && !matchOpen;
   /** The tab the current stage wants the player on. */
   const stageTab: Tab =
-    journey.stage === 'sign' ? 'transfers' : journey.stage === 'pick' ? 'formation' : 'season';
+    journey.stage === 'sign' ? 'market' : journey.stage === 'pick' ? 'squad' : 'home';
   const attentionTab = showJourney && stageTab !== activeTab ? stageTab : undefined;
 
   const onJourneyGo = () => {
-    if (journey.stage === 'play' && activeTab === 'season') {
+    if (journey.stage === 'play' && activeTab === 'home') {
       playRound();
       return;
     }
@@ -330,36 +308,18 @@ export default function App() {
   return (
     // pb-20 on mobile to clear the fixed bottom nav; sm:pb-0 on desktop
     <div className="mx-auto min-h-full max-w-5xl px-4 pb-20 sm:pb-8">
-      <header className="pt-5 pb-4 flex flex-col items-center gap-3 text-center">
-        <button
-          type="button"
-          onClick={() => setShowStartMenu(true)}
-          aria-label="Main menu"
-          className="flex items-center gap-2 text-crt-green animate-flicker transition hover:opacity-80"
-        >
-          <Trophy size={20} />
-          <h1 className="font-display text-2xl tracking-wide sm:text-3xl">
-            RETRO GAFFER
-          </h1>
-          <Sparkles size={20} />
-        </button>
-        {clubName && (
-          <p className="-mt-1 flex items-center gap-1.5 font-display text-sm text-chrome">
-            <CrestBadge name={clubName} kit={kit ?? DEFAULT_KIT} size={20} />
-            {clubName}
-            {managerName && <span className="text-chrome-muted"> · {managerName}</span>}
-          </p>
-        )}
-        <Hud onNewRun={() => setNewRunOpen(true)} />
-      </header>
+      <TopBar
+        onNewRun={() => setNewRunOpen(true)}
+        onTutorial={() => setTutorialOpen(true)}
+        onMainMenu={() => setShowStartMenu(true)}
+      />
 
-      <TabNav
+      <MainNav
         active={activeTab}
         onChange={setActiveTab}
         attentionTab={attentionTab}
-        showInbox={showInbox}
-        inboxUnread={inboxUnread}
-        hiddenTabs={hiddenTabs}
+        homeBadge={showInbox && activeTab !== 'home' ? inboxUnread : 0}
+        marketLocked={draftTournament}
       />
 
       {/* The core-loop guide: sign → pick → kick off, one obvious action per stage */}
@@ -406,7 +366,24 @@ export default function App() {
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        {activeTab === 'formation' && (
+        {activeTab === 'home' && (
+          <div className="flex flex-col gap-4">
+            <EventBanner />
+            <AvailabilityStrip />
+            <SeasonPanel
+              roundOpponent={roundOpponent}
+              canPlay={ready}
+              filled={filled}
+              hidePlay={showJourney && journey.stage === 'play'}
+              onPlay={playRound}
+            />
+            {league && <LeagueTable />}
+            {cup && <CupBracket />}
+            {showInbox && <InboxPanel />}
+          </div>
+        )}
+
+        {activeTab === 'squad' && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_288px]">
             {/* Squad list — first on mobile (immediately visible), right column on desktop */}
             <div className="order-first lg:order-last lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:sticky lg:top-[3.5rem] flex flex-col gap-3">
@@ -431,11 +408,21 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'transfers' && (
+        {activeTab === 'market' && (
           <div className="flex flex-col gap-4">
-            {/* Career/League/Cup use the FM-style transfer market; Classic & co.
-                keep the roguelike draft shop (featured agent + scouting). */}
-            {career || league || cup ? (
+            {draftTournament ? (
+              // Locked, not hidden — the tab stays put and explains itself.
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-surface-1 px-6 py-10 text-center">
+                <Lock size={22} className="text-chrome-muted" />
+                <p className="font-display text-chrome">No transfers in a Draft tournament</p>
+                <p className="max-w-sm text-xs text-chrome-muted">
+                  Your drafted 16 is your squad for the whole season — no buying, no
+                  selling. Pick your XI on the Squad tab and play the league.
+                </p>
+              </div>
+            ) : career || league || cup ? (
+              // Career/League/Cup use the FM-style transfer market; Classic & co.
+              // keep the roguelike draft shop (featured agent + scouting).
               <TransferMarket />
             ) : (
               <>
@@ -447,49 +434,16 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'inbox' && showInbox && <InboxPanel />}
-
-        {activeTab === 'season' && (
-          <div className="flex flex-col gap-4">
-            <EventBanner />
-            <AvailabilityStrip />
-            <SeasonPanel
-              roundOpponent={roundOpponent}
-              canPlay={ready}
-              filled={filled}
-              hidePlay={showJourney && journey.stage === 'play'}
-              onPlay={playRound}
-            />
-            {league && <LeagueTable />}
-            {cup && <CupBracket />}
-          </div>
-        )}
-
-        {activeTab === 'challenges' && (
-          <ScenariosPanel onStart={() => setActiveTab('formation')} />
-        )}
-
-        {activeTab === 'pvp' && (
-          <div className="flex flex-col gap-4">
-            <PvpPanel canPlay={ready} onPlayImported={playExhibition} />
-            <DailyLeaderboard day={dailyKey()} />
-          </div>
-        )}
-
-        {activeTab === 'records' && <RecordsPanel />}
-
         {activeTab === 'club' && (
-          <div className="flex flex-col gap-4">
-            {career && <CareerHub />}
-            <ClubSettings onReplayTutorial={() => setTutorialOpen(true)} />
-            <SavePanel />
-          </div>
+          <ClubTab
+            canPlay={ready}
+            onPlayImported={playExhibition}
+            onScenarioStart={() => setActiveTab('squad')}
+            onReplayTutorial={() => setTutorialOpen(true)}
+            draftTournament={draftTournament}
+          />
         )}
       </DndContext>
-
-      <footer className="mt-8 text-center font-ticker text-sm text-chrome-muted">
-        Climb the pyramid · draft · build chemistry · survive the season.
-      </footer>
 
       <MatchView
         open={matchOpen}
@@ -501,7 +455,7 @@ export default function App() {
           if (runStatus !== 'playing') return;
           const hasPending =
             suspensions.length > 0 || Object.keys(injuries).length > 0;
-          if (hasPending) setActiveTab('formation');
+          if (hasPending) setActiveTab('squad');
         }}
         playerTeam={playerTeam}
         opponent={opponent}
@@ -517,10 +471,10 @@ export default function App() {
       <NewRunModal
         open={newRunOpen}
         onClose={() => setNewRunOpen(false)}
-        // Land where the journey starts: an empty squad begins on Transfers
-        // (sign players); a prebuilt one (career season 2+) on Tactics.
+        // Land where the journey starts: an empty squad begins on the Market
+        // (sign players); a prebuilt one (career season 2+) on the Squad.
         onStarted={() => {
-          setActiveTab(useGameStore.getState().owned.length === 0 ? 'transfers' : 'formation');
+          setActiveTab(useGameStore.getState().owned.length === 0 ? 'market' : 'squad');
           setShowStartMenu(false);
         }}
       />

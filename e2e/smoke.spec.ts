@@ -1,35 +1,27 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * The core loop, end to end, as a brand-new player:
- * onboard → sign a squad → ready → kick off → full-time → back to the squad.
- * A fresh browser context = empty localStorage = first-run onboarding.
+ * The core loop, end to end, as a brand-new player — through the real front
+ * door: onboard → Start Menu → new career (difficulty) → kick off MW1 →
+ * full-time → back to the squad. A fresh browser context = empty localStorage
+ * = first-run onboarding, then the Start Menu.
  */
-test('core loop: onboard → sign → kick off → full-time', async ({ page }) => {
+test('core loop: onboard → new career → kick off → full-time', async ({ page }) => {
   await page.goto('/');
 
-  // First-run onboarding appears; skip straight to the game.
+  // First-run onboarding appears; skip straight to the Start Menu.
   await page.getByTestId('skip-onboarding').click();
 
-  // Journey stage 1: SIGN. The CTA routes to the Transfers tab (a fresh first
-  // run lands on Tactics), then Auto-Sign + refresh until the stage advances.
-  const cta = page.getByTestId('kickoff-cta');
-  await expect(cta).toContainText('Sign players');
-  await cta.click(); // → Transfers
-  await expect(page.getByTestId('refresh-shop')).toBeVisible();
-  for (let i = 0; i < 12; i++) {
-    if (!(await cta.innerText()).includes('Sign players')) break;
-    await page.getByTestId('journey-helper').click();
-    await page.waitForTimeout(200);
-    await page.getByTestId('refresh-shop').click();
-    await page.waitForTimeout(200);
-  }
-  await expect(cta).toContainText('Play Round 1');
+  // Front door: New career → difficulty picker (Standard pre-selected) → start.
+  await page.getByTestId('menu-new-career').click();
+  await page.getByTestId('start-pending-mode').click();
 
-  // Stage 3: KICK OFF. First click routes to the Season tab, second launches.
-  await cta.click();
-  await expect(cta).toContainText('Kick off');
-  await cta.click();
+  // A new career fields a legal grey-unknowns XI automatically — the journey
+  // CTA reads "Start Season 1". First click routes to Home, second kicks off.
+  const cta = page.getByTestId('kickoff-cta');
+  await expect(cta).toContainText('Start Season 1');
+  await cta.click(); // → Home tab
+  await cta.click(); // → kick off Matchweek 1
 
   // The 2D pitch view renders. Skip ahead — the interactive match pauses for
   // decisions (half-time talk, possible substitution), so answer each one.
@@ -48,7 +40,7 @@ test('core loop: onboard → sign → kick off → full-time', async ({ page }) 
   }
   await expect(page.getByText(/VICTORY|DEFEAT|DRAW/)).toBeVisible();
 
-  // Close the match: the run has advanced (round 2) or ended visibly.
+  // Close the match: the run has advanced (matchweek 2) with the CTA back.
   await page.getByLabel('Close match').click();
   await expect(page.getByTestId('kickoff-cta')).toBeVisible();
 });
