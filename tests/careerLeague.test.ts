@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useGameStore } from '@/store/useGameStore';
+import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { BOTTOM_TIER, division, totalWeeks } from '@/lib/league';
 import { overall } from '@/lib/wages';
 import { reviewBonus } from '@/lib/career';
 import { PLEDGE_BONUS } from '@/lib/board';
 import { seasonSponsorship } from '@/lib/finance';
-import { CAREER_STARTING_BANKROLL } from '@/lib/market';
+import { CAREER_STARTING_BANKROLL, renewalCost } from '@/lib/market';
 import { POOL } from '@/data/pool';
 import type { MatchEvent, MatchResult } from '@/lib/types';
 
@@ -213,6 +213,42 @@ describe('career pyramid', () => {
     expect(s.career!.meta[stay.id].contractYears).toBe(3);
     expect(s.owned).not.toContain(walk.id); // expired + unrenewed → left on a free
     expect(s.inbox.some((m) => m.kind === 'transfer')).toBe(true); // Bosman note
+  });
+
+  it('renewing a QUALITY player charges a signing-on bonus (gated on the bank)', () => {
+    useGameStore.setState({ bankroll: 200 }); // fund the signing
+    // A non-free-agent (overall ≥ 64) — renewing him isn't free.
+    const q = POOL.filter((p) => overall(p) >= 70).sort((a, b) => overall(a) - overall(b))[0];
+    useGameStore.getState().signPlayer(q.id);
+    expect(useGameStore.getState().owned).toContain(q.id);
+
+    // Run his deal down to the final year (no renewals yet).
+    const roll = () => { playSeason('win'); useGameStore.getState().advanceCareerSeason(null); };
+    roll(); roll(); // 3 → 1
+    playSeason('win');
+    const review = useGameStore.getState().careerReview;
+    expect(review).not.toBeNull();
+    const cost = renewalCost(getPlayer(q.id)!, review!.fromTier);
+    expect(cost).toBeGreaterThan(0); // quality costs to keep
+
+    // Affordability gate: too poor → the renewal is blocked with an error notice.
+    useGameStore.setState({ bankroll: cost - 1 });
+    useGameStore.getState().renewContract(q.id);
+    expect(useGameStore.getState().careerReview!.renewed).not.toContain(q.id);
+    expect(useGameStore.getState().noticeKind).toBe('error');
+
+    // Fund it → renew sticks; advancing charges the bonus and keeps him.
+    useGameStore.setState({ bankroll: 300 });
+    useGameStore.getState().renewContract(q.id);
+    expect(useGameStore.getState().careerReview!.renewed).toContain(q.id);
+    const r = useGameStore.getState().careerReview!;
+    const before = useGameStore.getState().bankroll;
+    const credit = r.bonus + seasonSponsorship(r.toTier);
+    useGameStore.getState().advanceCareerSeason(null);
+    const s = useGameStore.getState();
+    expect(s.owned).toContain(q.id); // kept on a fresh deal
+    expect(s.career!.meta[q.id].contractYears).toBe(3);
+    expect(s.bankroll).toBeLessThan(before + credit); // the bonus was deducted
   });
 
   it('a poached rival re-signs a replacement (the market stays alive)', () => {

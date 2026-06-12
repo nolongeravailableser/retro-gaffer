@@ -8,6 +8,7 @@ import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { potentialStars, isExpiring, SCOUT_YOUTH_COST } from '@/lib/career';
 import { division } from '@/lib/league';
 import { overall } from '@/lib/wages';
+import { renewalCost } from '@/lib/market';
 import { FileSignature, RefreshCw } from 'lucide-react';
 import type { Player } from '@/lib/types';
 import FacilitiesPanel from './FacilitiesPanel';
@@ -53,6 +54,14 @@ export default function CareerReview() {
 
   const nextSeason = review.season + 1;
   const fromDiv = division(review.fromTier).name;
+
+  // Signing-on bonuses (renew at the division just played). The running total is
+  // what rolling the season over will charge; renewing is gated on the bankroll.
+  const renewCostOf = (p: Player) => renewalCost(p, review.fromTier);
+  const renewTotal = review.renewed.reduce((sum, id) => {
+    const p = getPlayer(id);
+    return sum + (p && isExpiring(meta[id]) ? renewCostOf(p) : 0);
+  }, 0);
   const toDiv = division(review.toTier).name;
   const promoted = review.outcome === 'promoted';
   const relegated = review.outcome === 'relegated';
@@ -230,13 +239,14 @@ export default function CareerReview() {
                 Expiring Contracts
               </p>
               <p className="mb-3 text-[11px] text-chrome-muted">
-                These deals run out this summer. Renew the ones you want to keep — anyone you don't
-                leaves on a free transfer (Bosman).
+                These deals run out this summer. Renewing costs a one-off signing-on bonus
+                (free agents re-sign for nothing); anyone you don't keep leaves on a free (Bosman).
               </p>
               <div className="flex flex-col gap-2" data-testid="expiring-contracts">
                 {expiring.map((p) => {
                   const rs = ROLE_STYLES[p.role];
                   const renew = review.renewed.includes(p.id);
+                  const cost = renewCostOf(p);
                   return (
                     <div
                       key={p.id}
@@ -251,7 +261,7 @@ export default function CareerReview() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-display text-sm text-chrome">{p.name}</p>
                         <p className="font-ticker text-[10px] text-chrome-muted">
-                          OVR {overall(p)} ·{' '}
+                          OVR {overall(p)} · {cost > 0 ? `£${cost}M to renew` : 'free to re-sign'} ·{' '}
                           {renew ? (
                             <span className="text-crt-green">renewing — stays at the club</span>
                           ) : (
@@ -270,12 +280,20 @@ export default function CareerReview() {
                             : 'border-white/15 text-chrome-muted hover:bg-white/5',
                         ].join(' ')}
                       >
-                        {renew ? <><Check size={12} /> Renewed</> : <><RefreshCw size={12} /> Renew</>}
+                        {renew
+                          ? <><Check size={12} /> {cost > 0 ? `£${cost}M` : 'Renewed'}</>
+                          : <><RefreshCw size={12} /> Renew</>}
                       </button>
                     </div>
                   );
                 })}
               </div>
+              {renewTotal > 0 && (
+                <p className="mt-2 text-right font-ticker text-[11px] text-chrome-muted" data-testid="renewal-total">
+                  Signing-on bonuses: <span className="text-crt-amber">£{renewTotal}M</span>
+                  {' '}· <span className={bankroll - renewTotal < 0 ? 'text-crt-red' : 'text-chrome'}>£{Math.max(0, bankroll - renewTotal)}M</span> left
+                </p>
+              )}
             </div>
           )}
 

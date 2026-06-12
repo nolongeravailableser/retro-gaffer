@@ -122,6 +122,7 @@ import {
   rivalBids,
   aiClubSigning,
   baseValue,
+  renewalCost,
   FREE_AGENT_MAX_OVERALL,
   CAREER_STARTING_BANKROLL,
   type BidderClub,
@@ -2366,21 +2367,35 @@ export const useGameStore = create<GameState>()(
         }),
 
       // Renew an expiring player's contract during the between-seasons review.
-      // A toggle — tap again to cancel. Renewing keeps him; not renewing lets the
-      // deal run out and he leaves on a free (Bosman) when the season rolls over.
+      // A toggle — tap again to cancel. Renewing costs a signing-on bonus
+      // (renewalCost, free for free agents) charged when the season rolls over;
+      // not renewing lets the deal run out and he leaves on a free (Bosman).
+      // Toggling on is gated on affordability — you can't promise renewals the
+      // bank can't cover.
       renewContract: (playerId) =>
         set((s) => {
           const review = s.careerReview;
           if (!review || !s.owned.includes(playerId)) return {};
           const on = review.renewed.includes(playerId);
-          return {
-            careerReview: {
-              ...review,
-              renewed: on
-                ? review.renewed.filter((id) => id !== playerId)
-                : [...review.renewed, playerId],
-            },
+          if (on) {
+            return {
+              careerReview: { ...review, renewed: review.renewed.filter((id) => id !== playerId) },
+            };
+          }
+          const tier = s.career?.tier ?? BOTTOM_TIER;
+          const costOf = (id: string) => {
+            const p = getPlayer(id);
+            return p ? renewalCost(p, tier) : 0;
           };
+          const already = review.renewed.reduce((sum, id) => sum + costOf(id), 0);
+          const total = already + costOf(playerId);
+          if (total > s.bankroll) {
+            return {
+              notice: `Can't afford that renewal — £${total}M of signing-on bonuses, only £${s.bankroll}M in the bank.`,
+              noticeKind: 'error' as NoticeKind,
+            };
+          }
+          return { careerReview: { ...review, renewed: [...review.renewed, playerId] } };
         }),
 
       // Reinvest in the club: upgrade a facility one level (career only). Levels
@@ -2420,6 +2435,15 @@ export const useGameStore = create<GameState>()(
           const departedSet = new Set(contracts.departed);
           let owned = s.owned.filter((id) => !departedSet.has(id));
           const meta = { ...contracts.meta };
+          // Signing-on bonuses for the renewals you committed to (charged now, at
+          // the division just played). Free agents renew for nothing — only
+          // keeping QUALITY costs. The toggle already gated this on the bankroll.
+          const renewalSpend = review.renewed
+            .filter((id) => owned.includes(id))
+            .reduce((sum, id) => {
+              const p = getPlayer(id);
+              return sum + (p ? renewalCost(p, prev.tier) : 0);
+            }, 0);
           const roster = { ...prev.roster, ...aged.roster };
           // Strip departed players from the XI / bench.
           const xi: (string | null)[] = s.xi.map((slot) => (slot && departedSet.has(slot) ? null : slot));
@@ -2479,7 +2503,7 @@ export const useGameStore = create<GameState>()(
             bench,
             inbox,
             collection,
-            bankroll: s.bankroll + review.bonus + sponsorship,
+            bankroll: Math.max(0, s.bankroll + review.bonus + sponsorship - renewalSpend),
             round: 1,
             lives: startLives,
             streak: 0,
@@ -2499,11 +2523,12 @@ export const useGameStore = create<GameState>()(
             lastIncome: null,
             shop: rollSlots(owned, seed, s.pack),
             shopSeed: seed,
-            notice: departedNames.length
-              ? `${departedNames.length} left on free transfers. ${chosen ? `${chosen.name} joins the academy. ` : ''}${move}`
-              : chosen
-                ? `${chosen.name} joins the academy. ${move}`
-                : move,
+            notice: (() => {
+              const bonus = renewalSpend > 0 ? `£${renewalSpend}M in signing-on bonuses. ` : '';
+              const left = departedNames.length ? `${departedNames.length} left on free transfers. ` : '';
+              const youth = chosen ? `${chosen.name} joins the academy. ` : '';
+              return `${bonus}${left}${youth}${move}`;
+            })(),
             noticeKind: 'info',
           };
         }),

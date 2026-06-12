@@ -23,14 +23,14 @@ import { wageBill, tierMult, WAGE_TIER_K, wageBudget } from '@/lib/wages';
 import { boardConfidence } from '@/lib/board';
 import { DIFFICULTIES, getDifficulty, canSack, wageCap, type DifficultyConfig } from '@/lib/difficulty';
 import { matchdayIncomeFor, upgradeCost, isMaxed, UPKEEP_PER_LEVEL, type FacilityId } from '@/lib/stadium';
-import { ageRoster, newMeta, reviewBonus, type CareerMeta } from '@/lib/career';
+import { ageRoster, newMeta, reviewBonus, DEFAULT_CONTRACT, type CareerMeta } from '@/lib/career';
 import {
   generateLeague, simAiWeek, position, seasonOutcome, nextTier,
   division, totalWeeks, seasonScale, playerFixture, fixtureKey, BOTTOM_TIER, TOP_TIER, YOU,
   type LeagueState, type LeagueResult,
 } from '@/lib/league';
 import { drawShop, MATCH_REWARD } from '@/lib/economy';
-import { transferFee, marketSellValue, CAREER_STARTING_BANKROLL } from '@/lib/market';
+import { transferFee, marketSellValue, renewalCost, CAREER_STARTING_BANKROLL } from '@/lib/market';
 import { seasonSponsorship, disciplinaryFine } from '@/lib/finance';
 import { Rng } from '@/lib/rng';
 import type { Player, Role } from '@/lib/types';
@@ -300,6 +300,36 @@ function simulateCareer(seed: number, diff: DifficultyConfig = DIFFICULTIES.stan
     const aged = ageRoster(c.owned, c.meta, (id) => cur(c, id));
     c.meta = aged.meta;
     for (const [id, p] of Object.entries(aged.roster)) c.roster.set(id, p);
+
+    // Contracts: the standing money sink. Deals run down a season; the manager
+    // renews the best expiring players he can afford (signing-on bonuses; free
+    // agents re-sign for nothing) and lets the rest lapse on a Bosman — draft()
+    // re-fills next season. Mirrors store.advanceCareerSeason + renewContract.
+    {
+      const renewTier = c.tier; // the division just played
+      const expiring = c.owned.filter((id) => (c.meta[id]?.contractYears ?? DEFAULT_CONTRACT) <= 1);
+      const ranked = [...expiring].sort((a, b) => value(c, b) - value(c, a)); // keep your best
+      const renewed = new Set<string>();
+      for (const id of ranked) {
+        const cost = renewalCost(cur(c, id), renewTier);
+        if (cost === 0) { renewed.add(id); continue; } // free agents re-sign free
+        if (c.bankroll - cost >= RESERVE) { c.bankroll -= cost; renewed.add(id); }
+      }
+      const departed: string[] = [];
+      for (const id of c.owned) {
+        const m = c.meta[id] ?? newMeta();
+        if (renewed.has(id)) { c.meta[id] = { ...m, contractYears: DEFAULT_CONTRACT }; continue; }
+        const years = (m.contractYears ?? DEFAULT_CONTRACT) - 1;
+        if (years <= 0) departed.push(id);
+        else c.meta[id] = { ...m, contractYears: years };
+      }
+      for (const id of departed) {
+        c.owned = c.owned.filter((x) => x !== id);
+        c.roster.delete(id);
+        delete c.meta[id];
+      }
+    }
+
     c.tier = nextTier(c.tier, outcome);
   }
   return finish('ongoing');
@@ -430,9 +460,12 @@ describe('career balance — facility-upkeep sweep', () => {
     const N = 250;
     const lines = ['\n=== CAREER WAGE×UPKEEP COMBO SWEEP (market pricing ON) ===',
       'wageK  upkeep  champ%  sack%  PL%   avgS  medT3    medT2     medT1     maxBank'];
-    // Anchored on the SHIPPED (1.4, 0.85); neighbours bound the top-tier plateau.
+    // Renewals are ON in the sim now (the standing sink), so re-pick wages/upkeep
+    // relaxed — renewals carry much of the drain. Bounds the top-tier plateau.
+    // Anchored on the SHIPPED (1.4, 0.85) + renewals; neighbours bound the
+    // top-tier plateau (renewals are ON in the sim — the standing sink).
     const combos: [number, number][] = [
-      [1.3, 0.75], [1.4, 0.85], [1.45, 0.9], [1.5, 1.0],
+      [1.3, 0.75], [1.35, 0.82], [1.4, 0.85], [1.5, 1.0],
     ];
     for (const [k, u] of combos) {
       const r = runSweep(N, k, u);

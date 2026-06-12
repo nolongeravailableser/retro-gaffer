@@ -76,6 +76,23 @@ export function marketSellValue(p: Player, tier: number): number {
   return Math.max(1, Math.round(marketValue(p, tier) * MARKET_SELL_RATE));
 }
 
+/** Fraction of a player's market value charged as a signing-on bonus to renew an
+ *  expiring contract — the recurring cost of holding a strong squad together. */
+export const RENEWAL_RATE = 0.3;
+
+/**
+ * One-off signing-on bonus (£m) to renew a player's expiring contract. Free
+ * agents renew for nothing (they're free anyway), so only QUALITY costs to keep:
+ * a galáctico squad is expensive to hold together, not just to assemble. Lapse a
+ * deal instead and the player leaves on a Bosman free — keep him cheaper from the
+ * market, or pay to retain the chemistry. This is the career's standing money
+ * sink once the squad is complete.
+ */
+export function renewalCost(p: Player, tier: number): number {
+  if (isFreeAgent(p)) return 0;
+  return Math.max(1, Math.round(marketValue(p, tier) * RENEWAL_RATE));
+}
+
 /** Premium paid to prise a player from a rival club (vs an unattached signing). */
 export const POACH_PREMIUM = 1.4;
 

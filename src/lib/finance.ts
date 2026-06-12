@@ -34,10 +34,11 @@ export const DIV_MULT_FLOOR = 0.6;
 export const DIV_MULT_CEIL = 1.7;
 
 /** How steeply the wage bill rises per division climbed (PL wages in the PL).
- *  Tuned alongside facility upkeep AND the transfer market (the primary sink).
- *  Bumped 1.3 → 1.4 (2026-06-12) with upkeep 0.75 → 0.85 to tame the top-tier
- *  hoard the harder climb inflated (more seasons building a war chest): T1 median
- *  bankroll £618M → £143M, champ% unchanged (40%), the climb economy intact. */
+ *  Tuned alongside facility upkeep, contract-renewal bonuses (the standing sink,
+ *  market.ts) AND the transfer market. Set to 1.4 (with upkeep 0.85 + renewals)
+ *  to tame the top-tier hoard the harder climb inflated: T1 median bankroll
+ *  £618M → ~£70M, hoarders (>£400M) 91% → ~27%, champ% unchanged (~42%). The top
+ *  flight is a financial grind — you renew your stars OR buy new blood. */
 export const WAGE_TIER_K = 1.4;
 
 /** How much each division up multiplies a player's transfer value. */

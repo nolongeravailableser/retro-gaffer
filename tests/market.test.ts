@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseValue, marketValue, marketSellValue, marketTierMult, MARKET_SELL_RATE,
   transferFee, isFreeAgent, FREE_AGENT_MAX_OVERALL,
+  renewalCost, RENEWAL_RATE,
   rivalBids, OFFER_MIN_OVERALL, MAX_OFFERS_PER_WEEK, type BidderClub,
   aiClubSigning, type AiCandidate,
 } from '@/lib/market';
@@ -50,6 +51,22 @@ describe('market valuations', () => {
     const star = mk('FWD', 92, 55);
     expect(isFreeAgent(star)).toBe(false);
     expect(transferFee(star, 1)).toBe(marketValue(star, 1)); // quality costs full value
+  });
+
+  it('renewal cost: a signing-on bonus = a fraction of value, free for free agents', () => {
+    const journeyman = mk('MID', 50, 50);
+    expect(isFreeAgent(journeyman)).toBe(true);
+    expect(renewalCost(journeyman, 5)).toBe(0); // free agents re-sign for nothing
+    expect(renewalCost(journeyman, 1)).toBe(0);
+
+    const star = mk('FWD', 92, 55);
+    expect(isFreeAgent(star)).toBe(false);
+    // A fraction of market value — cheaper to keep than to buy, but not free.
+    expect(renewalCost(star, 1)).toBe(Math.max(1, Math.round(marketValue(star, 1) * RENEWAL_RATE)));
+    expect(renewalCost(star, 1)).toBeLessThan(marketValue(star, 1));
+    expect(renewalCost(star, 1)).toBeGreaterThan(0);
+    // Scales with the division (a PL renewal costs more than a lower-league one).
+    expect(renewalCost(star, BOTTOM_TIER)).toBeLessThan(renewalCost(star, TOP_TIER));
   });
 });
 

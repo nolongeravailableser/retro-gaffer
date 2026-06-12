@@ -117,8 +117,9 @@ export function injuryReduction(medicalLevel: number): number {
 }
 
 /** £m/matchweek running cost per facility level, before division scaling.
- *  Bumped 0.75 → 0.85 (2026-06-12) alongside WAGE_TIER_K 1.3 → 1.4 to drain the
- *  top-tier hoard (see finance.ts). Career-only, so Classic is unaffected. */
+ *  Set to 0.85 (2026-06-12) alongside WAGE_TIER_K 1.4 + contract-renewal bonuses
+ *  to drain the top-tier hoard (see finance.ts / market.ts). Career-only, so
+ *  Classic is unaffected. */
 export const UPKEEP_PER_LEVEL = 0.85;
 
 /**
