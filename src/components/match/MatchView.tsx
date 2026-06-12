@@ -43,6 +43,8 @@ interface MatchViewProps {
   tuning?: EngineTuning;
   /** Ladder match → show the resolved round payout (PvP exhibitions don't). */
   ladder?: boolean;
+  /** A cup knockout — no payout receipt (glory, not gold); injuries carry. */
+  knockout?: boolean;
   /** Interactive matches pause for decisions (half-time talk, substitutions). */
   interactive?: boolean;
   /** Fit bench players who could come on after an injury. */
@@ -132,6 +134,13 @@ function advance(lm: LiveMatch, interactive: boolean, tuning: EngineTuning): Liv
   return { ...lm, events, carry, nextMinute, xg, talkDone, pause: null, result };
 }
 
+/** Per-option effect tags so the half-time choice is informed, not vibes. */
+const TALK_FX: Record<TeamTalk['id'], string> = {
+  attack: '+ATK · −DEF',
+  steady: '±0',
+  park: '−ATK · +DEF',
+};
+
 export default function MatchView({
   open,
   onClose,
@@ -140,6 +149,7 @@ export default function MatchView({
   seed: seedProp = null,
   tuning = DEFAULT_TUNING,
   ladder = false,
+  knockout = false,
   interactive = false,
   benchPlayers = [],
   rebuildStrength,
@@ -441,7 +451,7 @@ export default function MatchView({
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border-2 border-crt-dim bg-pitch-950 shadow-glow"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border-2 border-crt-dim bg-pitch-950 shadow-glow"
       >
         {/* ── Scoreboard ── */}
         <div className="relative border-b border-crt-dim bg-pitch-900/80 px-5 pt-4 pb-2">
@@ -584,87 +594,6 @@ export default function MatchView({
             </div>
           )}
 
-          {/* ── Decision windows ── */}
-          <AnimatePresence>
-            {pauseActive?.type === 'halftime' && (
-              <motion.div
-                key="talk"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-crt-amber/40 bg-crt-amber/10 px-4 py-3"
-              >
-                <p className="mb-2 flex items-center gap-2 font-display text-sm uppercase tracking-wide text-crt-amber">
-                  <Megaphone size={15} /> Half-time team talk — {scoreA}:{scoreB}
-                </p>
-                <div className="flex flex-col gap-1.5 sm:flex-row">
-                  {TEAM_TALKS.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => decideTalk(t)}
-                      data-testid={`talk-${t.id}`}
-                      className="flex flex-1 flex-col rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-amber/60 hover:bg-crt-amber/10"
-                    >
-                      <span className="font-display text-sm text-chrome">
-                        {t.emoji} {t.name}
-                      </span>
-                      <span className="text-[11px] text-chrome-muted">{t.blurb}</span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {pauseActive?.type === 'injury' && injuredPlayer && (
-              <motion.div
-                key="sub"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-3"
-              >
-                <p className="mb-2 flex items-center gap-2 font-display text-sm uppercase tracking-wide text-orange-300">
-                  <ArrowLeftRight size={15} /> {injuredPlayer.name} can't continue
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {subCandidates.map((p) => {
-                    const offRole = p.role !== injuredPlayer.role;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => decideSub(p.id)}
-                        data-testid={`sub-${p.id}`}
-                        className="flex items-center justify-between rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left transition hover:border-crt-green/60 hover:bg-crt-green/10"
-                      >
-                        <span className="font-display text-sm text-chrome">
-                          🔁 Bring on {p.name}
-                        </span>
-                        <span className="text-[11px] text-chrome-muted">
-                          {p.role} · ATK {p.stats.attack} · DEF {p.stats.defense}
-                          {offRole && (
-                            <span className="text-crt-amber"> · −10% out of position</span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => decideSub(null)}
-                    data-testid="sub-none"
-                    className="rounded-lg border border-white/15 bg-pitch-900/60 px-3 py-2 text-left text-sm text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
-                  >
-                    {subCandidates.length
-                      ? 'No substitution — play on with the knock'
-                      : 'No fit cover on the bench — play on with the knock'}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <AnimatePresence>
             {finished && result && outcome && (
               <motion.div
@@ -709,37 +638,54 @@ export default function MatchView({
                   finished
                 />
 
-                {/* Round payout — the full economic outcome, not just the reward */}
-                {ladder && lastIncome && (
-                  <div className="mt-3 rounded-lg border border-white/10 bg-pitch-900/60 px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-sm uppercase tracking-wide text-chrome-muted">
-                        Round payout
-                      </span>
-                      <span
-                        className={`font-display text-xl ${
-                          payoutNet >= 0 ? 'text-crt-green' : 'text-rose-300'
-                        }`}
-                      >
-                        {payoutNet >= 0 ? '+' : '−'}£{Math.abs(payoutNet)}M
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-chrome-muted">
-                      £{lastIncome.reward} result · £{lastIncome.income} round · £
-                      {lastIncome.interest} interest
-                      {lastIncome.streak ? ` · £${lastIncome.streak} streak` : ''}
-                      {lastIncome.wage ? ` · −£${lastIncome.wage} wages` : ''}
-                      {lastIncome.upkeep ? ` · −£${lastIncome.upkeep} upkeep` : ''}
-                      {lastIncome.fine ? ` · −£${lastIncome.fine} fines` : ''}
-                      {lastIncome.wager
-                        ? ` · ${lastIncome.wager > 0 ? '+' : '−'}£${Math.abs(lastIncome.wager)} bet`
-                        : ''}
+                {/* Matchday receipt — what this match did to your money, itemised.
+                    A cup knockout pays nothing: glory framing instead, and never
+                    a stale league payout (cup resolution doesn't touch lastIncome). */}
+                {ladder && knockout ? (
+                  <div className="mt-3 rounded-lg border border-crt-amber/30 bg-crt-amber/5 px-4 py-3 text-center">
+                    <p className="font-display text-sm uppercase tracking-wide text-crt-amber">
+                      🏆 Glory, not gold
                     </p>
-                    <p className="mt-1 text-right text-xs text-crt-amber">
-                      Bankroll: £{bankroll}M
+                    <p className="mt-1 text-[11px] text-chrome-muted">
+                      Cup ties pay no prize money — a trophy feeds your honours and
+                      reputation. Knocks and bans carry into the league.
                     </p>
                   </div>
-                )}
+                ) : ladder && lastIncome ? (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-pitch-900/60 px-4 py-3">
+                    <p className="mb-1.5 font-display text-sm uppercase tracking-wide text-chrome-muted">
+                      Matchday receipt
+                    </p>
+                    <div className="font-data text-xs">
+                      {([
+                        ['Result bonus', lastIncome.reward],
+                        ['Matchday income', lastIncome.income],
+                        ['Bank interest', lastIncome.interest],
+                        ['Win streak', lastIncome.streak],
+                        ['Wages', -lastIncome.wage],
+                        ['Facility upkeep', -lastIncome.upkeep],
+                        ['Disciplinary fines', -(lastIncome.fine ?? 0)],
+                        ["Gaffer's gamble", lastIncome.wager],
+                      ] as [string, number][])
+                        .filter(([, v]) => v !== 0)
+                        .map(([label, v]) => (
+                          <div key={label} className="flex items-center justify-between border-b border-white/5 py-1">
+                            <span className="text-chrome-muted">{label}</span>
+                            <span className={v >= 0 ? 'text-crt-green' : 'text-rose-300'}>
+                              {v >= 0 ? '+' : '−'}£{Math.abs(v)}M
+                            </span>
+                          </div>
+                        ))}
+                      <div className="flex items-center justify-between pt-1.5">
+                        <span className="font-display text-[13px] text-chrome">Net</span>
+                        <span className={`font-display text-[15px] ${payoutNet >= 0 ? 'text-crt-green' : 'text-rose-300'}`}>
+                          {payoutNet >= 0 ? '+' : '−'}£{Math.abs(payoutNet)}M
+                          <span className="ml-2 text-[11px] text-crt-amber">→ £{bankroll}M</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Team news */}
                 {hasTeamNews && (
@@ -768,7 +714,8 @@ export default function MatchView({
                       ))}
                     </div>
                     <p className="mt-2 text-xs text-chrome-muted">
-                      Review your squad before playing the next round.
+                      You'll be without them next match — <span className="text-crt-amber">Manage Squad</span> below
+                      re-picks your XI before kick-off.
                     </p>
                   </div>
                 )}
@@ -855,6 +802,97 @@ export default function MatchView({
             </div>
           )}
         </div>
+
+        {/* ── Decision overlay — dims the WHOLE match, can never sit below the
+            fold in a scrolled feed (design-mockups/04-match.html). ── */}
+        <AnimatePresence>
+          {pauseActive && (
+            <motion.div
+              key="decision"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex items-center justify-center bg-pitch-950/85 p-4 backdrop-blur-[2px]"
+            >
+              {pauseActive.type === 'halftime' ? (
+                <motion.div
+                  initial={{ scale: 0.95, y: 8 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-md rounded-xl border border-crt-amber/50 bg-surface-2 p-4 shadow-card"
+                >
+                  <p className="flex items-center gap-2 font-display text-[15px] uppercase tracking-wide text-crt-amber">
+                    <Megaphone size={16} /> Half-time team talk
+                  </p>
+                  <p className="mb-3 mt-0.5 text-xs text-chrome-muted">
+                    {scoreA > scoreB ? `You lead ${scoreA}–${scoreB}.` : scoreA < scoreB ? `You trail ${scoreA}–${scoreB}.` : `Level at ${scoreA}–${scoreB}.`}{' '}
+                    Your call shapes the second half.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {TEAM_TALKS.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => decideTalk(t)}
+                        data-testid={`talk-${t.id}`}
+                        className="flex items-center gap-3 rounded-lg border border-white/15 bg-pitch-900/70 px-3.5 py-2.5 text-left transition hover:border-crt-amber/60 hover:bg-crt-amber/10"
+                      >
+                        <span className="text-lg">{t.emoji}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-display text-sm text-chrome">{t.name}</span>
+                          <span className="block text-[11px] text-chrome-muted">{t.blurb}</span>
+                        </span>
+                        <span className="shrink-0 font-data text-[10px] text-chrome-muted">{TALK_FX[t.id]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : pauseActive.type === 'injury' && injuredPlayer ? (
+                <motion.div
+                  initial={{ scale: 0.95, y: 8 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-md rounded-xl border border-orange-400/50 bg-surface-2 p-4 shadow-card"
+                >
+                  <p className="flex items-center gap-2 font-display text-[15px] uppercase tracking-wide text-orange-300">
+                    <ArrowLeftRight size={16} /> {injuredPlayer.name} can't continue
+                  </p>
+                  <p className="mb-3 mt-0.5 text-xs text-chrome-muted">Who comes on?</p>
+                  <div className="flex max-h-[40vh] flex-col gap-1.5 overflow-y-auto">
+                    {subCandidates.map((p) => {
+                      const offRole = p.role !== injuredPlayer.role;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => decideSub(p.id)}
+                          data-testid={`sub-${p.id}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-white/15 bg-pitch-900/70 px-3.5 py-2.5 text-left transition hover:border-crt-green/60 hover:bg-crt-green/10"
+                        >
+                          <span className="min-w-0 font-display text-sm text-chrome">
+                            🔁 {p.name}
+                          </span>
+                          <span className="shrink-0 text-right font-data text-[10px] text-chrome-muted">
+                            {p.role} · {p.stats.attack}/{p.stats.defense}
+                            {offRole && <span className="block text-crt-amber">−10% out of position</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => decideSub(null)}
+                      data-testid="sub-none"
+                      className="rounded-lg border border-white/15 bg-pitch-900/70 px-3.5 py-2.5 text-left text-sm text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+                    >
+                      {subCandidates.length
+                        ? 'No substitution — play on with the knock'
+                        : 'No fit cover on the bench — play on with the knock'}
+                    </button>
+                  </div>
+                </motion.div>
+              ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

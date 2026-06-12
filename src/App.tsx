@@ -100,6 +100,9 @@ export default function App() {
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
   const [matchSeed, setMatchSeed] = useState<string | null>(null);
   const [matchMode, setMatchMode] = useState<MatchMode>('ladder');
+  // Captured at kick-off: was this match a cup knockout? (The store's cup state
+  // advances on resolve, so deriving it live would flip at full-time.)
+  const [matchKnockout, setMatchKnockout] = useState(false);
   const [challenge, setChallenge] = useState<OpponentTeam | null>(null);
   const [newRunOpen, setNewRunOpen] = useState(false);
   // Front door (Pillar 2): on load the manager lands on the Start Menu and
@@ -223,6 +226,7 @@ export default function App() {
     setOpponent(roundOpponent);
     setMatchSeed(`M-${runSeed}-${round}`);
     setMatchMode('ladder');
+    setMatchKnockout(!!cup && (!career || (!!league && careerCupDue(cup, league.matchweek))));
     setMatchOpen(true);
   };
 
@@ -230,6 +234,7 @@ export default function App() {
     setOpponent(opp);
     setMatchSeed(`P-${Date.now()}`);
     setMatchMode('pvp');
+    setMatchKnockout(false);
     setMatchOpen(true);
   };
 
@@ -486,6 +491,7 @@ export default function App() {
         seed={matchSeed}
         tuning={config.engine}
         ladder={matchMode === 'ladder'}
+        knockout={matchKnockout}
         interactive={matchMode === 'ladder'}
         benchPlayers={benchPlayers}
         rebuildStrength={rebuildStrength}
