@@ -3,25 +3,34 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (NEW STRATEGIC DIRECTION — a 4-pillar re-foundation
-> in progress. **Pillars 4 + 1 SHIPPED.** P4 Operational Difficulty Matrix
-> (Easy/Standard/Hardcore: board sacking teeth, difficulty-scaled budget, hard wage
-> ceiling). P1 Financial Balancing Array (`lib/finance.ts`: one declarative per-
-> division economy table + NEW sponsorship (local + global/TV) & disciplinary fines,
-> calibrated net-neutral). Standard == today; sim preserved (Classic **36.8%**, career
-> champ ~66% / sacked ~1% / PL median £526M / max £1462M). persistence **v28**,
-> **371 tests**, build green, persistence **v29**. ⭐ THE 5-PILLAR STRATEGIC
-> RE-FOUNDATION IS COMPLETE — all of Difficulty Matrix (P4), Financial Balancing
-> Array (P1), Unknown-pool start (P3), Manager career/job market (P5, "a sacking is
-> NOT game over"), and the Start Menu front door + difficulty picker (P2) are
-> shipped & live-verified. Classic 36.8% + career economy preserved throughout.
-> **QA SWEEP PASSED**, then PUSHED to prod. POST-PUSH polish (all live): manager-career
-> follow-ups (difficulty-aware job market, manager trophy cabinet spanning clubs,
-> reputation in the Hub) + Start-Menu bug fixes (More-ways-to-play z-index, tutorial
-> rewrite, Records sub-view). **NEW — Classic reworked into a DRAFT LEAGUE** (committed,
-> NOT yet pushed): snake-draft a squad vs 11 AI clubs (difficulty-scaled budget) → a
-> single round-robin league. `lib/draft.ts` (+14 tests), `DraftRoom.tsx`, persistence
-> **v30**. **384 tests**, build green. See §3 "START HERE" → "Classic Draft League".)
+> **Last updated:** 2026-06-12 (end of a huge session — **everything below is SHIPPED &
+> PUSHED to prod; working tree clean; HEAD `5398b48`**). Gates: **386 tests + balance
+> sims**, tsc + build green, persistence **v30**, **Classic ladder 36.8%** & career
+> economy preserved throughout.
+>
+> **What shipped this session:**
+> 1. **5-PILLAR STRATEGIC RE-FOUNDATION** (all live): P4 Difficulty Matrix
+>    (Easy/Standard/Hardcore — board sacking teeth, scaled budget, hard wage ceiling;
+>    `lib/difficulty.ts`). P1 Financial Balancing Array (`lib/finance.ts` — one
+>    per-division economy table + sponsorship + disciplinary fines, net-neutral). P3
+>    Unknown-pool start (new careers begin with grey generated journeymen). P5 **Manager
+>    career / job market** (`lib/jobs.ts` — a sacking is NOT game over; apply for jobs
+>    matching reputation, take over a club with its inherited real squad; reputation +
+>    trophy cabinet span clubs). P2 **Start Menu** (`StartMenu.tsx` — one-click Resume,
+>    New Career w/ difficulty picker, Quick Classic, demoted modes behind "More ways to
+>    play").
+> 2. **Manager-career polish** + **Start-Menu bug fixes** (More-ways-to-play z-index,
+>    tutorial rewrite, Records sub-view).
+> 3. **CLASSIC reworked into a closed DRAFT TOURNAMENT** (`lib/draft.ts`, `DraftRoom.tsx`):
+>    free-pick snake draft vs 11 AI clubs (difficulty-scaled budget) → single
+>    round-robin league; 16-man squad (XI + 5 subs); **bank locked at £0, no
+>    transfers/economy**; focused UI (only Tactics/Season/Club tabs). Balance-gated via
+>    `tests/draft.sim.ts` (0/360 stranded; Easy avgPos 5.5/top3 33%, Hard 8.3/11%).
+>    Legacy ladder-Classic saves still play as a ladder (graceful).
+>
+> Detail for each in §2 / §3 below. The user's save (`gaffer-run`) is a **Classic ladder
+> R7** run (legacy, pre-rework) — back it up before destructive browser tests. See §3
+> "⭐ NEXT SESSION — START HERE".)
 
 ---
 
@@ -713,33 +722,40 @@ programmatically** from existing single position (confirm before building).
 ### ⭐ NEXT SESSION — START HERE
 
 **▶ READY-TO-PASTE PROMPT FOR THE NEXT SESSION:**
-> Read CLAUDE_CONTEXT.md first — the "⭐ NEXT SESSION — START HERE" block in §3.
-> The FM-core roadmap is fully shipped (persistence v27, 340 tests, prod live);
-> the working tree is clean and nothing is unpushed. My save (`gaffer-run`) is a
-> Classic R7 run — **before ANY destructive browser test (New Game / starting a
-> career or league / playing a match to full-time) back it up to a localStorage
-> key first** (`localStorage.setItem('gaffer-run-BACKUP', localStorage.getItem('gaffer-run'))`)
-> and restore + reload when done; a window snapshot is NOT enough. **Don't push to
-> origin unless I ask** (it auto-deploys to prod). After each change run `npx tsc -b`,
-> the relevant `npx vitest run`, and at milestones `npm run build` + `npm run sim`
-> (career + Classic) — don't move on if a gate is red. Keep the tree committed and
-> keep CLAUDE_CONTEXT.md updated (any persistence change → bump CURRENT_VERSION +
-> add a migration). Work autonomously without asking permission; only pause for a
-> genuine product/design fork, and phrase it as a yes/no question.
+> Read CLAUDE_CONTEXT.md first — the header block + this "⭐ NEXT SESSION — START HERE"
+> block. The 5-pillar re-foundation AND the Classic Draft-Tournament rework are fully
+> shipped & PUSHED (persistence **v30**, **386 tests + balance sims**, build green, prod
+> live, working tree clean, HEAD `5398b48`). My save (`gaffer-run`) is a **Classic
+> ladder R7** run (legacy, pre-rework — it still plays as a ladder). **Before ANY
+> destructive browser test (New Game / starting a career/draft / playing a match to
+> full-time) back it up to a localStorage key first**
+> (`localStorage.setItem('gaffer-run-BACKUP', localStorage.getItem('gaffer-run'))`) and
+> restore + reload when done; a window snapshot is NOT enough. **Operational gotchas:**
+> the dev server's HMR goes stale after many edits — RESTART the preview server (stop +
+> start) to load fresh code before live-verifying; `preview_console_logs` is a stale
+> buffer (use `npm run build` as the authoritative "no errors" check); when clicking UI
+> via eval, scope to the right overlay (the game's TabNav sits behind the z-55/z-65
+> overlays). **Don't push to origin unless I ask** (auto-deploys to prod). After each
+> change run `npx tsc -b` + the relevant `npx vitest run`; at milestones `npm run build`
+> + `npm run sim` (Classic ladder 36.8% is sacred; career economy preserved; draft sim
+> must stay 0-stranded). Keep the tree committed; keep CLAUDE_CONTEXT.md updated (any
+> persistence change → bump CURRENT_VERSION + add a migration). Work autonomously; only
+> pause for a genuine product/design fork, phrased as a yes/no question.
 >
 > Today I want to: **[PICK ONE — fill this in]**
->   (a) **balance/feel tuning** — the 22-match career is easier now (champ ~67%,
->       sacked ~1.3%); tune for more tension/stakes if it feels too soft in play;
->   (b) a **new feature area** — e.g. a domestic cup *inside* Career (interleaved),
->       loans, a sponsorship/finance layer, set-piece/tactics depth, or international
->       call-ups;
->   (c) **polish** the systems just shipped (training/morale/board/market/cup) based
->       on how they feel to play;
->   (d) another **QA sweep** (a full standalone-League season + a full Cup run +
->       a multi-season career to exercise contracts/Bosman/youth/promotion together).
-> If I haven't said, recommend one and proceed.
+>   (a) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
+>       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%) if
+>       they feel off; maybe nudge a backup-GK / depth hint in the draft;
+>   (b) **balance/feel of Career** — the home-and-away (22-match) career is on the easy
+>       side (champ ~67%, sacked ~1.3%); add tension via the difficulty dial or tuning;
+>   (c) a **new feature** — a domestic cup *inside* Career (interleaved), loans,
+>       international call-ups, set-piece/tactics depth;
+>   (d) a **full QA sweep** of the changed game (draft tournament + a multi-season
+>       manager career w/ a sacking & job switch + a standalone League/Cup run).
+> If I haven't said, recommend one and proceed. (My lean: a quick play-test of the
+> draft tournament + Career to surface feel issues, then tune.)
 
-### ⭐⭐⭐ STRATEGIC RE-FOUNDATION (2026-06-12, user-approved) — IN PROGRESS
+### ⭐⭐⭐ STRATEGIC RE-FOUNDATION (2026-06-12, user-approved) — COMPLETE & PUSHED (+ Classic Draft-Tournament rework, also pushed)
 
 After the FM-core roadmap completed, the user set a 4-pillar strategic direction to
 make the game a "world-class" FM. We discussed architecture before building; the
