@@ -3,7 +3,7 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **Last updated:** 2026-06-12 (FM-core roadmap in progress — **#1 home-and-away fixtures** (22-match seasons) + **#2/#4 training, sharpness & fatigue** both DONE. persistence **v26**, **311 tests**, build green. Classic byte-identical (sim 36.8%); training is a player-skill layer the sim doesn't model. Next: #3 morale, #5 cup. See §3 "START HERE")
+> **Last updated:** 2026-06-12 (FM-core roadmap — **#1 home-and-away**, **#2/#4 training/sharpness/fatigue**, **#3 morale/form** all DONE & PUSHED. persistence **v26**, **316 tests**, build green. Classic byte-identical (sim 36.8%); training+morale are derived player-skill layers the sim doesn't model. Only **#5 cup** left in Next Up. See §3 "START HERE")
 
 ---
 
@@ -763,10 +763,9 @@ wage) to avoid an economy re-tune — revisit if per-player negotiated wages are
 the FM-transfer batch. The engine (`engine.ts`+`stats.ts`: attribute-driven,
 segmented, 2D viz) is strong; the management *shell* is the work. Two tiers:
 - **Next Up (core loop):** (1) home-and-away — **✅ DONE**; (2)+(4) **training,
-  sharpness & fatigue** — **✅ DONE** (`lib/training.ts`, see below); (3)
-  **morale/form** — TODO (derive from `playerHistory` + minutes + results, surface
-  in the Inbox); (5) **cup competition** — TODO (`lib/cup.ts` knockout). Order
-  done: 1 → 2+4; next 3 → 5.
+  sharpness & fatigue** — **✅ DONE**; (3) **morale/form** — **✅ DONE**
+  (`lib/morale.ts`, see below); (5) **cup competition** — **TODO** (`lib/cup.ts`
+  knockout, reuses the engine + inbox draws) — the last Next-Up item.
 - **Future Edge (the "FM killers"):** living board confidence, memory-carrying
   inbox interactions (the press-conference killer), living transfer-market AI,
   lightweight player dynamics, fan/finance reinvestment loop. All ride the **Inbox**
@@ -808,6 +807,19 @@ SUBTLE drift + GENTLE bite).** `lib/training.ts` (pure, 11 tests):
   focus selector + "N rusty · N tired" summary) + TIRED/RUSTY badges in SquadList.
 - Verified live: focus persists; a played MW set starter sharpness 70→78,
   fatigue 0→18; injected extremes showed the badges + summary. Sim unmoved.
+
+**#3 morale/form — ✅ DONE (Career/League; fully DERIVED → no persistence bump).**
+`lib/morale.ts` (pure, 5 tests): `morale(avgRating, sharpness)` blends recent form
+(avg match rating, 60%) + involvement (sharpness as a minutes proxy, 40%) → 0–100;
+`moraleBand` (buzzing/good/content/unsettled/unhappy); bounded `moraleMult` (±3%,
+neutral at 55); `moraleModifiers` folds each starter into `MatchModifiers.player`.
+App merges it alongside the training/condition mods (career/league only → Classic
+byte-identical). `resolveLeagueRound` posts ONE deduped `morale` inbox message for
+the unhappiest newly-unhappy player per matchweek (stable id `morale-{id}` → never
+spams). UI: mood icon (Smile/Meh/Frown) in SquadList + a `morale` inbox kind/icon.
+A skill layer the sim doesn't model (≈net-neutral) → sim unmoved (Classic 36.8%).
+Verified live: a frozen-out, poor-form starter showed the Frown + RUSTY and
+triggered "Tony Coton is unhappy" in the inbox; dedup held.
 
 **Implementation anchors:** market logic in `lib/market.ts`; league/club state
 + squads in `lib/league.ts` (`LeagueClub.squad`, `clubOf`, `allClubOwnedIds`);

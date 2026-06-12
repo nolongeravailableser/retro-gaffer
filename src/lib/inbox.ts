@@ -15,6 +15,7 @@ export type InboxKind =
   | 'board' // promotion / relegation / title verdict
   | 'offer' // a rival club bids for one of your players (actionable)
   | 'transfer' // a completed transfer (in/out)
+  | 'morale' // a player's mood (man-management)
   | 'achievement'; // an unlocked achievement
 
 /** A rival's bid for one of your players — the payload an `offer` message acts on. */
@@ -119,6 +120,19 @@ export function departureMessage(week: number, season: number, names: readonly s
     kind: 'transfer',
     title: `${n} player${n === 1 ? '' : 's'} left on a free`,
     body: `Out of contract — left on a Bosman: ${names.join(', ')}.`,
+    read: false,
+  };
+}
+
+/** A player has grown unhappy (lack of football / poor form). Stable id → posts
+ *  once per player, so it never spams. */
+export function moraleMessage(week: number, playerId: string, playerName: string): InboxMessage {
+  return {
+    id: `morale-${playerId}`,
+    week,
+    kind: 'morale',
+    title: `${playerName} is unhappy`,
+    body: `${playerName} has grown unsettled — short on form or starved of football. Give him minutes, or he'll agitate to leave.`,
     read: false,
   };
 }

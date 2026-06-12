@@ -20,6 +20,8 @@ import { runConfig } from '@/lib/scenarios';
 import { journeyFor } from '@/lib/journey';
 import { effectiveStrength, mergeModifiers } from '@/lib/effects';
 import { focusModifiers, conditionModifiers } from '@/lib/training';
+import { moraleModifiers } from '@/lib/morale';
+import { avgRating } from '@/lib/ratings';
 import { slotPosition } from '@/lib/formations';
 import { positionFit } from '@/lib/positions';
 import { relicModifiers } from '@/lib/relics';
@@ -87,6 +89,7 @@ export default function App() {
   const training = useGameStore((s) => s.training);
   const sharpness = useGameStore((s) => s.sharpness);
   const fatigue = useGameStore((s) => s.fatigue);
+  const playerHistory = useGameStore((s) => s.playerHistory);
   const inbox = useGameStore((s) => s.inbox);
   const markInboxRead = useGameStore((s) => s.markInboxRead);
   const clubName = useGameStore((s) => s.clubName);
@@ -148,10 +151,16 @@ export default function App() {
     // Career/League: fold in the weekly training focus + each starter's
     // sharpness/fatigue condition (bounded, subtle). Classic is untouched.
     if (career || league) {
+      const ids = starters.map((p) => p.id);
       mods = mergeModifiers(mods, focusModifiers(training));
+      mods = mergeModifiers(mods, conditionModifiers(ids, sharpness, fatigue));
       mods = mergeModifiers(
         mods,
-        conditionModifiers(starters.map((p) => p.id), sharpness, fatigue)
+        moraleModifiers(
+          ids,
+          (id) => { const h = playerHistory[id]; return h ? avgRating(h) : null; },
+          (id) => sharpness[id]
+        )
       );
     }
     const { attack, defense } = effectiveStrength(chemistry.perPlayer, mods, posMult);
@@ -160,7 +169,7 @@ export default function App() {
         ? { name: clubName ?? 'Your XI', attack, defense, squad: starters }
         : null;
     return { chemistry, multipliers, filled: starters.length, playerTeam };
-  }, [xi, formation, roundMods, relics, clubName, career, league, training, sharpness, fatigue]);
+  }, [xi, formation, roundMods, relics, clubName, career, league, training, sharpness, fatigue, playerHistory]);
 
   const config = useMemo(
     () => runConfig({ scenario, mode, mutator }),

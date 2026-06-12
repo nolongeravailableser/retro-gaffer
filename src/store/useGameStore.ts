@@ -102,8 +102,10 @@ import {
   boardMessage,
   offerMessage,
   departureMessage,
+  moraleMessage,
   type InboxMessage,
 } from '@/lib/inbox';
+import { morale as playerMorale, moraleBand } from '@/lib/morale';
 import { NO_MODIFIERS, type MatchModifiers } from '@/lib/effects';
 import { Rng } from '@/lib/rng';
 import {
@@ -125,7 +127,7 @@ import { featuredPlayerId, featuredCost } from '@/lib/featured';
 import { runScore } from '@/lib/score';
 import type { Rarity } from '@/lib/types';
 import type { MatchResult, PlayerHistory } from '@/lib/types';
-import { accrueHistory } from '@/lib/ratings';
+import { accrueHistory, avgRating } from '@/lib/ratings';
 
 export { getPlayer };
 
@@ -805,6 +807,27 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
       });
     const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${nextMw}`, openOffers);
     for (const b of bids) newMsgs.push(offerMessage(nextMw, b));
+  }
+
+  // Morale (man-management): flag at most ONE newly-unhappy player per matchweek
+  // (frozen out / poor form), deduped by a stable id so it never spams. Morale is
+  // derived from the just-updated form (avg rating) + sharpness.
+  if (!done) {
+    const flagged = new Set(
+      s.inbox.filter((m) => m.kind === 'morale').map((m) => m.id)
+    );
+    const unhappy = s.owned
+      .map((id) => {
+        const h = playerHistory[id];
+        const m = playerMorale(h ? avgRating(h) : null, sharpness[id]);
+        return { id, m };
+      })
+      .filter((x) => moraleBand(x.m) === 'unhappy' && !flagged.has(`morale-${x.id}`))
+      .sort((a, b) => a.m - b.m)[0];
+    if (unhappy) {
+      const name = getPlayer(unhappy.id)?.name ?? 'A player';
+      newMsgs.push(moraleMessage(nextMw, unhappy.id, name));
+    }
   }
 
   const inbox = pushMessages(s.inbox, newMsgs);

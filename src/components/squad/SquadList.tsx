@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser, BatteryLow, Snowflake } from 'lucide-react';
+import { Coins, Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser, BatteryLow, Snowflake, Smile, Meh, Frown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { sellValue } from '@/lib/economy';
 import { marketSellValue } from '@/lib/market';
 import { sharpnessBand, fatigueBand } from '@/lib/training';
+import { morale as playerMorale, moraleBand, moraleLabel } from '@/lib/morale';
 import { LEAGUE_NEUTRAL_TIER } from '@/lib/wages';
 import { avgRating } from '@/lib/ratings';
 import { Draggable } from '@/components/dnd/dnd';
@@ -252,6 +253,23 @@ export default function SquadList({ multipliers }: SquadListProps) {
                               <Snowflake size={9} /> RUSTY
                             </span>
                           )}
+                          {inLeague && (() => {
+                            const h = playerHistory[id];
+                            const band = moraleBand(playerMorale(h ? avgRating(h) : null, sharpness[id]));
+                            const moods = {
+                              unhappy: [Frown, 'text-rose-300'],
+                              unsettled: [Meh, 'text-orange-300'],
+                              buzzing: [Smile, 'text-crt-green'],
+                            } as const;
+                            const mood = moods[band as keyof typeof moods];
+                            if (!mood) return null;
+                            const [Icon, color] = mood;
+                            return (
+                              <span className="shrink-0" title={`Morale: ${moraleLabel(band)}`}>
+                                <Icon size={10} className={color} />
+                              </span>
+                            );
+                          })()}
                         </div>
                         {(() => {
                           const h = playerHistory[id];
