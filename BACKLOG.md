@@ -299,7 +299,20 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
     Pairs with the pool work ([[#2]] ensures variety EXISTS; R6 ensures you can FIND it) and the
     player profile (rows already open it). Re-check perf if removing the cap (the pool is ~668).
 
-- **R7. Squad page rethink + profile-from-everywhere (CONFIRMED 2026-06-13)** — two parts:
+- **R7. Squad page rethink + profile-from-everywhere (✅ SHIPPED 2026-06-13)** — all three parts
+  built + gated green (tsc · 459 tests · build · e2e; UI-only → balance-neutral, no persistence).
+  (1) **Profile from everywhere:** `slotClicked` now opens the profile when you tap a FILLED slot
+  with nothing armed (was a silent "arm"); an armed player (via the profile's "Field — pick a slot")
+  still places on tap (empty fills / occupied swaps); drag still moves/swaps. `Bench.tsx` tap →
+  `openProfile` too. So every player — list, bench, **pitch slot**, market — opens the same overlay.
+  (2) **Responsive hybrid layout:** mobile gets a **Formation ⇄ Squad** segmented toggle
+  (`squad-view-*` testids); desktop (lg+) keeps the two-column pitch+list simultaneity via `lg:flex`
+  overrides. Arming a player auto-switches the mobile view to Formation so "Field" lands on the pitch.
+  (3) **Auto-Pick on the pitch:** new shared `components/squad/SquadActions.tsx` (Auto-Pick + Clear,
+  `idSuffix` keeps testids unique) used on BOTH the pitch/formation header (`auto-pick-pitch`) and the
+  squad-list header (`auto-pick`). New tests in `tests/profile.test.ts` (+2: tap-filled-slot opens
+  profile; armed→place). Live-verified both viewports (mobile bottom-sheet profile + toggle + pitch
+  Auto-Pick 10→11; desktop centered profile + two-column). Original two parts:
   - **Core fix:** make EVERY player open the profile — currently only the squad-list rows +
     market cards do; the **pitch slots and bench don't** (deferred fast-follow from profile #1).
     Unify the interaction: tap any player (list / bench / **pitch slot**) → profile. Placement

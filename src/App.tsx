@@ -38,6 +38,7 @@ import Shop from '@/components/shop/Shop';
 import ScoutPanel from '@/components/shop/ScoutPanel';
 import FeaturedBanner from '@/components/shop/FeaturedBanner';
 import SquadList from '@/components/squad/SquadList';
+import SquadActions from '@/components/squad/SquadActions';
 import SquadDepth from '@/components/squad/SquadDepth';
 import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
@@ -97,7 +98,12 @@ export default function App() {
   const markInboxRead = useGameStore((s) => s.markInboxRead);
   const clubName = useGameStore((s) => s.clubName);
   const onboarded = useGameStore((s) => s.onboarded);
+  const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  // Mobile-only Squad-tab view: the screen is too tall to show the pitch AND the
+  // full roster at once, so on narrow viewports we toggle between them. Desktop
+  // (lg+) ignores this and shows both columns — see the `lg:flex` overrides.
+  const [squadView, setSquadView] = useState<'formation' | 'squad'>('formation');
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [matchOpen, setMatchOpen] = useState(false);
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
@@ -300,6 +306,12 @@ export default function App() {
     if (activeTab === 'home' && showInbox && inboxUnread > 0) markInboxRead();
   }, [activeTab, showInbox, inboxUnread, markInboxRead]);
 
+  // Arming a player (e.g. the profile's "Field — pick a slot") jumps the mobile
+  // Squad view to the pitch so the next tap lands on a slot. No-op on desktop.
+  useEffect(() => {
+    if (selectedPlayerId) setSquadView('formation');
+  }, [selectedPlayerId]);
+
   const showJourney = runStatus === 'playing' && !matchOpen;
   /** The tab the current stage wants the player on. */
   const stageTab: Tab =
@@ -408,18 +420,39 @@ export default function App() {
         {activeTab === 'squad' && (
           <div className="flex flex-col gap-4">
           <CoachMark id="squad">
-            <b className="text-chrome">Your tactics board.</b> Tap a player in the list for
-            details, then tap a pitch slot to field him — or just hit <b className="text-crt-green">Auto-Pick</b>.
-            The number on each card is his overall; the green pip is a chemistry link
-            (players sharing a club, nation or era boost each other).
+            <b className="text-chrome">Your tactics board.</b> Tap any player — on the
+            pitch, the bench or the list — for his profile, then hit <b className="text-chrome">Field</b> and
+            tap a slot. Or just use <b className="text-crt-green">Auto-Pick</b>. The number on each
+            card is his overall; the green pip is a chemistry link (players sharing a club,
+            nation or era boost each other).
           </CoachMark>
+          {/* Mobile-only view switch — desktop shows both columns at once. */}
+          <div className="flex rounded-lg border border-white/10 bg-surface-1 p-0.5 lg:hidden">
+            {(['formation', 'squad'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setSquadView(v)}
+                data-testid={`squad-view-${v}`}
+                className={[
+                  'flex-1 rounded-md py-1.5 font-display text-xs uppercase tracking-wide transition',
+                  squadView === v
+                    ? 'bg-crt-green/15 text-crt-green'
+                    : 'text-chrome-muted hover:text-chrome',
+                ].join(' ')}
+              >
+                {v === 'formation' ? 'Formation' : 'Squad'}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(320px,1fr)]">
             {/* Pitch FIRST on every viewport — it's the decision surface.
                 New signings are handled by auto-assign + the toast, not by
                 reordering the whole screen (design-mockups/02-squad.html). */}
-            <div className="flex min-w-0 flex-col gap-4">
+            <div className={`${squadView === 'formation' ? 'flex' : 'hidden'} min-w-0 flex-col gap-4 lg:flex`}>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-pitch-900/70 px-4 py-2.5">
                 <FormationSelector />
+                <SquadActions idSuffix="-pitch" />
                 {/* Live team strength — feedback at the moment of the decision */}
                 <span className="flex items-center gap-1.5 font-data text-[11px] text-chrome-muted">
                   <span className="rounded-full border border-white/10 bg-surface-1 px-2 py-0.5">
@@ -441,8 +474,8 @@ export default function App() {
               <ChemistryPanel chemistry={chemistry} filled={filled} />
               {(career || league) && <TrainingPanel />}
             </div>
-            {/* Roster — right column on desktop, below the pitch on mobile */}
-            <div className="flex flex-col gap-3 lg:sticky lg:top-[3.5rem] lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
+            {/* Roster — right column on desktop, the "Squad" segment on mobile */}
+            <div className={`${squadView === 'squad' ? 'flex' : 'hidden'} flex-col gap-3 lg:flex lg:sticky lg:top-[3.5rem] lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto`}>
               <AvailabilityStrip hideWhenClear />
               <SquadList multipliers={multipliers} />
               <SquadDepth />

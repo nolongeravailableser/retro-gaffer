@@ -9,7 +9,7 @@ import { Draggable, Droppable } from '@/components/dnd/dnd';
 export default function Bench() {
   const bench = useGameStore((s) => s.bench);
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
-  const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const openProfile = useGameStore((s) => s.openProfile);
   const removeFromBench = useGameStore((s) => s.removeFromBench);
 
   return (
@@ -18,7 +18,7 @@ export default function Bench() {
       className="rounded-xl border border-white/10 bg-pitch-900/60 p-3 data-[over=true]:border-crt-green/60 data-[over=true]:bg-crt-green/5"
     >
       <p className="mb-2 text-xs uppercase tracking-wide text-chrome-muted">
-        Bench {bench.length}/{BENCH_SIZE} · drag here to sub
+        Bench {bench.length}/{BENCH_SIZE} · tap for profile · drag to sub
       </p>
       <div className="flex flex-wrap gap-2">
         <AnimatePresence initial={false}>
@@ -39,7 +39,7 @@ export default function Bench() {
                 <Draggable id={`bench:${id}`} playerId={id}>
                   <button
                     type="button"
-                    onClick={() => selectPlayer(id)}
+                    onClick={() => openProfile(id)}
                     aria-pressed={selected}
                     className={[
                       'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition',
@@ -70,7 +70,7 @@ export default function Bench() {
         </AnimatePresence>
         {bench.length === 0 && (
           <p className="px-1 py-1.5 text-sm text-chrome-muted">
-            Empty — drag a player here, or pick one and tap “Bench”.
+            Empty — drag a player here, or open a player and tap “Bench”.
           </p>
         )}
       </div>

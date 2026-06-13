@@ -1977,12 +1977,16 @@ export const useGameStore = create<GameState>()(
 
       slotClicked: (slotIndex) => {
         const { selectedPlayerId, xi } = get();
+        // A player armed via the profile's "Field" action (or a drag pickup)
+        // drops into the tapped slot — empty fills, occupied swaps.
         if (selectedPlayerId) {
           get().placeInSlot(selectedPlayerId, slotIndex);
           return;
         }
+        // Nothing armed: tapping a FILLED slot opens that player's profile (the
+        // unified "tap any player → profile" model); an empty slot is a no-op.
         const occupant = xi[slotIndex];
-        if (occupant) get().selectPlayer(occupant);
+        if (occupant) get().openProfile(occupant);
       },
 
       setFormation: (id) => {

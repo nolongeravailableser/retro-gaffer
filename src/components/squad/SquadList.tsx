@@ -1,5 +1,5 @@
 import {
-  Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser, BatteryLow,
+  Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, BatteryLow,
   Snowflake, Smile, Meh, Frown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ import { Draggable } from '@/components/dnd/dnd';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { positionLabel } from '@/lib/playerMeta';
 import OvrBadge from '@/components/ui/OvrBadge';
+import SquadActions from '@/components/squad/SquadActions';
 import type { Role } from '@/lib/types';
 
 interface SquadListProps {
@@ -33,8 +34,6 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const inLeague = useGameStore((s) => s.league !== null);
   const sharpness = useGameStore((s) => s.sharpness);
   const fatigue = useGameStore((s) => s.fatigue);
-  const autoPickXI = useGameStore((s) => s.autoPickXI);
-  const benchAll = useGameStore((s) => s.benchAll);
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
@@ -66,26 +65,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
           {clubName ?? 'Your Squad'}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={autoPickXI}
-            disabled={owned.length === 0}
-            data-testid="auto-pick"
-            title="Field your strongest available XI (chemistry-aware; skips banned/injured players)"
-            className="flex items-center gap-1 rounded-md border border-crt-green/40 bg-crt-green/10 px-2 py-1 font-display text-[11px] text-crt-green transition hover:bg-crt-green/20 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Wand2 size={12} /> Auto-Pick
-          </button>
-          <button
-            type="button"
-            onClick={benchAll}
-            disabled={onPitch.size === 0}
-            data-testid="clear-squad"
-            title="Clear the pitch — send every starter back to the squad"
-            className="flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 font-display text-[11px] text-chrome-muted transition hover:bg-white/5 hover:text-chrome disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Eraser size={12} /> Clear
-          </button>
+          <SquadActions />
           <span className="font-data text-xs text-chrome-muted">
             {onPitch.size}/11
           </span>
