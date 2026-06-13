@@ -275,6 +275,23 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
     Pairs with the pool work ([[#2]] ensures variety EXISTS; R6 ensures you can FIND it) and the
     player profile (rows already open it). Re-check perf if removing the cap (the pool is ~668).
 
+- **R7. Squad page rethink + profile-from-everywhere (CONFIRMED 2026-06-13)** — two parts:
+  - **Core fix:** make EVERY player open the profile — currently only the squad-list rows +
+    market cards do; the **pitch slots and bench don't** (deferred fast-follow from profile #1).
+    Unify the interaction: tap any player (list / bench / **pitch slot**) → profile. Placement
+    stays unambiguous by splitting on TARGET: tap a **filled** slot → profile; tap an **empty**
+    slot (with a player armed via the profile's "Field" action) → place; **drag** still
+    moves/swaps. Bench tap → profile too ("Field" arms him). Wire `Pitch`/`Slot.tsx` +
+    `Bench.tsx` to `openProfile`.
+  - **Layout (user-chosen: responsive hybrid):** keep the **desktop two-column** (formation +
+    full squad list visible at once — don't lose that). Add a **mobile Formation ⇄ Squad
+    segmented toggle** so the narrow screen is focused, not an endless scroll
+    (pitch+bench+chem+training+list+depth). NOT a uniform Club-style sub-nav (that would sacrifice
+    desktop simultaneity — considered & rejected).
+  - *Notes:* UI-only → **balance-neutral, Opus-fit (Track A), no persistence** (the mobile
+    toggle is transient UI state). Resolves the real inconsistency the user hit (clickable in the
+    squad list, not on the pitch). Pairs with the player profile (#1).
+
 ### Next-level features FM has never nailed (brainstorm 2 — 2026-06-13)
 
 - **N1. The world moves & tells the story** ⭐ — ✅ SHIPPED 2026-06-13 (ex-player half).
