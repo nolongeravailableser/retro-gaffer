@@ -819,7 +819,7 @@ export default function MatchView({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-20 flex items-center justify-center bg-pitch-950/85 p-4 backdrop-blur-[2px]"
+              className="absolute inset-0 z-20 flex items-center justify-center overflow-y-auto bg-pitch-950/95 p-4 backdrop-blur-md"
             >
               {pauseActive.type === 'halftime' ? (
                 <motion.div
