@@ -267,8 +267,13 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   story season-end (a star winning a trophy, a cut veteran sliding down the leagues), posted as
   a `news` inbox message. Persistence **v31** (+migration: legacy → `alumni: []`, verified on the
   R7 save). Narrative-only → balance-neutral. Gates: tsc · 445 tests · build · e2e · sim. (Live
-  news needs a multi-season career to surface — logic + migration fully tested.) **Fast-follow:
-  old-clubs-rise/fall + ex-players-become-managers (the bigger generative half).**
+  news needs a multi-season career to surface — logic + migration fully tested.)
+  - **Generative half ✅ SHIPPED 2026-06-13:** `src/lib/worldnews.ts` (pure, 7 tests)
+    `worldNews()` adds one seeded season-end beat — an **old club you managed** rising/falling
+    without you, or an **ex-player moving into management** (stars who left ≥2 seasons ago).
+    Derived from the alumni list + `pastClubsOf(career.history)` → **no new persistence**. Posted
+    as a `news` inbox message alongside the player story (≤2 world beats/season). Balance-neutral.
+    Gates: tsc · 457 tests · build · e2e · sim. **N1 is now feature-complete.**
 - **N2. Smart fast-forward** — fast-sim low-stakes matches but pull the user in at dramatic
   moments (hat-trick, relegation six-pointer, last-minute equaliser). Protects the snappy
   identity; beats FM's all-or-nothing "go on holiday."

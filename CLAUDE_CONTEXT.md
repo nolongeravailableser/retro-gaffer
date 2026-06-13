@@ -31,7 +31,10 @@
 > (carries across clubs, resets on new career); seeded `alumniNews()` posts a season-end "where
 > are they now" `news` inbox message. Persistence **v31** (+migration legacy→`alumni:[]`,
 > verified on R7). Narrative-only → balance-neutral. Gates: tsc · **445 tests** (+7) · build · e2e
-> · sim. Fast-follow: old-clubs-rise/fall + ex-players-as-managers (the generative half).
+> · sim. **Generative half ✅ SHIPPED + PUSHED too** — `lib/worldnews.ts` (pure, 7 tests):
+> one seeded season-end beat per season — an old club you managed rising/falling, or an
+> ex-player (star, left ≥2 seasons ago) moving into management. Derived from alumni +
+> `pastClubsOf(history)` → no new persistence. **N1 feature-complete.** tsc · **457 tests** · build · e2e · sim.
 >
 > **▶ Phase 2 #1 — N3 EMERGENT NARRATIVE SEASONS ✅ SHIPPED + PUSHED. Opus.** `lib/narrative.ts`
 > (pure, 9 tests) frames the run-in (title/promotion/survival/final-day, mathematically-alive) →

@@ -154,6 +154,7 @@ import {
   type InboxMessage,
 } from '@/lib/inbox';
 import { recordAlumnus, alumniNews, type Alumnus } from '@/lib/alumni';
+import { worldNews, pastClubsOf } from '@/lib/worldnews';
 import { morale as playerMorale, moraleBand } from '@/lib/morale';
 import {
   boardConfidence,
@@ -2593,6 +2594,14 @@ export const useGameStore = create<GameState>()(
             return p ? recordAlumnus(acc, { id, name: p.name, season: prev.season, ovr: overall(p) }) : acc;
           }, s.alumni);
           const news = alumniNews(alumni, nextSeason, s.runSeed);
+          // The wider world turns too: an old club's fortunes, or an ex-player
+          // moving into management (derived from history + alumni; seeded).
+          const world = worldNews({
+            alumni,
+            pastClubs: pastClubsOf(prev.history, s.clubName),
+            season: nextSeason,
+            seed: s.runSeed,
+          });
           // Apply promotion/relegation: the review already resolved which tier we
           // play in next. A fresh league is generated for that division.
           const tier = review.toTier;
@@ -2606,6 +2615,7 @@ export const useGameStore = create<GameState>()(
             expectationMessage(1, nextSeason, boardExpectation(tier)),
             sponsorshipMessage(1, nextSeason, division(tier).name, sponsorship),
             ...(news ? [newsMessage(1, nextSeason, news.alumnusId, news.title, news.body)] : []),
+            ...(world ? [newsMessage(1, nextSeason, world.key, world.title, world.body)] : []),
           ]);
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
