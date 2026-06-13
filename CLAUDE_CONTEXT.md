@@ -844,47 +844,40 @@ programmatically** from existing single position (confirm before building).
 ### ⭐ NEXT SESSION — START HERE
 
 **▶ READY-TO-PASTE PROMPT FOR THE NEXT SESSION:**
-> Read CLAUDE_CONTEXT.md first — the header block + this "⭐ NEXT SESSION — START HERE"
-> block. The 5-pillar re-foundation AND the Classic Draft-Tournament rework are fully
-> shipped & PUSHED (persistence **v30**, **386 tests + balance sims**, build green, prod
-> live, working tree clean, HEAD `5398b48`). My save (`gaffer-run`) is a **Classic
-> ladder R7** run (legacy, pre-rework — it still plays as a ladder). **Before ANY
-> destructive browser test (New Game / starting a career/draft / playing a match to
-> full-time) back it up to a localStorage key first**
-> (`localStorage.setItem('gaffer-run-BACKUP', localStorage.getItem('gaffer-run'))`) and
-> restore + reload when done; a window snapshot is NOT enough. **Operational gotchas:**
-> the dev server's HMR goes stale after many edits — RESTART the preview server (stop +
-> start) to load fresh code before live-verifying; `preview_console_logs` is a stale
-> buffer (use `npm run build` as the authoritative "no errors" check); when clicking UI
-> via eval, scope to the right overlay (the game's TabNav sits behind the z-55/z-65
-> overlays). **Don't push to origin unless I ask** (auto-deploys to prod). After each
-> change run `npx tsc -b` + the relevant `npx vitest run`; at milestones `npm run build`
-> + `npm run sim` (Classic ladder 36.8% is sacred; career economy preserved; draft sim
-> must stay 0-stranded). Keep the tree committed; keep CLAUDE_CONTEXT.md updated (any
-> persistence change → bump CURRENT_VERSION + add a migration). Work autonomously; only
-> pause for a genuine product/design fork, phrased as a yes/no question.
+> Read CLAUDE_CONTEXT.md first — the header block (⚡ UI REDESIGN + POST-REDESIGN POLISH)
+> + this "⭐ NEXT SESSION — START HERE" block. The **full UI redesign (7 phases) + all
+> post-redesign polish, QA, a consistency pass, and a mobile slot-overlap fix are SHIPPED
+> & LIVE.** HEAD `787f822`, working tree clean, local == `origin/main`, persistence
+> **v30**, gates green (**397 tests + build + e2e**, balance sims unaffected — no
+> lib/store/engine changes in the redesign). The design proposal lives in
+> `design-mockups/` (throwaway HTML reference, not wired in). **There is no open
+> backlog — the redesign is complete.**
 >
-> **✅ DONE this session — (b) Career balance/feel + a live Hardcore playthrough QA.**
-> The 22-match career was too easy (champ ~67%, sacked ~1.3%); retuned via a new
-> `aiStrengthMult` difficulty lever + a board-confidence bug fix, then **live-playtested
-> a full Hardcore season** (sacking + job market + takeJob all verified) which surfaced
-> and got a **thin-squad XI trap fix**. Three local commits (`54dc692` rebalance,
-> `64a3782`/this docs, `762452b` trap fix), **NOT pushed** — push when happy
-> (`git push origin main` auto-deploys to prod).
+> **⚠️ MODEL CHECKPOINT (standing user pref; memory `model-recommendation-before-tasks`):**
+> before starting ANY new task, give a one-line model recommendation + reason
+> (Sonnet 4.6 = mechanical/QA/CSS/copy · Opus 4.8 = substantial multi-file features ·
+> Fable 5 = design-taste-heavy or balance-sensitive) and **PAUSE until the user picks/
+> confirms the model** (`/model`). Only then start. This is the one approved exception to
+> otherwise-autonomous working (memory `working-style-autonomy`).
 >
-> Today I want to: **[PICK ONE — fill this in]**
->   (a) **play-tune the Draft Tournament** — budgets (`CLASSIC_DRAFT_BUDGET`=150,
->       `AI_DRAFT_BUDGET`=120) + title-win rates (Easy/Std champ ~13%/11%, Hard 4%);
->   (c) a **new feature** — the domestic cup is DONE (✅ `ef8d098`); remaining ideas:
->       loans, international call-ups, set-piece/tactics depth, or a continental/European
->       cup gated on a high league finish;
->   (d) a **full QA sweep** (draft tournament + a multi-season manager career w/ a
->       sacking & job switch + a standalone League/Cup run);
->   (e) **more money-matters depth** — contract-renewal bonuses now ship (the standing
->       sink). Remaining ideas: squad rotation/fatigue forcing depth buys (note: fatigue
->       exists but is deliberately gentle ±2% & NOT modelled in the sim — biting harder
->       would need sim modelling to stay gated), or a youth-academy money pit.
-> If I haven't said, recommend one and proceed.
+> **Gates before every push** (this session's norm = push-to-live per task once green;
+> confirm the user still wants that): `npx tsc -b`, `npx vitest run` (397), `npm run
+> build`, then `npm run test:e2e` — **stop the preview server before e2e** (port 5180
+> contention). If touching `src/lib/` or the store, also `npm run sim` (Classic ladder
+> 36.8% sacred). Keep CLAUDE_CONTEXT.md updated at task wrap; bump persistence version +
+> add a migration for any persisted-shape change.
+>
+> **Live-QA tooling gotchas (this session):** the user's save (`gaffer-run`) is a
+> **Classic R7 ladder** run — back it up (`gaffer-run-BACKUP`) before any destructive
+> browser test (new run / playing a match) and restore + reload after. `setTimeout`-based
+> async loops inside `preview_eval` DON'T resolve (hit the 30s wall) — drive playthroughs
+> with discrete synchronous clicks. Editing the match modal mid-session causes HMR
+> glitches in an open match — restart the preview server to verify cleanly.
+>
+> Today I want to: **[FILL IN — or ask me]**. If I haven't said, recommend a model + a
+> task and wait for my pick. (Parked ideas if I'm out of direction: loans, international
+> call-ups, set-piece/tactics depth, a continental cup, or a youth-academy money sink —
+> all would be new features, so check `npm run sim` if they touch the engine/economy.)
 
 ### ⭐ CAREER DIFFICULTY REBALANCE (2026-06-12, committed `54dc692`, NOT pushed)
 
