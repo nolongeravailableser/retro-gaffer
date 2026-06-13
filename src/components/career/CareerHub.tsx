@@ -67,6 +67,10 @@ export default function CareerHub() {
   const inPromotion = pos > 0 && pos <= PROMOTION_SPOTS;
   const outlook = !league
     ? { label: '—', color: 'text-chrome-muted', ring: 'border-white/10' }
+    : played === 0
+      // Pre-kickoff: the position is just the seeded table, not form — don't
+      // flash "drop zone — sack risk" in red before a ball has been kicked.
+      ? { label: 'Season ahead', color: 'text-chrome-muted', ring: 'border-white/10' }
     : inRelegation
       ? career.tier === BOTTOM_TIER
         ? { label: 'Drop zone — sack risk', color: 'text-rose-300', ring: 'border-rose-400/40 bg-rose-500/10' }
