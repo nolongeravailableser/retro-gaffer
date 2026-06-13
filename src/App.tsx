@@ -436,12 +436,7 @@ export default function App() {
               </div>
               <Pitch multipliers={multipliers} />
               <Bench />
-              <ChemistryPanel
-                chemistry={chemistry}
-                filled={filled}
-                attack={playerTeam?.attack}
-                defense={playerTeam?.defense}
-              />
+              <ChemistryPanel chemistry={chemistry} filled={filled} />
               {(career || league) && <TrainingPanel />}
             </div>
             {/* Roster — right column on desktop, below the pitch on mobile */}
