@@ -19,6 +19,13 @@
 > manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
 > narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
 >
+> **▶ Phase 2 #3 — D10 RIVALRIES (narrative-scoped) ✅ SHIPPED + PUSHED. Opus.** `lib/rivalry.ts`
+> (pure, 5 tests) `headToHead()` + `rivalryLine()` frame the reverse-fixture rematch ("they beat
+> you 3-0 last time — revenge?") as a "RIVALRY" line + H2H W-D-L in the FixtureHero. No mechanics/
+> persistence → balance-safe. Gates: tsc · **450 tests** (+5) · build · e2e. **This completes the
+> user-authorized Opus-safe Phase-2 trio (N3, N1, D10).** Fable-queued next: D8 perks, N5 nemesis,
+> N4 project-payoff, + the deferred fast-follows (R4 reel, B4 counter, D10 payoff, N1 generative half).
+>
 > **▶ Phase 2 #2 — N1 WORLD MOVES (ex-player half) ✅ SHIPPED + PUSHED. Opus.** `lib/alumni.ts`
 > (pure, 7 tests): players who leave (sell/cashed-in/Bosman) → top-level persisted `alumni`
 > (carries across clubs, resets on new career); seeded `alumniNews()` posts a season-end "where

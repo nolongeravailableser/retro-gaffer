@@ -12,6 +12,7 @@ import {
 import { matchdayIncome, facilityUpkeep } from '@/lib/stadium';
 import { opponentBriefing } from '@/lib/briefing';
 import { seasonNarrative, type StoryTone } from '@/lib/narrative';
+import { headToHead, rivalryLine } from '@/lib/rivalry';
 import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -127,6 +128,10 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
     league && roundOpponent ? league.clubs.find((c) => c.name === roundOpponent.name) : null;
   const oppRow = oppClub ? rows?.find((t) => t.teamId === oppClub.id) : null;
   const oppPos = oppClub && rows ? rows.findIndex((t) => t.teamId === oppClub.id) + 1 : 0;
+
+  // Rivalry (narrative-scoped): the reverse-fixture history with this opponent.
+  const h2h = league && oppClub ? headToHead(league, oppClub.id) : null;
+  const rivalLine = h2h && roundOpponent ? rivalryLine(h2h, roundOpponent.name) : null;
 
   // Emergent season narrative — frame the run-in (title decider / promotion /
   // survival / final day) when the table says this one matters.
@@ -304,6 +309,16 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
               </p>
             );
           })()}
+          {/* Rivalry — the reverse-fixture history when you've met them before. */}
+          {rivalLine && (
+            <p className="mt-1 text-center text-[11px] leading-snug text-fuchsia-200/90">
+              <span className="font-data uppercase tracking-wide text-fuchsia-300/80">Rivalry</span>{' '}
+              {rivalLine}
+              {h2h && h2h.meetings.length > 0 && (
+                <span className="text-chrome-muted"> · H2H {h2h.wins}W {h2h.draws}D {h2h.losses}L</span>
+              )}
+            </p>
+          )}
         </div>
       )}
 

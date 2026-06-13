@@ -169,7 +169,12 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
 - **C7. Growing partnerships** — duos that share minutes develop a visible chemistry bonus.
 - **D8. Manager perks** — light progression for the persistent manager across clubs.
 - **D9. Develop-and-sell trader loop** — make buy-low/develop/sell-high a visible playstyle.
-- **D10. Rivalries** — a repeatedly-faced club becomes a mechanical rival.
+- **D10. Rivalries** — ⏳ PARTIAL (SHIPPED 2026-06-13, narrative-scoped per user): `src/lib/
+  rivalry.ts` (pure, 5 tests) `headToHead()` reads your reverse-fixture history vs the current
+  opponent; `rivalryLine()` frames the rematch (revenge / a win to repeat / settle a draw). Shown
+  as a "RIVALRY" line + H2H W-D-L in the FixtureHero. No mechanics, no persistence → balance-safe.
+  Gates: tsc · 450 tests · build · e2e. **FAST-FOLLOW (Fable, balance): the mechanical PAYOFF**
+  (beating a rival → reputation/morale bonus) + a persistent cross-season nemesis club.
 - **E11. "Why you lost" post-match analysis** — ✅ SHIPPED 2026-06-13.
   `src/lib/matchAnalysis.ts` (pure, 7 tests) reads the deterministic result back — xG
   (chances created), score-vs-xG (finishing/keeper), the squads' `teamStatProfile`
