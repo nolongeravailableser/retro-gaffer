@@ -47,9 +47,12 @@ export default function NegotiationModal({ player, onClose }: Props) {
   const ceiling = maxWageOffer(bankroll, tier);
   const wagesOk = player ? demand <= ceiling : false;
 
-  // Local negotiation state.
+  // Local negotiation state. The bid is held as a STRING so the field can be
+  // cleared and retyped freely — a numeric `value` would snap an empty field to
+  // 0 mid-edit (and 0 disables Submit), which read as "I can't enter a bid".
   const [stage, setStage] = useState<Stage>('club');
-  const [bid, setBid] = useState<number>(asking);
+  const [bidStr, setBidStr] = useState<string>(String(asking));
+  const bid = Math.max(0, Math.round(Number(bidStr) || 0));
   const [attempt, setAttempt] = useState(0);
   const [clubMsg, setClubMsg] = useState<string | null>(null);
   const [counter, setCounter] = useState<number | null>(null);
@@ -84,7 +87,7 @@ export default function NegotiationModal({ player, onClose }: Props) {
   const acceptCounter = () => {
     if (counter == null) return;
     setAgreedFee(counter);
-    setBid(counter);
+    setBidStr(String(counter));
     setClubMsg(`Agreed a £${counter}M fee with ${counterparty}.`);
     setStage('terms');
   };
@@ -151,9 +154,10 @@ export default function NegotiationModal({ player, onClose }: Props) {
                   <BadgePoundSterling size={16} className="text-crt-amber" />
                   <input
                     type="number"
+                    inputMode="numeric"
                     min={1}
-                    value={bid}
-                    onChange={(e) => setBid(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                    value={bidStr}
+                    onChange={(e) => setBidStr(e.target.value)}
                     data-testid="bid-input"
                     className="w-28 rounded-md border border-white/10 bg-pitch-900 px-2 py-1.5 text-sm text-chrome focus:border-crt-green/50 focus:outline-none"
                   />
@@ -188,6 +192,9 @@ export default function NegotiationModal({ player, onClose }: Props) {
                     </button>
                   )}
                 </div>
+                {bid <= 0 && (
+                  <p className="font-ticker text-[11px] text-chrome-muted">Enter a bid of at least £1M to submit.</p>
+                )}
                 {!affordFee(bid) && bid > 0 && (
                   <p className="font-ticker text-[11px] text-rose-300">You only have £{bankroll}M.</p>
                 )}

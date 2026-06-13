@@ -10,7 +10,7 @@ import {
   marketValue, marketSellValue, transferFee, poachFee, isFreeAgent,
 } from '@/lib/market';
 import { isExpiring } from '@/lib/career';
-import { clubOf } from '@/lib/league';
+import { clubOf, isWindowOpen, totalWeeks } from '@/lib/league';
 import { eligiblePositions } from '@/lib/positions';
 import { positionLabel } from '@/lib/playerMeta';
 import { tagLabel } from '@/lib/chemistry';
@@ -95,6 +95,7 @@ export default function PlayerProfile() {
           rivalClub={!owned.includes(p.id) && league ? clubOf(league, p.id) : null}
           marketMode={!!(career || (league && !draft))}
           draftLeague={draft !== null}
+          windowOpen={league ? isWindowOpen(league.matchweek, totalWeeks(league)) : true}
           tier={draft ? null : (career?.tier ?? (league ? LEAGUE_NEUTRAL_TIER : null))}
           meta={career?.meta?.[p.id]}
           suspended={suspensions.includes(p.id)}
@@ -121,6 +122,7 @@ interface BodyProps {
   rivalClub: { name: string } | null;
   marketMode: boolean;
   draftLeague: boolean;
+  windowOpen: boolean;
   tier: number | null;
   meta: { age: number; growthLeft: number; contractYears: number } | undefined;
   suspended: boolean;
@@ -137,7 +139,7 @@ interface BodyProps {
 }
 
 function Body({
-  p, isOwned, onPitch, rivalClub, marketMode, draftLeague, tier, meta,
+  p, isOwned, onPitch, rivalClub, marketMode, draftLeague, windowOpen, tier, meta,
   suspended, injuredRounds, history, confirmSell, setConfirmSell,
   negotiating, setNegotiating, onClose, onBench, onField, onSell,
 }: BodyProps) {
@@ -154,6 +156,10 @@ function Body({
 
   // Value framing depends on context.
   const ownedSale = tier !== null ? marketSellValue(p, tier) : sellValue(p);
+  // Selling in a market mode is window-gated; a £0 free agent is "released",
+  // not sold (so the £0 doesn't read as a broken sale).
+  const sellShut = marketMode && !windowOpen;
+  const isRelease = marketMode && ownedSale === 0;
   const fee = tier !== null
     ? (rivalClub ? poachFee(p, tier) : transferFee(p, tier))
     : null;
@@ -367,16 +373,24 @@ function Body({
               {!draftLeague && (
                 <button
                   type="button"
-                  onClick={() => { if (confirmSell) onSell(); else setConfirmSell(true); }}
+                  onClick={() => { if (sellShut) return; if (confirmSell) onSell(); else setConfirmSell(true); }}
+                  disabled={sellShut}
+                  title={sellShut ? 'Transfer window closed — sell when it reopens' : undefined}
                   data-testid={`profile-sell-${p.id}`}
                   className={[
-                    'flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 font-display text-xs transition',
+                    'flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 font-display text-xs transition disabled:cursor-not-allowed disabled:opacity-50',
                     confirmSell
                       ? 'border-rose-400/70 bg-rose-500/20 text-rose-200'
                       : 'border-rose-400/30 text-rose-300/90 hover:bg-rose-500/10',
                   ].join(' ')}
                 >
-                  {confirmSell ? 'Sure? Tap to sell' : `Sell · £${ownedSale}M`}
+                  {sellShut
+                    ? 'Window shut'
+                    : confirmSell
+                      ? 'Sure? Tap to confirm'
+                      : isRelease
+                        ? 'Release'
+                        : `Sell · £${ownedSale}M`}
                 </button>
               )}
             </>

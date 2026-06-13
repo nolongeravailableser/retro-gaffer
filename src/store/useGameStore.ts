@@ -1096,6 +1096,7 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
   }
 
   const inbox = pushMessages(s.inbox, newMsgs);
+  const newOffers = newMsgs.filter((m) => m.kind === 'offer').length;
 
   return {
     league: aiClubsOverride ? { ...newLeague, clubs: aiClubsOverride } : newLeague,
@@ -1119,7 +1120,14 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
     peakBankroll: Math.max(s.peakBankroll, bankroll),
     bestStreak: Math.max(s.bestStreak, newStreak),
     lastIncome: draftLeague ? null : { reward, income: roundIncome, interest: intr, streak: sb, wage, upkeep, fine, wager: wagerDelta },
-    notice: seasonNote ?? achievementNote,
+    // Surface incoming bids in the post-match toast so they aren't buried in the
+    // inbox (they're also pinned in the inbox's "Action needed" — see R1).
+    notice:
+      seasonNote ??
+      (newOffers > 0
+        ? `📩 ${newOffers} transfer offer${newOffers === 1 ? '' : 's'} for your players — open the inbox to respond.`
+        : null) ??
+      achievementNote,
     noticeKind: 'success',
     selectedPlayerId: null,
   };

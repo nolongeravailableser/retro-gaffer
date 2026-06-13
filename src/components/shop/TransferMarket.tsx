@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Wand2, Lock } from 'lucide-react';
+import { Search, Wand2, Lock, Users } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { POOL } from '@/data/pool';
 import { overall, LEAGUE_NEUTRAL_TIER, wageBill, wageBudget, wageTierMult, tierMult } from '@/lib/wages';
@@ -119,9 +119,9 @@ export default function TransferMarket() {
             />
           </div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-surface-1 px-3 py-2">
-          <p className="font-data text-[9px] uppercase tracking-wider text-chrome-muted/70">Squad</p>
-          <p className="font-data text-[15px] text-chrome">
+        <div className={`rounded-xl border px-3 py-2 ${full ? 'border-rose-400/40 bg-rose-500/10' : 'border-white/10 bg-surface-1'}`}>
+          <p className="font-data text-[9px] uppercase tracking-wider text-chrome-muted/70">Squad{full ? ' · full' : ''}</p>
+          <p className={`font-data text-[15px] ${full ? 'text-rose-200' : 'text-chrome'}`}>
             {owned.length}<span className="text-[11px] text-chrome-muted"> / {ROSTER_CAP}</span>
           </p>
         </div>
@@ -159,6 +159,14 @@ export default function TransferMarket() {
               Transfer window closed{reopensAt ? ` — reopens matchweek ${reopensAt}` : ' for the rest of the season'}. Browse now, deal then.
             </div>
           ))}
+
+        {/* Squad full — the real reason signings are blocked (a desktop tooltip
+            on each button was invisible on mobile). */}
+        {full && (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/5 px-3 py-1.5 font-data text-[11px] text-rose-200" data-testid="squad-full">
+            <Users size={12} /> Squad full ({ROSTER_CAP}/{ROSTER_CAP}) — sell or release a player before you can sign another.
+          </div>
+        )}
 
         {/* The three market tiers — each teaches its own rule */}
         <div className="mb-3 grid grid-cols-3 gap-1.5">

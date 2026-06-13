@@ -66,26 +66,27 @@ persisted-shape change, and update CLAUDE_CONTEXT.md.
 
 ---
 
-## 🐞 Known bugs (triage — reported 2026-06-13, recommend fixing before more features)
+## 🐞 Known bugs (triage — reported 2026-06-13) — ✅ ALL FIXED + PUSHED (same day)
 
-These are defects degrading the live Career experience — most look like small/targeted
-fixes. Need a quick repro pass to pin exact causes.
+Fixed in one pass (tsc · 457 tests · build · e2e green; balance-neutral — UI/notice only):
 
-- **BUG-1 · Can't submit a transfer bid.** In `NegotiationModal` the bid `input` (testid
-  `bid-input`) accepts a typed number but you can't submit it. Suspect: controlled
-  number-input (`value={bid}`, `Number(e.target.value)||0`) fighting edits / the submit
-  button disabled or `submitBid` not firing. Repro + fix the bid step.
-- **BUG-2 · Selling a £0 player doesn't remove him.** Player stays in the squad/slot, still
-  "16/16". Likely causes to check: transfer-window-gating silently blocking the sell (notice
-  missed), the Classic-draft sell-lock (bank £0 + 16-man = the draft tournament, where sell is
-  intentionally blocked — but the UI then misleads), or a free-agent (£0) sell path. Make the
-  block reason obvious AND ensure a legit sell clears the owned list + the pitch slot.
-- **BUG-3 · "Squad full" isn't surfaced.** When the roster is full, buying is blocked but the
-  reason isn't shown clearly (`checkBuy` returns it; surface it as a notice on the buy/market
-  CTA). Quick UX fix. (Pairs with the squad-size rework, F-SQUAD below.)
-- **BUG-4 · Incoming offers are buried.** An offer for your player only appears in the inbox
-  (Home tab) and you must scroll to find it. Surface consequential events prominently — a toast/
-  banner when an offer/important event arrives, not just an inbox row. (Extends R1.)
+- **BUG-1 · Can't submit a transfer bid — ✅ FIXED.** The bid `<input>` was a controlled
+  NUMBER whose empty value snapped to `0` mid-edit (`Number('')||0`), and Submit is
+  `disabled={bid<=0}` — so clearing it to type your own figure stuck it at 0. Now string-backed
+  (`NegotiationModal.tsx`): clear + retype freely, derived `bid` for validation, clearer hints.
+  Live-verified: clear→empty (not 0), type "7" → submit enabled → "rejected as derisory".
+- **BUG-2 · Selling a £0 player doesn't remove him — ✅ FIXED.** Removal worked in-window
+  (verified: 16→15); the real issue was a CLOSED window silently blocking the sell while the
+  profile's Sell button no-op'd + closed (looked like a failure). Now `PlayerProfile` Sell is
+  window-aware (disabled "Window shut" + reason when closed) and free agents read **"Release"**
+  (not "Sell · £0M"), confirm reads "Sure? Tap to confirm". Live-verified in a career.
+- **BUG-3 · "Squad full" isn't surfaced — ✅ FIXED.** Was only a desktop `title` tooltip
+  (invisible on mobile). `TransferMarket.tsx` now shows a visible rose **"Squad full (16/16) —
+  sell or release a player…"** banner + a rose SQUAD·FULL chip. Live-verified at 375px.
+- **BUG-4 · Incoming offers are buried — ✅ FIXED (mostly).** R1 already pins offers in the
+  inbox's "Action needed"; now the post-match toast also calls them out ("📩 N transfer offers
+  — open the inbox to respond", `resolveLeagueRound`). Code-verified (needs a played matchweek
+  with an offer to see live). Further surfacing (a home banner) remains optional.
 
 ---
 

@@ -19,6 +19,15 @@
 > manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
 > narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
 >
+> **▶ BUG-FIX PASS (4 user-reported defects) ✅ SHIPPED + PUSHED. Opus.** BUG-1 transfer-bid
+> input (string-backed so clearing/retyping works — was a controlled-number `||0` trap +
+> `disabled={bid<=0}`); BUG-2 £0 sell "still in squad" (removal worked in-window — real cause
+> was a closed window silently blocking; `PlayerProfile` Sell now window-aware "Window shut" +
+> free agents read "Release"); BUG-3 "Squad full" only a desktop tooltip → visible rose banner +
+> chip in `TransferMarket`; BUG-4 buried offers → post-match toast ("📩 N offers") on top of R1's
+> pinned inbox. Live-verified BUG-1/2/3 in a National-League career at 375px; BUG-4 code-only
+> (needs a played MW). Notice/UI only → balance-neutral. Gates: tsc · 457 tests · build · e2e.
+>
 > **▶ HOTFIX — mobile Squad-tab horizontal bleed ✅ SHIPPED + PUSHED.** User-reported: the
 > pitch + formation chips overflowed the 375px viewport (a 5-wide row at 68px slots ≈ 410px →
 > page-level horizontal scroll, dragging the chips/nav with it). Fixed: mobile slot 68→56px
