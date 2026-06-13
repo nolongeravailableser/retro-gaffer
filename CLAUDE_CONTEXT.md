@@ -12,6 +12,19 @@
 > `git reset --hard`/`git clean` prompting. **Model checkpoint pref still stands** — recommend
 > + wait per task. Fable is temporarily unavailable, so Track B waits.
 >
+> **▶ Track A Phase 1 is being worked HANDS-OFF on Opus (user batch-authorized 2026-06-13:
+> "proceed through all of Phase 1 on Opus, commit+push each once green").** #1 profile ✅, #2
+> why-you-lost ✅, #3 shot map ✅ (below). Remaining: #4 B5 mentality shift · #5 B4 pre-match
+> briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
+> checkpoint during the batch (flag only real decisions / Fable needs).
+>
+> **▶ Track A #3 — "WHERE IT WAS WON" SHOT MAP ✅ SHIPPED + PUSHED. Opus.** (R4 is PARTIAL —
+> shot map done, animated replay reel deferred.) `lib/shotmap.ts` (pure, 5 tests) derives shots
+> from the viz timeline's goal/chance scenes; `components/match/ShotMap.tsx` plots them on a
+> mini-pitch (yours→right, theirs→left, goals filled/chances hollow) + a per-side channel read,
+> at FT under the verdict. Pure → balance-neutral (sim skipped). Gates: tsc · **413 tests** (+5)
+> · build · e2e. Live-verified (1-0 win: 3 chances through the middle, clean sheet).
+>
 > **▶ Track A #2 — "WHY YOU LOST" ANALYSIS ✅ SHIPPED + PUSHED. Opus.**
 > `lib/matchAnalysis.ts` (pure, 7 tests) reads the deterministic result back — xG (chances),
 > score-vs-xG (finishing/keeper), `teamStatProfile` dimensions (names the cause), red cards —

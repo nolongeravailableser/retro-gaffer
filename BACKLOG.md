@@ -211,8 +211,13 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
 - **R3. Fuzzy scouting in the career market** — lower-league players show a fuzzy rating +
   potential range until you pay to scout them (deterministic fuzz → Daily-safe). Recreates
   the "find the next star" thrill; reuses the youth-potential ★-range pattern.
-- **R4. Match highlights reel + where-it-was-won heatmap** — replayable key-moments reel
-  from the viz timeline + a zone read of where the match was decided. Pairs with E11.
+- **R4. Match highlights reel + where-it-was-won heatmap** — ⏳ PARTIAL (SHIPPED 2026-06-13):
+  the **shot map + channel read** ("where it was won") is done — `src/lib/shotmap.ts` (pure, 5
+  tests) derives shots from the viz timeline's goal/chance scenes; `components/match/ShotMap.tsx`
+  plots them on a mini-pitch (yours attacking right, theirs left, goals filled / chances hollow)
+  with a per-side channel read, rendered at FT under the verdict. Pairs with E11. **FAST-FOLLOW
+  (deferred): the animated replay reel** (re-driving MatchPitchView's rAF loop over goal scenes)
+  — riskier (canvas re-drive + match-modal HMR), left for later. Gates: tsc · 413 tests · build · e2e.
 - **R5. Individual development plans** — one meaningful choice per wonderkid (focus or
   senior mentor to grow a target stat over a season). Avoids FM's over-engineered training.
 

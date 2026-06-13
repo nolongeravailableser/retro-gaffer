@@ -30,6 +30,7 @@ import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
 import MatchReport from './MatchReport';
 import MatchVerdict from './MatchVerdict';
+import ShotMap from './ShotMap';
 import type { RatingContext } from '@/lib/ratings';
 import CrestBadge from '@/components/ui/CrestBadge';
 import MoneyCounter from '@/components/ui/MoneyCounter';
@@ -637,6 +638,15 @@ export default function MatchView({
                   teamA={{ name: live.teamA.name, squad: live.teamA.squad }}
                   teamB={{ name: live.opponent.name, squad: live.opponent.squad }}
                 />
+
+                {/* Where it was won — shot map + channel read. */}
+                {timeline && (
+                  <ShotMap
+                    scenes={timeline.scenes}
+                    teamAName={live.teamA.name}
+                    teamBName={live.opponent.name}
+                  />
+                )}
 
                 {/* Key-events timeline + player ratings */}
                 <MatchReport
