@@ -66,6 +66,29 @@ persisted-shape change, and update CLAUDE_CONTEXT.md.
 
 ---
 
+## 🐞 Known bugs (triage — reported 2026-06-13, recommend fixing before more features)
+
+These are defects degrading the live Career experience — most look like small/targeted
+fixes. Need a quick repro pass to pin exact causes.
+
+- **BUG-1 · Can't submit a transfer bid.** In `NegotiationModal` the bid `input` (testid
+  `bid-input`) accepts a typed number but you can't submit it. Suspect: controlled
+  number-input (`value={bid}`, `Number(e.target.value)||0`) fighting edits / the submit
+  button disabled or `submitBid` not firing. Repro + fix the bid step.
+- **BUG-2 · Selling a £0 player doesn't remove him.** Player stays in the squad/slot, still
+  "16/16". Likely causes to check: transfer-window-gating silently blocking the sell (notice
+  missed), the Classic-draft sell-lock (bank £0 + 16-man = the draft tournament, where sell is
+  intentionally blocked — but the UI then misleads), or a free-agent (£0) sell path. Make the
+  block reason obvious AND ensure a legit sell clears the owned list + the pitch slot.
+- **BUG-3 · "Squad full" isn't surfaced.** When the roster is full, buying is blocked but the
+  reason isn't shown clearly (`checkBuy` returns it; surface it as a notice on the buy/market
+  CTA). Quick UX fix. (Pairs with the squad-size rework, F-SQUAD below.)
+- **BUG-4 · Incoming offers are buried.** An offer for your player only appears in the inbox
+  (Home tab) and you must scroll to find it. Surface consequential events prominently — a toast/
+  banner when an offer/important event arrives, not just an inbox row. (Extends R1.)
+
+---
+
 ## 1. FM-style player profile (✅ SHIPPED 2026-06-13)
 
 **STATUS: built + gated green (tsc · 401 tests · build · e2e · sim baseline unchanged).**
@@ -288,9 +311,40 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
     segmented toggle** so the narrow screen is focused, not an endless scroll
     (pitch+bench+chem+training+list+depth). NOT a uniform Club-style sub-nav (that would sacrifice
     desktop simultaneity — considered & rejected).
+  - **Auto-Pick on the formation/pitch view** (user-reported 2026-06-13): the pitch/formation
+    view has no Auto-Pick — it lives only in the squad-list header. Surface it on the pitch too
+    (reuse `autoPickXI`), so you can fill a legal XI without finding the list. Small add; do it
+    with this rework.
   - *Notes:* UI-only → **balance-neutral, Opus-fit (Track A), no persistence** (the mobile
     toggle is transient UI state). Resolves the real inconsistency the user hit (clickable in the
     squad list, not on the pitch). Pairs with the player profile (#1).
+- **R8. Career FTUE — guided tutorial journey + navigation/money affordances (CONFIRMED 2026-06-13)**
+  — new players have no clear guide for moving between tabs in Career: on Home there's no cue to
+  go to the Market, the money-to-spend isn't obvious, and there's no guidance on what to be
+  mindful of when spending. Want: a one-time **guided tour through each page** (Home / Squad /
+  Market / Club) explaining what it is, what it does, and what to do next — plus persistent
+  affordances (a visible **bankroll/transfer-budget** indicator, a "go to Market" cue when the
+  squad needs players, market-spending guidance). Builds on the existing `CoachMark`s + onboarding
+  (they're too light for Career). Opus-fit (UI/copy), balance-neutral. Pairs with R6/finance (F).
+- **F-FINANCE. Finance page (FM-style) (CONFIRMED 2026-06-13)** — a dedicated finance view
+  (likely a Club sub-nav pill) consolidating the money picture: **transfer budget, current wage
+  spend vs wage budget, season income/expenses** (prize money, sponsorship, matchday, upkeep,
+  fines), bankroll. Much of the data already exists (`wages.ts` wageBill/wageBudget, `finance.ts`,
+  `stadium.ts` upkeep, `lastIncome` breakdown) — this surfaces it in one place. Opus-fit
+  (presentation over existing data), balance-neutral, no persistence.
+- **F-WAGES. Negotiable player wages (CONFIRMED 2026-06-13)** — today personal terms are
+  take-it-or-leave-it: the wage DEMAND is fixed (`wageDemand`) and you only meet or fail it; you
+  can't negotiate it down. Make the wage offer negotiable (like the fee bid). NOTE: wages are
+  currently DERIVED (the wage bill uses `wage(p)`, not a stored agreed wage) — making wages
+  negotiable means STORING a per-player agreed wage + re-tuning the wage economy → **balance-
+  sensitive (Fable), persistence bump.** (CLAUDE_CONTEXT already flagged this as "revisit if
+  per-player negotiated wages are wanted.")
+- **F-SQUAD. Squad-size rework — reflect reality (CONFIRMED 2026-06-13)** — the arbitrary roster
+  cap (`ROSTER_CAP`; draft = 16) blocks buying with an unclear reason (see BUG-3). The user wants
+  real-world squad sizes instead of a hard low cap. Rework toward a realistic limit (~25 senior)
+  with clear messaging; interacts with wages/economy + the draft tournament's fixed 16 →
+  **balance/design-sensitive (Fable)**; touches the buy/checkBuy path + likely persistence. Do
+  BUG-3 (clear "squad full" messaging) as a quick standalone fix regardless.
 
 ### Next-level features FM has never nailed (brainstorm 2 — 2026-06-13)
 
