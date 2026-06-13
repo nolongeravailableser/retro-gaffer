@@ -199,13 +199,23 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
   GK 70 · Fullback 62 · Winger 56 · **Anchor/DM 34**. Wide players + holding mids are thin.
 - Cost tiers 1:147 / 2:155 / 3:194 / 4:126 / **5:46 elite**.
 
+**✅ #2a AUDIT DONE (2026-06-13) — verdict: NO stranding; the gap is VARIETY, not size.**
+- Coarse-role supply vs a single 12-club league's demand (only one division is "owned" at a
+  time): **GK ×2.92 · DEF ×2.75 · MID ×2.97 · FWD ×5.31** — every role has comfortable surplus.
+- Authoritative check: `tests/draft.sim.ts` reports **stranded = 0 across all 360 seasons**
+  (Easy/Standard/Hardcore × 120). The draft's `pickableInDraft` reserve-guard + the league's
+  role-balanced `assignClubSquads` never fail to field a legal XI.
+- Coarse roles: GK 70 · DEF 165 · MID 178 · FWD 255. Granular: Striker 199 · CenterBack 103 ·
+  Playmaker 73 · BoxToBox 71 · GK 70 · Fullback 62 · Winger 56 · **Anchor/DM 34** (thinnest).
+- **So authoring (#2b) is justified for VARIETY/BREADTH + thin-role balance, NOT to prevent
+  stranding.** The pool is big enough; the real issues are (a) repetition of the same thin-role
+  players (DM/winger/fullback) across a league, and (b) the 30%-striker skew. Top up
+  GK/DM/winger/fullback + add league breadth; do NOT add strikers. Re-gate with `npm run sim`.
+
 **Priorities:**
-1. **Position imbalance is a BALANCE risk, not just flavour** — clubs draft role-balanced
-   14-man squads; the pool is 30% strikers and starved of GK/DM/winger/fullback for a
-   ~60-club pyramid. As wing-back / 3-4-3 shapes draft wide players, thin roles risk
-   stranding/repetition. **First task is cheap & read-only: audit thin-role stranding
-   against `draft.sim` / career sims** before authoring anything. Then top up
-   GK/DM/winger/fullback — NOT more strikers.
+1. **Position imbalance — VARIETY risk (audit downgraded it from "stranding" — see #2a above).**
+   Top up the thin granular roles (Anchor/DM 34, Winger 56, Fullback 62, GK depth) and trim the
+   striker skew by NOT adding more. Improves squad variety across clubs; not a legality fix.
 2. **League breadth (biggest authenticity gap)** — a retro Bundesliga + Ligue 1 shard adds
    missing legend-tiers AND helps #1 (more keepers/wide players/holding mids).
 3. **Top-end depth (optional)** — only 46 elite; fine for differentiation today, but a

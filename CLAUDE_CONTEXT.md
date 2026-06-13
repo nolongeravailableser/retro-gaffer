@@ -18,6 +18,14 @@
 > briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
 > checkpoint during the batch (flag only real decisions / Fable needs).
 >
+> **▶ Track A #8 — #2a POOL STRANDING AUDIT ✅ DONE (read-only). Opus.** Verdict: **NO
+> stranding** — coarse-role supply for a single 12-club league is GK ×2.92 / DEF ×2.75 / MID
+> ×2.97 / FWD ×5.31, and `draft.sim` reports **stranded = 0 / 360 seasons**. The pool is big
+> enough; the real gap is VARIETY (thin granular roles: Anchor/DM 34, Winger 56, Fullback 62;
+> 30%-striker skew). So **#2b authoring (Fable) is justified for variety/breadth, NOT legality** —
+> top up GK/DM/winger/fullback + league breadth, don't add strikers. Findings written to BACKLOG #2.
+> **→ Phase 1 of Track A is COMPLETE (#1–#8). Next: Phase 2 (career meta) or the Fable track.**
+>
 > **▶ Track A #7 — R1 TRIAGED INBOX ✅ SHIPPED + PUSHED. Opus.** `lib/inbox.ts` `needsAction()`
 > /`actionCount()` (pure, 6 tests): open bid / unanswered pledge = action, else FYI. `InboxPanel`
 > = always-visible "Action needed" + collapsible "Updates" digest (default collapsed when
