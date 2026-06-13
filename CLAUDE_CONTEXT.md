@@ -18,6 +18,14 @@
 > briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
 > checkpoint during the batch (flag only real decisions / Fable needs).
 >
+> **▶ Track A #5 — B4 PRE-MATCH SCOUTING BRIEFING ✅ SHIPPED + PUSHED (briefing-only, user-chosen
+> via AskUserQuestion). Opus.** `lib/briefing.ts` (pure, 4 tests) reads the opponent's attack/
+> defence lean + stat profile → a threat phrase + recommended approach; shown as a "SCOUTING" line
+> in the FixtureHero under the verdict. Informational → zero balance/feel risk. **Deferred
+> fast-follow: the counter PAYOFF** (pre-match plan w/ a match-long ATK/DEF effect) — needs a
+> set-not-stack mentality refactor (would also cap B5's HT+70' compounding). Gates: tsc · **417
+> tests** (+4) · build · e2e. Live-verified the scouting line on R7 (non-destructive).
+>
 > **▶ Track A #4 — B5 IN-MATCH MENTALITY SHIFT ✅ SHIPPED + PUSHED. Opus.** A 2nd decision
 > point at `TACTICAL_MINUTE`=70 in MatchView's `advance()`, reusing the half-time talk
 > machinery + overlay ("Tactical shift · 70' — push for more or see it out?": attack/steady/

@@ -10,6 +10,7 @@ import {
   wageBill, divisionMult, tierMult, wageTierMult, wageBudget, LEAGUE_NEUTRAL_TIER,
 } from '@/lib/wages';
 import { matchdayIncome, facilityUpkeep } from '@/lib/stadium';
+import { opponentBriefing } from '@/lib/briefing';
 import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -259,6 +260,16 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
           <p className="mt-1 text-center text-xs text-chrome-muted">
             You're <span className="font-semibold text-chrome">{verdict[0]}</span> — {verdict[1]}
           </p>
+          {/* Scouting report — their threat + the approach that counters it. */}
+          {(() => {
+            const b = opponentBriefing(roundOpponent);
+            return (
+              <p className="mt-1.5 text-center text-[11px] leading-snug text-chrome-muted/80">
+                <span className="font-data uppercase tracking-wide text-crt-amber/80">Scouting</span>{' '}
+                {b.threat} <span className="text-chrome-muted">{b.plan}</span>
+              </p>
+            );
+          })()}
         </div>
       )}
 

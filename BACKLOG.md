@@ -150,7 +150,13 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
   Playmaker slot. Raw left/right position labels were considered and rejected as cosmetic —
   see N7 footedness for the only L/R mechanic worth its complexity.)
 - **A3. Tactical familiarity** — a style/formation strengthens with commitment.
-- **B4. Pre-match briefing + counter** — show opponent threat, pick one counter.
+- **B4. Pre-match briefing + counter** — ⏳ PARTIAL (SHIPPED 2026-06-13, briefing-only per user):
+  `src/lib/briefing.ts` (pure, 4 tests) `opponentBriefing()` reads the opponent's attack/defence
+  lean + stat profile into a threat phrase + recommended approach; shown as a "SCOUTING" line in
+  the FixtureHero under the edge-bar verdict. Informational → zero balance/feel risk. **FAST-FOLLOW
+  (deferred, user-chosen): the pick-a-counter PAYOFF** (a pre-match plan applying a match-long
+  bounded ATK/DEF effect) — needs a set-not-stack mentality refactor so pre-match + HT + 70' don't
+  compound (also caps B5's current HT+70' stacking). Gates: tsc · 417 tests · build · e2e.
 - **B5. In-match mentality shift** — ✅ SHIPPED 2026-06-13. A second decision point at the 70'
   (`TACTICAL_MINUTE`) in MatchView's `advance()`, reusing the half-time talk machinery
   (`applyTalk`/`aiTalkFor`, the same overlay): "Tactical shift · 70' — push for more or see it
