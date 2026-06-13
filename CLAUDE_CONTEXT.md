@@ -18,6 +18,13 @@
 > briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
 > checkpoint during the batch (flag only real decisions / Fable needs).
 >
+> **▶ Track A #7 — R1 TRIAGED INBOX ✅ SHIPPED + PUSHED. Opus.** `lib/inbox.ts` `needsAction()`
+> /`actionCount()` (pure, 6 tests): open bid / unanswered pledge = action, else FYI. `InboxPanel`
+> = always-visible "Action needed" + collapsible "Updates" digest (default collapsed when
+> something's pressing). Career/League-only. e2e renders the career inbox crash-free; logic tested.
+> (No triage-layout screenshot this session — throwaway-career start was flaky/didn't persist
+> before reload; R7 Classic has no inbox. Restored R7 intact.) Gates: tsc · **429 tests** (+6) · build · e2e.
+>
 > **▶ Track A #6 — E12 SQUAD DEPTH CHART ✅ SHIPPED + PUSHED. Opus.** `lib/depth.ts` (pure, 6
 > tests) `squadDepth()` → per-role health vs the formation (short/thin/ok + note; lone keeper
 > flagged); `components/squad/SquadDepth.tsx` collapsible "Depth" panel in the Squad-tab roster

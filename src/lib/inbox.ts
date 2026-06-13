@@ -58,6 +58,22 @@ export function unreadCount(inbox: readonly InboxMessage[]): number {
 }
 
 /**
+ * Whether a message still demands a decision from the manager — an unresolved
+ * incoming bid or an unanswered board pledge. Everything else is an FYI record.
+ * Drives the triaged inbox (Action Needed vs the collapsed Updates digest).
+ */
+export function needsAction(m: InboxMessage): boolean {
+  return (m.kind === 'offer' && !m.resolved) || (!!m.pledgeable && !m.pledge);
+}
+
+/** Count of messages awaiting a decision (drives the "action needed" badge). */
+export function actionCount(inbox: readonly InboxMessage[]): number {
+  let n = 0;
+  for (const m of inbox) if (needsAction(m)) n++;
+  return n;
+}
+
+/**
  * Prepend new messages (newest first) and cap the list. De-dupes by id so a
  * re-resolved matchweek can't double-post (idempotent on replay).
  */

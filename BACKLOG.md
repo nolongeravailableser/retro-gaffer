@@ -220,9 +220,14 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
 
 ### Refinements to existing systems (brainstorm 2 — 2026-06-13)
 
-- **R1. Triaged inbox** — split into Action Needed (offers/pledges/expiring contracts) vs
-  a collapsed FYI digest, so only consequential messages demand a tap. Fixes the inbox
-  firehose that will hit long careers. Builds on existing `InboxMessage` kinds.
+- **R1. Triaged inbox** — ✅ SHIPPED 2026-06-13. `lib/inbox.ts` `needsAction()`/`actionCount()`
+  (pure, 6 tests): an unresolved bid or unanswered board pledge needs action; everything else is
+  FYI. `InboxPanel` now renders an always-visible **Action needed** section + a collapsible
+  **Updates** digest (default collapsed when something's pressing), so the inbox can't become a
+  wall of noise in a long career. Career/League-only. Verified: 6 logic tests + the e2e renders
+  the career inbox panel crash-free (it kicks off from a fresh-career Home tab). Note: a
+  triage-layout screenshot wasn't captured this session (the manual throwaway-career start was
+  flaky / didn't persist). Gates: tsc · 429 tests · build · e2e.
 - **R2. Adaptive league** — wire the parked `rivalAggression` lever so rivals invest/poach
   harder as you dominate; keeps a long dynasty tense. Career-only, sim-gated.
 - **R3. Fuzzy scouting in the career market** — lower-league players show a fuzzy rating +

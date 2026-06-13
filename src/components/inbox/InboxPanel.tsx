@@ -1,7 +1,8 @@
-import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Frown, Check, X } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Frown, Check, X, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { isWindowOpen, totalWeeks } from '@/lib/league';
-import type { InboxKind, InboxMessage } from '@/lib/inbox';
+import { needsAction, type InboxKind, type InboxMessage } from '@/lib/inbox';
 
 const KIND_ICON: Record<InboxKind, React.ElementType> = {
   result: Trophy,
@@ -37,6 +38,15 @@ export default function InboxPanel() {
   // Accepting a bid is a sale — only allowed while the transfer window is open.
   const windowOpen = league ? isWindowOpen(league.matchweek, totalWeeks(league)) : true;
 
+  // Triage: only consequential messages (open bids / unanswered pledges) demand
+  // a tap; everything else collapses into an Updates digest so the inbox can't
+  // become a wall of noise as a career lengthens.
+  const action = inbox.filter(needsAction);
+  const updates = inbox.filter((m) => !needsAction(m));
+  // Default the digest open only when there's nothing pressing to do.
+  const [showUpdates, setShowUpdates] = useState(action.length === 0);
+  const rowProps = { windowOpen, onAccept: acceptOffer, onReject: rejectOffer, onPledge: respondToBoard };
+
   return (
     <div className="rounded-xl border border-white/10 bg-pitch-900/70 p-4" data-testid="inbox-panel">
       <div className="mb-3 flex items-center gap-2">
@@ -52,10 +62,36 @@ export default function InboxPanel() {
           No messages yet. Match results, injuries, board verdicts and transfer bids will land here.
         </p>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          {inbox.map((m) => (
-            <MessageRow key={m.id} m={m} windowOpen={windowOpen} onAccept={acceptOffer} onReject={rejectOffer} onPledge={respondToBoard} />
-          ))}
+        <div className="flex flex-col gap-3">
+          {/* Action needed — always visible, the only messages that demand a decision. */}
+          {action.length > 0 && (
+            <div data-testid="inbox-action" className="flex flex-col gap-1.5">
+              <p className="flex items-center gap-1.5 font-data text-[10px] uppercase tracking-widest text-crt-amber">
+                <Bell size={11} /> Action needed · {action.length}
+              </p>
+              {action.map((m) => (
+                <MessageRow key={m.id} m={m} {...rowProps} />
+              ))}
+            </div>
+          )}
+
+          {/* Updates digest — results, injuries, board notes, completed transfers. */}
+          {updates.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowUpdates((o) => !o)}
+                data-testid="inbox-updates-toggle"
+                className="flex items-center justify-between rounded-md px-1 py-0.5 text-left"
+              >
+                <span className="font-data text-[10px] uppercase tracking-widest text-chrome-muted">
+                  Updates · {updates.length}
+                </span>
+                {showUpdates ? <ChevronUp size={14} className="text-chrome-muted" /> : <ChevronDown size={14} className="text-chrome-muted" />}
+              </button>
+              {showUpdates && updates.map((m) => <MessageRow key={m.id} m={m} {...rowProps} />)}
+            </div>
+          )}
         </div>
       )}
     </div>
