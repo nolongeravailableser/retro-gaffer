@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeChemistry, SYNERGY_BONUS } from '@/lib/chemistry';
+import { computeChemistry, SYNERGY_BONUS, tagLabel } from '@/lib/chemistry';
 import type { Player } from '@/lib/types';
 
 function mk(id: string, tags: string[], attack = 50, defense = 50): Player {
@@ -90,5 +90,21 @@ describe('computeChemistry', () => {
     ]);
     // cult_hero count 3, stoke count 2 -> cult_hero first
     expect(r.synergies.map((s) => s.tag)).toEqual(['cult_hero', 'stoke']);
+  });
+});
+
+describe('tagLabel', () => {
+  it('humanizes snake_case keys to Title Case', () => {
+    expect(tagLabel('cult_hero')).toBe('Cult Hero');
+    expect(tagLabel('red_devils')).toBe('Red Devils');
+    expect(tagLabel('one_club_man')).toBe('One Club Man');
+    expect(tagLabel('treble_99')).toBe('Treble 99');
+  });
+  it('leaves already-capitalized single words intact', () => {
+    expect(tagLabel('Inter')).toBe('Inter');
+    expect(tagLabel('nerazzurri')).toBe('Nerazzurri');
+  });
+  it('upper-cases known acronyms', () => {
+    expect(tagLabel('cm_legend')).toBe('CM Legend');
   });
 });

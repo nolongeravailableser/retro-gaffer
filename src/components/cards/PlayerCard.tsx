@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Coins, Sparkles } from 'lucide-react';
 import type { Player } from '@/lib/types';
+import { tagLabel } from '@/lib/chemistry';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { RARITY_STYLES } from '@/components/ui/rarityStyles';
 import MiniStats from '@/components/ui/MiniStats';
@@ -88,7 +89,7 @@ export default function PlayerCard({
             key={t}
             className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-chrome-muted"
           >
-            {t}
+            {tagLabel(t)}
           </span>
         ))}
       </div>

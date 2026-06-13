@@ -13,6 +13,19 @@ export const SYNERGY_BONUS = 0.1;
 /** A synergy needs at least this many starters sharing the tag. */
 export const SYNERGY_THRESHOLD = 2;
 
+/**
+ * Humanize a raw tag key for display: `red_devils` → "Red Devils",
+ * `cult_hero` → "Cult Hero", `treble_99` → "Treble 99". A few acronyms
+ * stay upper-cased so they don't read as "Cm Legend".
+ */
+const TAG_ACRONYMS: Record<string, string> = { cm: 'CM', mls: 'MLS', usa: 'USA' };
+export function tagLabel(tag: string): string {
+  return tag
+    .split('_')
+    .map((w) => TAG_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 /** Per-player chemistry contribution. */
 export interface PlayerChem {
   player: Player;

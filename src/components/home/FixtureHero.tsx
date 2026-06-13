@@ -215,7 +215,7 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
       <div className="my-3 flex items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
           <CrestBadge name={clubName ?? 'Your XI'} kit={kits.a} size={42} />
-          <p className="w-full truncate font-display text-[15px] leading-tight">{clubName ?? 'Your XI'}</p>
+          <p className="line-clamp-2 w-full font-display text-[15px] leading-tight">{clubName ?? 'Your XI'}</p>
           {yourRow && (
             <p className="font-data text-[10px] text-chrome-muted">
               {ord(yourPos)} · {yourRow.won}W {yourRow.drawn}D {yourRow.lost}L
@@ -227,7 +227,7 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
           {roundOpponent ? (
             <>
               <CrestBadge name={roundOpponent.name} kit={kits.b} size={42} />
-              <p className="w-full truncate font-display text-[15px] leading-tight">{roundOpponent.name}</p>
+              <p className="line-clamp-2 w-full font-display text-[15px] leading-tight">{roundOpponent.name}</p>
               {oppRow ? (
                 <p className="font-data text-[10px] text-chrome-muted">
                   {ord(oppPos)} · {oppRow.won}W {oppRow.drawn}D {oppRow.lost}L

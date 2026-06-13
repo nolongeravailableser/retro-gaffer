@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Shield, Sparkles, Users } from 'lucide-react';
-import type { ChemistryResult } from '@/lib/chemistry';
+import { tagLabel, type ChemistryResult } from '@/lib/chemistry';
 import { XI_SIZE } from '@/lib/types';
 
 interface ChemistryPanelProps {
@@ -69,7 +69,7 @@ export default function ChemistryPanel({
                   className="flex items-center justify-between rounded-lg border border-crt-green/30 bg-crt-green/10 px-3 py-1.5"
                 >
                   <span className="font-display text-sm text-crt-green">
-                    {s.tag}
+                    {tagLabel(s.tag)}
                   </span>
                   <span className="text-xs text-chrome-muted">
                     ×{s.count} · +{s.count >= 2 ? 10 : 0}%
