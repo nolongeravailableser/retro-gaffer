@@ -3,125 +3,52 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **🗂️ BACKLOG + ROADMAP now live in `BACKLOG.md` (2026-06-13).** After the redesign the
-> user opened a brainstorm → a confirmed feature backlog with a dependency-aware **Track A
-> (now, Sonnet/Opus) / Track B (Fable-blocked, balance/taste-critical)** roadmap + per-task
-> model + a per-task definition-of-done. **Working through it in order.** Autonomy is now
-> broad: `.claude/settings.local.json` got a hands-off allow-list (npm/npx/git/gh/node/
-> python3/sed/preview_* + Edit/Write) with a deny-list keeping `rm -rf`/`sudo`/force-push/
-> `git reset --hard`/`git clean` prompting. **Model checkpoint pref still stands** — recommend
-> + wait per task. Fable is temporarily unavailable, so Track B waits.
+> **📍 CURRENT STATE — end of 2026-06-13 session.** HEAD **`ffaf139`**, local == `origin/main`,
+> persistence **v31**, gates green (**457 tests** + build + e2e; balance baseline intact — Classic
+> 36.8%, career PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
 >
-> **▶ TRACK A PHASE 1 COMPLETE (#1–#8, all SHIPPED + PUSHED).** Then user batch-authorized
-> **Phase 2 "Opus-safe first" (AskUserQuestion 2026-06-13):** do the pure-narrative/presentation
-> items hands-off on Opus — **N3 ✅ (below), then N1 (world moves), D10 (rivalries, narrative-
-> scoped)** — and **QUEUE for Fable** the balance/tuning items: **D8 manager perks, N5 nemesis
-> manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
-> narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
+> **`BACKLOG.md` is the source of truth** for what's next — confirmed features + a dependency-aware
+> **Track A (Opus/Sonnet, buildable now) / Track B (Fable-blocked: balance/taste-critical)** roadmap,
+> per-task model + a per-task definition-of-done, and a **🐞 Known-bugs** section (all current ones
+> FIXED). Standing prefs: **model checkpoint** before each task (recommend + wait; memory
+> `model-recommendation-before-tasks`); **push-to-live per task once green** (durable OK, memory
+> `push-to-live-standing`); broad hands-off autonomy via `.claude/settings.local.json` allow-list
+> (deny keeps `rm -rf`/`sudo`/force-push/`git reset --hard`/`git clean` prompting). **Fable is
+> temporarily unavailable → Track B waits.** Career-start gotcha: the StartMenu difficulty CARDS
+> only *select* — there's a separate **"Start career"** button that actually starts it.
 >
-> **▶ BUG-FIX PASS (4 user-reported defects) ✅ SHIPPED + PUSHED. Opus.** BUG-1 transfer-bid
-> input (string-backed so clearing/retyping works — was a controlled-number `||0` trap +
-> `disabled={bid<=0}`); BUG-2 £0 sell "still in squad" (removal worked in-window — real cause
-> was a closed window silently blocking; `PlayerProfile` Sell now window-aware "Window shut" +
-> free agents read "Release"); BUG-3 "Squad full" only a desktop tooltip → visible rose banner +
-> chip in `TransferMarket`; BUG-4 buried offers → post-match toast ("📩 N offers") on top of R1's
-> pinned inbox. Live-verified BUG-1/2/3 in a National-League career at 375px; BUG-4 code-only
-> (needs a played MW). Notice/UI only → balance-neutral. Gates: tsc · 457 tests · build · e2e.
+> **SHIPPED THIS SESSION (2026-06-13, all PUSHED, each tsc+tests+build+e2e green; pure libs are
+> balance-neutral, sim-confirmed where the store/economy was touched):**
+> - **Track A Phase 1 (#1–#8):** #1 **player profile** (`components/player/PlayerProfile.tsx` —
+>   full-screen context-adaptive overlay; transient `profilePlayerId`, no persist); #2 **"why you
+>   lost"** verdict (`lib/matchAnalysis.ts`); #3 **"where it was won"** shot map (`lib/shotmap.ts` —
+>   R4 part 1, animated reel deferred); #4 **B5 in-match mentality** (70' tactical shift in
+>   MatchView `advance()`, interactive-only); #5 **B4 pre-match scouting** (`lib/briefing.ts`,
+>   briefing-only — counter payoff deferred); #6 **E12 squad depth chart** (`lib/depth.ts` +
+>   `SquadDepth.tsx`); #7 **R1 triaged inbox** (`needsAction`/`actionCount` — Action-needed vs
+>   Updates digest); #8 **#2a pool audit** (read-only: NO stranding, gap is variety).
+> - **Track A Phase 2 — Opus-safe trio:** **N3 narrative seasons** (`lib/narrative.ts` — run-in
+>   framing banner); **N1 world moves** (`lib/alumni.ts` ex-player "where are they now" + persisted
+>   `alumni` **v31**; `lib/worldnews.ts` old-clubs/ex-managers — N1 feature-complete); **D10
+>   rivalries** (`lib/rivalry.ts` — reverse-fixture H2H framing, narrative-scoped).
+> - **Hotfix:** mobile Squad-tab horizontal bleed (slot 68→56px + flexbox `min-w-0` on the
+>   formation chips; 0 overflow at 375px on 4- and 5-wide rows).
+> - **Bug-fix pass:** BUG-1 transfer-bid input (string-backed submit), BUG-2 £0 sell "still in
+>   squad" (window-aware Sell, free agents = "Release"; removal verified), BUG-3 visible "Squad
+>   full" banner+chip (was a desktop-only tooltip), BUG-4 post-match offer toast.
 >
-> **▶ HOTFIX — mobile Squad-tab horizontal bleed ✅ SHIPPED + PUSHED.** User-reported: the
-> pitch + formation chips overflowed the 375px viewport (a 5-wide row at 68px slots ≈ 410px →
-> page-level horizontal scroll, dragging the chips/nav with it). Fixed: mobile slot 68→56px
-> (`Slot.tsx`), tighter pitch padding/gaps + `overflow-x-hidden` on the board (`Pitch.tsx`), and
-> the classic flexbox `min-w-0`/`flex-1` fix on the formation-chip row so `overflow-x-auto`
-> actually scrolls internally (`FormationSelector.tsx`). Verified at 375px: 0 page overflow on
-> both 4-wide (4-4-2) and the worst-case 5-wide (3-5-2) rows. CSS-only. tsc · 457 tests · build · e2e.
->
-> **▶ Phase 2 #3 — D10 RIVALRIES (narrative-scoped) ✅ SHIPPED + PUSHED. Opus.** `lib/rivalry.ts`
-> (pure, 5 tests) `headToHead()` + `rivalryLine()` frame the reverse-fixture rematch ("they beat
-> you 3-0 last time — revenge?") as a "RIVALRY" line + H2H W-D-L in the FixtureHero. No mechanics/
-> persistence → balance-safe. Gates: tsc · **450 tests** (+5) · build · e2e. **This completes the
-> user-authorized Opus-safe Phase-2 trio (N3, N1, D10).** Fable-queued next: D8 perks, N5 nemesis,
-> N4 project-payoff, + the deferred fast-follows (R4 reel, B4 counter, D10 payoff, N1 generative half).
->
-> **▶ Phase 2 #2 — N1 WORLD MOVES (ex-player half) ✅ SHIPPED + PUSHED. Opus.** `lib/alumni.ts`
-> (pure, 7 tests): players who leave (sell/cashed-in/Bosman) → top-level persisted `alumni`
-> (carries across clubs, resets on new career); seeded `alumniNews()` posts a season-end "where
-> are they now" `news` inbox message. Persistence **v31** (+migration legacy→`alumni:[]`,
-> verified on R7). Narrative-only → balance-neutral. Gates: tsc · **445 tests** (+7) · build · e2e
-> · sim. **Generative half ✅ SHIPPED + PUSHED too** — `lib/worldnews.ts` (pure, 7 tests):
-> one seeded season-end beat per season — an old club you managed rising/falling, or an
-> ex-player (star, left ≥2 seasons ago) moving into management. Derived from alumni +
-> `pastClubsOf(history)` → no new persistence. **N1 feature-complete.** tsc · **457 tests** · build · e2e · sim.
->
-> **▶ Phase 2 #1 — N3 EMERGENT NARRATIVE SEASONS ✅ SHIPPED + PUSHED. Opus.** `lib/narrative.ts`
-> (pure, 9 tests) frames the run-in (title/promotion/survival/final-day, mathematically-alive) →
-> tone-coloured banner atop the FixtureHero. Presentation-only → balance-neutral. Gates: tsc ·
-> **438 tests** (+9) · build · e2e. (Banner needs a season run-in to see live — logic fully tested.)
->
-> **▶ Track A #8 — #2a POOL STRANDING AUDIT ✅ DONE (read-only). Opus.** Verdict: **NO
-> stranding** — coarse-role supply for a single 12-club league is GK ×2.92 / DEF ×2.75 / MID
-> ×2.97 / FWD ×5.31, and `draft.sim` reports **stranded = 0 / 360 seasons**. The pool is big
-> enough; the real gap is VARIETY (thin granular roles: Anchor/DM 34, Winger 56, Fullback 62;
-> 30%-striker skew). So **#2b authoring (Fable) is justified for variety/breadth, NOT legality** —
-> top up GK/DM/winger/fullback + league breadth, don't add strikers. Findings written to BACKLOG #2.
-> **→ Phase 1 of Track A is COMPLETE (#1–#8). Next: Phase 2 (career meta) or the Fable track.**
->
-> **▶ Track A #7 — R1 TRIAGED INBOX ✅ SHIPPED + PUSHED. Opus.** `lib/inbox.ts` `needsAction()`
-> /`actionCount()` (pure, 6 tests): open bid / unanswered pledge = action, else FYI. `InboxPanel`
-> = always-visible "Action needed" + collapsible "Updates" digest (default collapsed when
-> something's pressing). Career/League-only. e2e renders the career inbox crash-free; logic tested.
-> (No triage-layout screenshot this session — throwaway-career start was flaky/didn't persist
-> before reload; R7 Classic has no inbox. Restored R7 intact.) Gates: tsc · **429 tests** (+6) · build · e2e.
->
-> **▶ Track A #6 — E12 SQUAD DEPTH CHART ✅ SHIPPED + PUSHED. Opus.** `lib/depth.ts` (pure, 6
-> tests) `squadDepth()` → per-role health vs the formation (short/thin/ok + note; lone keeper
-> flagged); `components/squad/SquadDepth.tsx` collapsible "Depth" panel in the Squad-tab roster
-> column (fit/needed, status, player chips → tap opens the profile). Pure → balance-neutral.
-> Gates: tsc · **423 tests** (+6) · build · e2e. Live-verified (R7: 4 thin — lone keeper + no cover).
->
-> **▶ Track A #5 — B4 PRE-MATCH SCOUTING BRIEFING ✅ SHIPPED + PUSHED (briefing-only, user-chosen
-> via AskUserQuestion). Opus.** `lib/briefing.ts` (pure, 4 tests) reads the opponent's attack/
-> defence lean + stat profile → a threat phrase + recommended approach; shown as a "SCOUTING" line
-> in the FixtureHero under the verdict. Informational → zero balance/feel risk. **Deferred
-> fast-follow: the counter PAYOFF** (pre-match plan w/ a match-long ATK/DEF effect) — needs a
-> set-not-stack mentality refactor (would also cap B5's HT+70' compounding). Gates: tsc · **417
-> tests** (+4) · build · e2e. Live-verified the scouting line on R7 (non-destructive).
->
-> **▶ Track A #4 — B5 IN-MATCH MENTALITY SHIFT ✅ SHIPPED + PUSHED. Opus.** A 2nd decision
-> point at `TACTICAL_MINUTE`=70 in MatchView's `advance()`, reusing the half-time talk
-> machinery + overlay ("Tactical shift · 70' — push for more or see it out?": attack/steady/
-> park). INTERACTIVE-ONLY (gated): non-interactive/PvP keeps the single 46→90 segment
-> byte-identical; sim uses simulateMatch → balance untouched. e2e loops answering both talks.
-> Live-verified the 70' overlay (score-aware copy). Gates: tsc · 413 tests · build · e2e.
->
-> **▶ Track A #3 — "WHERE IT WAS WON" SHOT MAP ✅ SHIPPED + PUSHED. Opus.** (R4 is PARTIAL —
-> shot map done, animated replay reel deferred.) `lib/shotmap.ts` (pure, 5 tests) derives shots
-> from the viz timeline's goal/chance scenes; `components/match/ShotMap.tsx` plots them on a
-> mini-pitch (yours→right, theirs→left, goals filled/chances hollow) + a per-side channel read,
-> at FT under the verdict. Pure → balance-neutral (sim skipped). Gates: tsc · **413 tests** (+5)
-> · build · e2e. Live-verified (1-0 win: 3 chances through the middle, clean sheet).
->
-> **▶ Track A #2 — "WHY YOU LOST" ANALYSIS ✅ SHIPPED + PUSHED. Opus.**
-> `lib/matchAnalysis.ts` (pure, 7 tests) reads the deterministic result back — xG (chances),
-> score-vs-xG (finishing/keeper), `teamStatProfile` dimensions (names the cause), red cards —
-> into a one-line verdict + ≤4 toned factors from your perspective. `components/match/
-> MatchVerdict.tsx` renders it at FT above the timeline. Pure lib NOT imported by engine/store/
-> sim → balance-neutral (sim skipped, justified). Gates: tsc · **408 tests** (+7) · build · e2e.
-> Live-verified a real R7 match: 1-0 win → "Edged it — a tight one settled your way · chances
-> even xG 1.5–1.0 · resolute defending." (R7 save backed up + restored.)
->
-> **▶ Track A #1 — FM-style PLAYER PROFILE ✅ SHIPPED + PUSHED (commit 31a9980). Opus.**
-> `components/player/PlayerProfile.tsx` — full-screen context-adaptive overlay (z-80, owned/
-> market/rival), reachable from squad rows + market cards. Surfaces previously-hidden data
-> (discipline, eligible positions, contract/Bosman, age/development, market+sell value, wage,
-> humanized chem links). Store: transient `profilePlayerId` + `openProfile`/`closeProfile`
-> (NOT persisted → no version bump). Inline `PlayerSheet` removed (overlay replaces it). Gates:
-> tsc · **401 tests** (+4 `profile.test.ts`) · build · e2e · career sim baseline unchanged
-> (£71M PL median / 43% champ — proves it's balance-neutral). Live-verified owned context both
-> viewports; fixed a Sell-hidden-in-legacy-Classic bug (draft gate now `draft !== null`).
-> Market context type-checked + reuses the tested `NegotiationModal` (not yet live-played).
-> See `BACKLOG.md` item 1 for the fast-follows. HEAD still `787f822` until this commits.
->
+> **WHAT'S NEXT (see `BACKLOG.md`):** the high-value **tactics-depth + tuning wave is Fable-blocked**
+> (A1 playing styles, A2 player roles/positions, A3, C6 traits, C7, R2 adaptive league, D9 trader,
+> N7 footedness, **#2b pool authoring**, D8 perks, N5 nemesis, N4 economy-payoff, F-WAGES, F-SQUAD).
+> **Opus-doable now:** R4 animated highlights reel; **R6** FM-style market search/filters (surface
+> the low/cheap long tail — today capped at MAX_ROWS=60); **R7** squad-page rethink (responsive
+> Formation⇄Squad + profile-reachable-from-pitch/bench + Auto-Pick on the pitch); **R8** career
+> FTUE/guided tour + nav/money affordances; **F-FINANCE** FM-style finance page. **Standing
+> recommendation: play-test the session's work on the live site before building more** — several
+> features (narrative banner, rivalry line, world-news, triaged inbox) only surface in deeper
+> career states that weren't screenshot-verified.
+
+
 > **⚡ UI REDESIGN — ALL 7 PHASES SHIPPED & LIVE (2026-06-13, user-approved "build it
 > and push to live").** Full proposal + per-screen rationale: `design-mockups/index.html`
 > (10 standalone HTML mockups — throwaway reference, not wired to the app). Every phase
@@ -963,40 +890,39 @@ programmatically** from existing single position (confirm before building).
 ### ⭐ NEXT SESSION — START HERE
 
 **▶ READY-TO-PASTE PROMPT FOR THE NEXT SESSION:**
-> Read CLAUDE_CONTEXT.md first — the header block (⚡ UI REDESIGN + POST-REDESIGN POLISH)
-> + this "⭐ NEXT SESSION — START HERE" block. The **full UI redesign (7 phases) + all
-> post-redesign polish, QA, a consistency pass, and a mobile slot-overlap fix are SHIPPED
-> & LIVE.** HEAD `787f822`, working tree clean, local == `origin/main`, persistence
-> **v30**, gates green (**397 tests + build + e2e**, balance sims unaffected — no
-> lib/store/engine changes in the redesign). The design proposal lives in
-> `design-mockups/` (throwaway HTML reference, not wired in). **There is no open
-> backlog — the redesign is complete.**
+> Read CLAUDE_CONTEXT.md first — the top **📍 CURRENT STATE** block + this "⭐ NEXT SESSION"
+> block — then **`BACKLOG.md` (the source of truth for what to build).** State: HEAD
+> **`ffaf139`**, tree clean, local == `origin/main`, persistence **v31**, gates green
+> (**457 tests + build + e2e**; balance baseline intact — Classic 36.8%, career PL median
+> £71M). The 2026-06-13 session shipped Track A Phase 1 (#1–#8), the Phase-2 Opus-safe trio
+> (N3/N1/D10), a mobile-overflow hotfix, and a 4-bug fix pass — all live.
 >
-> **⚠️ MODEL CHECKPOINT (standing user pref; memory `model-recommendation-before-tasks`):**
-> before starting ANY new task, give a one-line model recommendation + reason
-> (Sonnet 4.6 = mechanical/QA/CSS/copy · Opus 4.8 = substantial multi-file features ·
-> Fable 5 = design-taste-heavy or balance-sensitive) and **PAUSE until the user picks/
-> confirms the model** (`/model`). Only then start. This is the one approved exception to
-> otherwise-autonomous working (memory `working-style-autonomy`).
+> **⚠️ MODEL CHECKPOINT (standing pref; memory `model-recommendation-before-tasks`):** before
+> ANY new task, give a one-line model rec + reason (Sonnet 4.6 = mechanical/QA/CSS/copy ·
+> Opus 4.8 = substantial multi-file features · Fable 5 = design-taste/balance-sensitive) and
+> **PAUSE for the user's `/model` pick**. (For a multi-item batch the user may pre-authorize a
+> model + hands-off run — honour that.) **Push-to-live per task once green is durably authorized**
+> (memory `push-to-live-standing`).
 >
-> **Gates before every push** (this session's norm = push-to-live per task once green;
-> confirm the user still wants that): `npx tsc -b`, `npx vitest run` (397), `npm run
-> build`, then `npm run test:e2e` — **stop the preview server before e2e** (port 5180
-> contention). If touching `src/lib/` or the store, also `npm run sim` (Classic ladder
-> 36.8% sacred). Keep CLAUDE_CONTEXT.md updated at task wrap; bump persistence version +
-> add a migration for any persisted-shape change.
+> **Gates before every push:** `npx tsc -b`, `npx vitest run`, `npm run build`, then
+> `npm run test:e2e` — **stop the preview server before e2e** (port 5180). If touching
+> `src/lib/` engine/economy or the store's resolve path, also `npm run sim` (Classic 36.8%
+> sacred; pure presentation libs are balance-neutral — sim optional). Update CLAUDE_CONTEXT.md
+> + mark the BACKLOG item; bump persistence + add a migration for any persisted-shape change.
 >
-> **Live-QA tooling gotchas (this session):** the user's save (`gaffer-run`) is a
-> **Classic R7 ladder** run — back it up (`gaffer-run-BACKUP`) before any destructive
-> browser test (new run / playing a match) and restore + reload after. `setTimeout`-based
-> async loops inside `preview_eval` DON'T resolve (hit the 30s wall) — drive playthroughs
-> with discrete synchronous clicks. Editing the match modal mid-session causes HMR
-> glitches in an open match — restart the preview server to verify cleanly.
+> **Live-QA gotchas:** `setTimeout` loops in `preview_eval` don't resolve (30s wall) — drive
+> with discrete synchronous clicks, and re-query in a SEPARATE eval after a click (React state
+> is async). Back up `gaffer-run` to a localStorage key before destructive browser tests
+> (new run / playing a match) + restore after. To start a career in the preview: New career →
+> pick a difficulty CARD → click the separate **"Start career"** button. `preview_console_logs`
+> can be a stale buffer — trust a clean `npm run build` + a reload.
 >
-> Today I want to: **[FILL IN — or ask me]**. If I haven't said, recommend a model + a
-> task and wait for my pick. (Parked ideas if I'm out of direction: loans, international
-> call-ups, set-piece/tactics depth, a continental cup, or a youth-academy money sink —
-> all would be new features, so check `npm run sim` if they touch the engine/economy.)
+> **What to do:** **[FILL IN — or ask me].** If Fable is back, the high-value move is the
+> **Track B tactics-depth + tuning wave** (A1 playing styles, A2 player roles/positions, C6
+> traits, #2b pool authoring, N7 footedness, …). If staying on Opus: **R7** (squad-page rethink
+> + profile-from-pitch + Auto-Pick on the pitch), **R6** (market search/filters surfacing the
+> low/cheap long tail), **R8** (career FTUE/guided tour), **F-FINANCE** (finance page), or **R4**
+> (animated highlights reel). Or play-test first (my standing recommendation). See `BACKLOG.md`.
 
 ### ⭐ CAREER DIFFICULTY REBALANCE (2026-06-12, committed `54dc692`, NOT pushed)
 
