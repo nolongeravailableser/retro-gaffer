@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe2, Crown } from 'lucide-react';
+import { Globe2, Crown, WifiOff } from 'lucide-react';
 import { fetchDailyTop, leaderboardId, type LeaderboardEntry } from '@/lib/leaderboard';
 import { formatScore } from '@/lib/score';
 
@@ -11,9 +11,11 @@ interface DailyLeaderboardProps {
 }
 
 /**
- * Today's global Daily Gauntlet standings. Renders NOTHING while the backend
- * is unavailable (not provisioned / offline / dev server) — the leaderboard is
- * an enhancement, never a broken box.
+ * Today's global Daily Gauntlet standings. The backend is optional (Vercel +
+ * Upstash) — when it's unreachable (offline / dev / 503) the dedicated panel
+ * explains the absence rather than vanishing, but the compact embed in the
+ * run-over modal stays invisible until there's real data so it never intrudes
+ * on the end-of-run moment.
  */
 export default function DailyLeaderboard({ day, compact = false }: DailyLeaderboardProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
@@ -22,6 +24,7 @@ export default function DailyLeaderboard({ day, compact = false }: DailyLeaderbo
   useEffect(() => {
     let alive = true;
     setLoaded(false);
+    setEntries(null);
     void fetchDailyTop(day).then((e) => {
       if (!alive) return;
       setEntries(e);
@@ -32,29 +35,64 @@ export default function DailyLeaderboard({ day, compact = false }: DailyLeaderbo
     };
   }, [day]);
 
-  // entries === null → backend offline/unprovisioned: hide entirely.
-  // entries === []   → backend live but no scores yet today: show an inviting
-  //                    empty state so the board never looks broken once it's up.
-  if (!loaded || entries === null) return null;
+  // Compact (run-over modal): no skeleton, no offline box — only ever appear
+  // once there are real standings to show.
+  if (compact && (!loaded || entries === null)) return null;
+
+  const wrap = compact
+    ? 'rounded-lg border border-fuchsia-400/30 bg-fuchsia-500/5 px-3 py-2.5'
+    : 'rounded-xl border border-fuchsia-400/30 bg-pitch-900/70 p-4';
+  const textSize = compact ? 'text-xs' : 'text-sm';
+  const header = (suffix: string) => (
+    <p className={`mb-2 flex items-center gap-1.5 font-display uppercase tracking-wide text-fuchsia-200 ${textSize}`}>
+      <Globe2 size={compact ? 13 : 16} />
+      Daily Gauntlet · {day}{suffix}
+    </p>
+  );
+
+  // Loading — a shimmer skeleton so the panel has presence while the fetch
+  // resolves (non-compact only; compact returned null above).
+  if (!loaded) {
+    return (
+      <div className={wrap} data-testid="daily-leaderboard-loading" aria-busy="true">
+        {header('')}
+        <ol className="space-y-1">
+          {Array.from({ length: 5 }, (_, i) => (
+            <li key={i} className="flex items-center gap-2 px-2 py-1">
+              <span className="h-3 w-4 shrink-0 rounded bg-white/10 motion-safe:animate-pulse" />
+              <span
+                className="h-3 flex-1 rounded bg-white/10 motion-safe:animate-pulse"
+                style={{ maxWidth: `${68 - i * 9}%` }}
+              />
+              <span className="h-3 w-10 shrink-0 rounded bg-white/10 motion-safe:animate-pulse" />
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+
+  // Offline / unreachable backend — explain it instead of vanishing.
+  if (entries === null) {
+    return (
+      <div className={wrap} data-testid="daily-leaderboard-offline">
+        {header('')}
+        <p className={`flex items-center gap-1.5 text-chrome-muted ${textSize}`}>
+          <WifiOff size={compact ? 12 : 14} className="shrink-0" />
+          Leaderboard needs a connection — reconnect to see today's world standings.
+        </p>
+      </div>
+    );
+  }
 
   const me = leaderboardId();
   const empty = entries.length === 0;
 
   return (
-    <div
-      className={
-        compact
-          ? 'rounded-lg border border-fuchsia-400/30 bg-fuchsia-500/5 px-3 py-2.5'
-          : 'rounded-xl border border-fuchsia-400/30 bg-pitch-900/70 p-4'
-      }
-      data-testid="daily-leaderboard"
-    >
-      <p className={`mb-2 flex items-center gap-1.5 font-display uppercase tracking-wide text-fuchsia-200 ${compact ? 'text-xs' : 'text-sm'}`}>
-        <Globe2 size={compact ? 13 : 16} />
-        Daily Gauntlet · {day}{empty ? '' : ` · world top ${entries.length}`}
-      </p>
+    <div className={wrap} data-testid="daily-leaderboard">
+      {header(empty ? '' : ` · world top ${entries.length}`)}
       {empty && (
-        <p className={`text-chrome-muted ${compact ? 'text-xs' : 'text-sm'}`}>
+        <p className={`text-chrome-muted ${textSize}`}>
           No scores yet today — finish the Daily Gauntlet to be the first on the board.
         </p>
       )}
