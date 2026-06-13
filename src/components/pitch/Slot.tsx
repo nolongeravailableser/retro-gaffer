@@ -59,7 +59,7 @@ export default function Slot({
         data-testid={`slot-${slotIndex}`}
         aria-label={player ? `${player.name} (${role})` : `Empty ${style.label} slot`}
         className={[
-          'flex h-[5.5rem] w-[4.25rem] flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-1 text-center transition sm:h-28 sm:w-32 sm:px-2',
+          'flex h-[5.5rem] w-[3.5rem] flex-col items-center justify-center gap-1 rounded-lg border-2 px-0.5 py-1 text-center transition sm:h-28 sm:w-32 sm:px-2',
           player
             ? `${style.border} bg-pitch-800/90 shadow-card`
             : 'border-dashed border-white/20 bg-pitch-900/40',

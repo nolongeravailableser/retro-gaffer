@@ -19,6 +19,14 @@
 > manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
 > narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
 >
+> **▶ HOTFIX — mobile Squad-tab horizontal bleed ✅ SHIPPED + PUSHED.** User-reported: the
+> pitch + formation chips overflowed the 375px viewport (a 5-wide row at 68px slots ≈ 410px →
+> page-level horizontal scroll, dragging the chips/nav with it). Fixed: mobile slot 68→56px
+> (`Slot.tsx`), tighter pitch padding/gaps + `overflow-x-hidden` on the board (`Pitch.tsx`), and
+> the classic flexbox `min-w-0`/`flex-1` fix on the formation-chip row so `overflow-x-auto`
+> actually scrolls internally (`FormationSelector.tsx`). Verified at 375px: 0 page overflow on
+> both 4-wide (4-4-2) and the worst-case 5-wide (3-5-2) rows. CSS-only. tsc · 457 tests · build · e2e.
+>
 > **▶ Phase 2 #3 — D10 RIVALRIES (narrative-scoped) ✅ SHIPPED + PUSHED. Opus.** `lib/rivalry.ts`
 > (pure, 5 tests) `headToHead()` + `rivalryLine()` frame the reverse-fixture rematch ("they beat
 > you 3-0 last time — revenge?") as a "RIVALRY" line + H2H W-D-L in the FixtureHero. No mechanics/

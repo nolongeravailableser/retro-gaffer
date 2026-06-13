@@ -8,11 +8,11 @@ export default function FormationSelector() {
   const setFormation = useGameStore((s) => s.setFormation);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
       <span className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-chrome-muted">
         <LayoutGrid size={14} /> Formation
       </span>
-      <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-white/10 bg-pitch-900/70 p-1">
+      <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-lg border border-white/10 bg-pitch-900/70 p-1 sm:max-w-full sm:flex-none">
         {FORMATION_IDS.map((id) => {
           const active = id === formation;
           return (

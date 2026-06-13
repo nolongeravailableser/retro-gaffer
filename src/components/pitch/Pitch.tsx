@@ -26,11 +26,11 @@ export default function Pitch({ multipliers }: PitchProps) {
     (suspensions.includes(selectedPlayerId) || !!injuries[selectedPlayerId]);
 
   return (
-    <div className="rounded-xl border border-crt-dim bg-gradient-to-b from-pitch-700/40 to-pitch-900/60 p-4">
-      <div className="relative flex flex-col gap-4 rounded-lg border border-white/10 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.03)_0px,rgba(255,255,255,0.03)_40px,transparent_40px,transparent_80px)] px-2 py-5">
+    <div className="overflow-x-hidden rounded-xl border border-crt-dim bg-gradient-to-b from-pitch-700/40 to-pitch-900/60 p-2 sm:p-4">
+      <div className="relative flex flex-col gap-4 rounded-lg border border-white/10 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.03)_0px,rgba(255,255,255,0.03)_40px,transparent_40px,transparent_80px)] px-1 py-5 sm:px-2">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
         {formation.rows.map((row, i) => (
-          <div key={i} className="flex justify-center gap-1.5 sm:gap-5">
+          <div key={i} className="flex justify-center gap-1 sm:gap-5">
             {row.map((slotIndex) => {
               const playerId = xi[slotIndex];
               const player = getPlayer(playerId);
