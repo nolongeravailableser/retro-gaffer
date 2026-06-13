@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { Play, ShoppingCart, Users, ChevronRight, Wand2, Check } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { XI_SIZE } from '@/lib/types';
@@ -111,12 +112,14 @@ export default function JourneyBar({
       </div>
 
       <div className="flex items-stretch gap-2">
-        <button
+        <motion.button
           type="button"
           onClick={onGo}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 600, damping: 28 }}
           data-testid="kickoff-cta"
           className={[
-            'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 font-display text-base shadow-glow transition',
+            'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 font-display text-base shadow-glow transition-colors',
             stage === 'play'
               ? 'border-crt-green/60 bg-crt-green/20 text-crt-green hover:bg-crt-green/30'
               : 'border-crt-amber/40 bg-crt-amber/10 text-crt-amber hover:bg-crt-amber/20',
@@ -125,19 +128,21 @@ export default function JourneyBar({
           <PrimaryIcon size={18} className="shrink-0" />
           <span className="truncate">{primaryLabel}</span>
           {!onTargetTab && <ChevronRight size={18} className="shrink-0 opacity-80" />}
-        </button>
+        </motion.button>
 
         {helper && (
-          <button
+          <motion.button
             type="button"
             onClick={helper.action}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 600, damping: 28 }}
             data-testid="journey-helper"
             title={helper.title}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-crt-green/40 bg-crt-green/10 px-3 font-display text-sm text-crt-green transition hover:bg-crt-green/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-crt-green/40 bg-crt-green/10 px-3 font-display text-sm text-crt-green transition-colors hover:bg-crt-green/20"
           >
             <Wand2 size={15} />
             <span className="hidden sm:inline">{helper.label}</span>
-          </button>
+          </motion.button>
         )}
       </div>
 
