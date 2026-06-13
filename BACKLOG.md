@@ -178,7 +178,12 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
   above the timeline (MatchView). Pure lib not imported by engine/store/sim → balance-neutral
   (sim skipped with justification). Live-verified: a 1-0 win → "Edged it — a tight one settled
   your way · chances even xG 1.5–1.0 · resolute defending." gates: tsc · 408 tests · build · e2e.
-- **E12. Squad depth chart / planner** — XI + backups per position, flagged weak spots.
+- **E12. Squad depth chart / planner** — ✅ SHIPPED 2026-06-13. `src/lib/depth.ts` (pure, 6
+  tests) `squadDepth()` reports per-role health vs the current formation (short / thin / ok +
+  a plain-English note, lone-keeper flagged); `components/squad/SquadDepth.tsx` is a collapsible
+  "Depth" panel in the Squad-tab roster column — fit/needed counts, status flags, player chips
+  (starters highlighted, unavailable struck, tap → profile). Pure/derived → balance-neutral.
+  Gates: tsc · 423 tests · build · e2e. Live-verified on the R7 squad (4 thin: lone keeper + no cover).
 
 ## 2. Player pool — balance & breadth (CONFIRMED 2026-06-13)
 

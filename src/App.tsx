@@ -38,6 +38,7 @@ import Shop from '@/components/shop/Shop';
 import ScoutPanel from '@/components/shop/ScoutPanel';
 import FeaturedBanner from '@/components/shop/FeaturedBanner';
 import SquadList from '@/components/squad/SquadList';
+import SquadDepth from '@/components/squad/SquadDepth';
 import AvailabilityStrip from '@/components/squad/AvailabilityStrip';
 import SeasonPanel from '@/components/season/SeasonPanel';
 import FixtureHero from '@/components/home/FixtureHero';
@@ -444,6 +445,7 @@ export default function App() {
             <div className="flex flex-col gap-3 lg:sticky lg:top-[3.5rem] lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
               <AvailabilityStrip hideWhenClear />
               <SquadList multipliers={multipliers} />
+              <SquadDepth />
             </div>
           </div>
           </div>

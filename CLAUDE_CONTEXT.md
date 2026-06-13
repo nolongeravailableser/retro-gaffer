@@ -18,6 +18,12 @@
 > briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
 > checkpoint during the batch (flag only real decisions / Fable needs).
 >
+> **▶ Track A #6 — E12 SQUAD DEPTH CHART ✅ SHIPPED + PUSHED. Opus.** `lib/depth.ts` (pure, 6
+> tests) `squadDepth()` → per-role health vs the formation (short/thin/ok + note; lone keeper
+> flagged); `components/squad/SquadDepth.tsx` collapsible "Depth" panel in the Squad-tab roster
+> column (fit/needed, status, player chips → tap opens the profile). Pure → balance-neutral.
+> Gates: tsc · **423 tests** (+6) · build · e2e. Live-verified (R7: 4 thin — lone keeper + no cover).
+>
 > **▶ Track A #5 — B4 PRE-MATCH SCOUTING BRIEFING ✅ SHIPPED + PUSHED (briefing-only, user-chosen
 > via AskUserQuestion). Opus.** `lib/briefing.ts` (pure, 4 tests) reads the opponent's attack/
 > defence lean + stat profile → a threat phrase + recommended approach; shown as a "SCOUTING" line
