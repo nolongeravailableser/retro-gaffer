@@ -46,6 +46,31 @@
 >   instead); ladder modes keep SeasonPanel internals under the new hero (containment);
 >   NegotiationModal/SavePanel flows untouched (restyle-by-token only).
 >
+> **POST-REDESIGN POLISH (2026-06-13, all SHIPPED & LIVE, gates 397 tests + build + e2e
+> each).** Per-task model checkpoints now precede work (user pref — recommend Sonnet/
+> Opus/Fable + wait for his pick; see memory). Commits in order:
+> - `0a40a61` QA: shared `tagLabel()` humanizes raw chemistry tags (cult_hero → Cult
+>   Hero) in ChemistryPanel/PlayerCard/ShopCard (+3 tests); FixtureHero wraps long
+>   opponent names (line-clamp-2) instead of truncating.
+> - `cd709d0` Motion R1: `MoneyCounter` (easeOutCubic count-up, reduced-motion safe) on
+>   the TopBar bankroll + matchday-receipt balance; springier player-detail sheet.
+> - `d0d27ca` Motion R2: kick-off CTA + helper `whileTap`; full-time match report
+>   staggers in (timeline + ratings) with MOTM star pop — finished report only,
+>   reduced-motion safe (live strip stays static).
+> - `a126df7` Career QA: CareerHub "This Season" shows neutral "Season ahead" (not red
+>   "Drop zone — sack risk") at MW1/0-played.
+> - `0e44659` Cup QA: in-match decision-overlay scrim opaqued (/85→/95 + blur-md) so a
+>   busy ratings panel can't bleed through; cup-week hero + glory-not-gold FT verified
+>   live (played a career to the MW6 QF).
+> - `943c8fb` Daily leaderboard: shimmer skeleton + explained-offline state ("needs a
+>   connection"); compact run-over embed still hides until real data.
+> - **Verified live:** all redesign screens now seen running on both viewports incl.
+>   career-only ones (three-tier market/poach, career hub, cup week). **Tooling notes:**
+>   `setTimeout` async loops inside `preview_eval` don't resolve (hit 30s wall) — drive
+>   with discrete synchronous clicks; editing the match modal mid-session triggers HMR
+>   glitches in an open match (restart the preview server to verify cleanly); stop the
+>   preview server before `npm run test:e2e` (they contend for port 5180).
+>
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
 > live-playtest QA + a trap fix + a **career economy retighten** + **contract-renewal
 > money sink** + a **domestic cup inside Career**. All career-only; Classic untouched.
