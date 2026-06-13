@@ -4,15 +4,17 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **📍 CURRENT STATE — 2026-06-13 (later session, in progress).** Working the Track A / Opus-doable
-> backlog hands-off (play-test → **R7 ✅** → R6 → R8 → F-FINANCE → R4). **R7 SHIPPED**: squad-page
+> backlog hands-off (play-test → **R7 ✅** → **R6 ✅** → R8 → F-FINANCE → R4). **R7 SHIPPED**: squad-page
 > rethink — profile opens from pitch slots + bench (not just list/market), mobile Formation⇄Squad
-> segmented toggle (desktop keeps two-column), Auto-Pick on the pitch via shared `SquadActions`
-> (see BACKLOG R7). Last session's deep-career work play-test-verified: B4 scouting line + R1 inbox
-> triage seen live; N3 narrative / D10 rivalry / N1 world-news render-wiring confirmed + unit-tested
-> (surface only in run-in / reverse-fixture / multi-season state). HEAD now post-R7, local ==
-> `origin/main`, persistence **v31** (R7 = no bump, UI-only), gates green (**459 tests** + build +
-> e2e; R7 balance-neutral → sim skipped with justification; baseline intact — Classic 36.8%, career
-> PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
+> segmented toggle (desktop keeps two-column), Auto-Pick on the pitch via shared `SquadActions`.
+> **R6 SHIPPED**: FM-style market — Sort (Overall/Fee/Name ↑↓, Fee↑ = bargains) + Affordable toggle
+> + collapsible Filters (granular Position select + Min/Max fee range) + "Show more" pager replacing
+> the old hard 60-row cap (no hidden tail); pipeline extracted to pure `lib/marketFilter.ts`. Both
+> see BACKLOG R7/R6. Last session's deep-career work play-test-verified: B4 scouting + R1 inbox triage
+> seen live; N3/D10/N1 render-wiring confirmed + unit-tested (surface only in deep state). HEAD now
+> post-R6, local == `origin/main`, persistence **v31** (R7/R6 = no bump, UI-only), gates green
+> (**469 tests** + build + e2e; both balance-neutral → sim skipped with justification; baseline
+> intact — Classic 36.8%, career PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
 >
 > **`BACKLOG.md` is the source of truth** for what's next — confirmed features + a dependency-aware
 > **Track A (Opus/Sonnet, buildable now) / Track B (Fable-blocked: balance/taste-critical)** roadmap,

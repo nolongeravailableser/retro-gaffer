@@ -281,9 +281,18 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   — riskier (canvas re-drive + match-modal HMR), left for later. Gates: tsc · 413 tests · build · e2e.
 - **R5. Individual development plans** — one meaningful choice per wonderkid (focus or
   senior mentor to grow a target stat over a season). Avoids FM's over-engineered training.
-- **R6. FM-style transfer-market search & filters (CONFIRMED 2026-06-13)** — a proper
-  search/filter system for the Career/League market (`components/shop/TransferMarket.tsx`), and
-  critically **surface EVERY player — including the low-skilled / low-value long tail.**
+- **R6. FM-style transfer-market search & filters (✅ SHIPPED 2026-06-13)** — built + gated green
+  (tsc · 469 tests · build · e2e; pure surfacing → balance-neutral, sim skipped, no persistence).
+  `components/shop/TransferMarket.tsx` now has: a **Sort** row (Overall / Fee / Name, each toggling
+  ↑/↓ — Fee↑ is the bargains view) + an **Affordable** toggle; a collapsible **Filters** panel
+  (granular **Position** select over all 8 positions + **Min/Max fee £M** range + Clear); and a
+  **"Show more"** pager (PAGE=60) that replaces the old hard `MAX_ROWS=60` cap — **no hidden tail**,
+  every owned-pool player is reachable. The filter/sort pipeline was extracted to a pure, unit-tested
+  lib `src/lib/marketFilter.ts` (`filterAndSortMarket`, +10 tests in `tests/marketFilter.test.ts`)
+  with a stable id tiebreak so paging is deterministic. Live-verified in a career: Fee↑ surfaced
+  £6M wingers first (Shaun Wright-Phillips 65, etc.); Show-more 60→120; Position=Winger → 28 of 28.
+  (Nationality/league/era/age filters deliberately deferred — search + role + position + fee cover
+  the acceptance; age/contract tie into career data, league/era already shown in rows.) Detail:
   - *Today:* 3 segments (free <64 / open ≥64 / rivals) + a coarse Role filter + name search,
     sorted affordable-then-overall-DESC and **capped at `MAX_ROWS = 60`**. So the cheapest /
     lowest-rated players sort to the bottom and get cut by the 60-cap — effectively unfindable.

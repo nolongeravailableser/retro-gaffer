@@ -1,22 +1,30 @@
-import { useMemo, useState } from 'react';
-import { Search, Wand2, Lock, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Wand2, Lock, Users, ArrowDown, ArrowUp } from 'lucide-react';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
 import { POOL } from '@/data/pool';
 import { overall, LEAGUE_NEUTRAL_TIER, wageBill, wageBudget, wageTierMult, tierMult } from '@/lib/wages';
-import { transferFee, poachFee, isFreeAgent } from '@/lib/market';
+import { transferFee, poachFee } from '@/lib/market';
 import { division, isWindowOpen, nextWindowOpensAt, totalWeeks } from '@/lib/league';
 import { computeChemistry } from '@/lib/chemistry';
+import { filterAndSortMarket } from '@/lib/marketFilter';
 import { ROSTER_CAP } from '@/lib/economy';
-import type { Player, Role } from '@/lib/types';
+import type { Player, Position, Role } from '@/lib/types';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
-import { positionShort } from '@/lib/playerMeta';
+import { positionShort, positionLabel } from '@/lib/playerMeta';
 import OvrBadge from '@/components/ui/OvrBadge';
 import NegotiationModal from './NegotiationModal';
 
 type RoleFilter = 'ALL' | Role;
 const ROLE_FILTERS: RoleFilter[] = ['ALL', 'GK', 'DEF', 'MID', 'FWD'];
 type Segment = 'free' | 'open' | 'rivals';
-const MAX_ROWS = 60;
+type SortKey = 'overall' | 'value' | 'name';
+type PosFilter = 'ALL' | Position;
+const POS_FILTERS: PosFilter[] = [
+  'ALL', 'Goalkeeper', 'CenterBack', 'Fullback', 'Anchor', 'BoxToBox', 'Playmaker', 'Winger', 'Striker',
+];
+/** Rows shown per page — "Show more" loads another page, so no player is ever
+ *  cut off (the old hard MAX_ROWS=60 buried the cheap/low-rated long tail). */
+const PAGE = 60;
 
 const SEGMENTS: { id: Segment; title: string; blurb: string }[] = [
   { id: 'free', title: 'Free agents', blurb: 'Under 64 OVR · always £0 — you can never be stuck' },
@@ -43,6 +51,15 @@ export default function TransferMarket() {
   const [segment, setSegment] = useState<Segment>('open');
   const [query, setQuery] = useState('');
   const [negotiating, setNegotiating] = useState<Player | null>(null);
+  // FM-style filters/sort — surface the whole pool, not just the top 60.
+  const [sortKey, setSortKey] = useState<SortKey>('overall');
+  const [sortDesc, setSortDesc] = useState(true);
+  const [position, setPosition] = useState<PosFilter>('ALL');
+  const [minFee, setMinFee] = useState('');
+  const [maxFee, setMaxFee] = useState('');
+  const [affordableOnly, setAffordableOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [visible, setVisible] = useState(PAGE);
 
   const tier = career?.tier ?? LEAGUE_NEUTRAL_TIER;
   const divName = career ? division(career.tier).name : 'League';
@@ -76,25 +93,25 @@ export default function TransferMarket() {
 
   const feeOf = (p: Player) => (clubByPlayer.has(p.id) ? poachFee(p, tier) : transferFee(p, tier));
 
+  const lo = minFee.trim() === '' ? null : Number(minFee);
+  const hi = maxFee.trim() === '' ? null : Number(maxFee);
+
   const { rows, total } = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = POOL.filter((p) => {
-      if (ownedSet.has(p.id)) return false;
-      if (role !== 'ALL' && p.role !== role) return false;
-      if (q && !p.name.toLowerCase().includes(q)) return false;
-      const atClub = clubByPlayer.has(p.id);
-      if (segment === 'free') return !atClub && isFreeAgent(p);
-      if (segment === 'rivals') return atClub;
-      return !atClub && !isFreeAgent(p); // open market
+    const list = filterAndSortMarket(POOL, {
+      segment, role, position, query, minFee: lo, maxFee: hi,
+      affordableOnly, bankroll, sortKey, sortDesc, ownedSet,
+      isAtClub: (id) => clubByPlayer.has(id), feeOf,
     });
-    // Affordable first (the best you can actually sign now), then best-rated.
-    list.sort((a, b) => {
-      const aff = (feeOf(b) <= bankroll ? 1 : 0) - (feeOf(a) <= bankroll ? 1 : 0);
-      return aff || overall(b) - overall(a);
-    });
-    return { rows: list.slice(0, MAX_ROWS), total: list.length };
+    return { rows: list, total: list.length };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownedSet, role, segment, query, tier, bankroll, clubByPlayer]);
+  }, [ownedSet, role, position, segment, query, tier, bankroll, clubByPlayer, lo, hi, affordableOnly, sortKey, sortDesc]);
+
+  // Any filter/sort change resets paging to the first page.
+  useEffect(() => {
+    setVisible(PAGE);
+  }, [role, position, segment, query, minFee, maxFee, affordableOnly, sortKey, sortDesc]);
+
+  const shown = rows.slice(0, visible);
 
   const full = owned.length >= ROSTER_CAP;
 
@@ -227,9 +244,112 @@ export default function TransferMarket() {
           </div>
         </div>
 
+        {/* Sort + filters — surface bargains (value ↑) and the long tail */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="font-data text-[10px] uppercase tracking-wider text-chrome-muted/70">Sort</span>
+          {([['overall', 'Overall'], ['value', 'Fee'], ['name', 'Name']] as [SortKey, string][]).map(([k, lbl]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => (sortKey === k ? setSortDesc((d) => !d) : (setSortKey(k), setSortDesc(k !== 'name')))}
+              data-testid={`sort-${k}`}
+              title={k === 'value' ? 'Sort by fee — flip to value ↑ to find bargains' : `Sort by ${lbl.toLowerCase()}`}
+              className={[
+                'flex items-center gap-0.5 rounded-md border px-2 py-1 font-display text-xs transition',
+                sortKey === k
+                  ? 'border-crt-green/50 bg-crt-green/10 text-crt-green'
+                  : 'border-white/10 text-chrome-muted hover:bg-white/5 hover:text-chrome',
+              ].join(' ')}
+            >
+              {lbl}
+              {sortKey === k && (sortDesc ? <ArrowDown size={11} /> : <ArrowUp size={11} />)}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAffordableOnly((a) => !a)}
+            data-testid="filter-affordable"
+            className={[
+              'rounded-md border px-2 py-1 font-display text-xs transition',
+              affordableOnly
+                ? 'border-crt-green/50 bg-crt-green/10 text-crt-green'
+                : 'border-white/10 text-chrome-muted hover:bg-white/5 hover:text-chrome',
+            ].join(' ')}
+          >
+            Affordable
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFilters((f) => !f)}
+            data-testid="toggle-filters"
+            className={[
+              'ml-auto rounded-md border px-2 py-1 font-display text-xs transition',
+              showFilters || position !== 'ALL' || lo !== null || hi !== null
+                ? 'border-crt-green/50 bg-crt-green/10 text-crt-green'
+                : 'border-white/10 text-chrome-muted hover:bg-white/5 hover:text-chrome',
+            ].join(' ')}
+          >
+            Filters{position !== 'ALL' || lo !== null || hi !== null ? ' ·' : ''}
+          </button>
+        </div>
+
+        {/* Advanced filters — position + fee range */}
+        {showFilters && (
+          <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border border-white/10 bg-surface-1 px-3 py-2.5">
+            <label className="flex flex-col gap-1">
+              <span className="font-data text-[10px] uppercase tracking-wider text-chrome-muted/70">Position</span>
+              <select
+                value={position}
+                onChange={(e) => setPosition(e.target.value as PosFilter)}
+                data-testid="filter-position"
+                className="rounded-md border border-white/10 bg-pitch-950 px-2 py-1 text-xs text-chrome focus:border-crt-green/50 focus:outline-none"
+              >
+                {POS_FILTERS.map((pos) => (
+                  <option key={pos} value={pos}>
+                    {pos === 'ALL' ? 'All positions' : positionLabel(pos)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-data text-[10px] uppercase tracking-wider text-chrome-muted/70">Min fee £M</span>
+              <input
+                type="number"
+                min={0}
+                value={minFee}
+                onChange={(e) => setMinFee(e.target.value)}
+                placeholder="0"
+                data-testid="filter-fee-min"
+                className="w-20 rounded-md border border-white/10 bg-pitch-950 px-2 py-1 text-xs text-chrome placeholder:text-chrome-muted focus:border-crt-green/50 focus:outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-data text-[10px] uppercase tracking-wider text-chrome-muted/70">Max fee £M</span>
+              <input
+                type="number"
+                min={0}
+                value={maxFee}
+                onChange={(e) => setMaxFee(e.target.value)}
+                placeholder="any"
+                data-testid="filter-fee-max"
+                className="w-20 rounded-md border border-white/10 bg-pitch-950 px-2 py-1 text-xs text-chrome placeholder:text-chrome-muted focus:border-crt-green/50 focus:outline-none"
+              />
+            </label>
+            {(position !== 'ALL' || lo !== null || hi !== null) && (
+              <button
+                type="button"
+                onClick={() => { setPosition('ALL'); setMinFee(''); setMaxFee(''); }}
+                className="rounded-md border border-white/10 px-2 py-1 font-display text-xs text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {/* List — browsable but visibly dormant when the window is shut */}
         <div className={`flex flex-col gap-1.5 ${!windowOpen ? 'opacity-70 saturate-50' : ''}`}>
-          {rows.map((p) => {
+          {shown.map((p) => {
             const atClub = clubByPlayer.get(p.id);
             const fee = feeOf(p);
             const free = fee === 0;
@@ -304,8 +424,19 @@ export default function TransferMarket() {
           )}
         </div>
 
+        {shown.length < total && (
+          <button
+            type="button"
+            onClick={() => setVisible((v) => v + PAGE)}
+            data-testid="show-more"
+            className="mt-3 w-full rounded-lg border border-white/15 py-2 font-display text-xs text-chrome-muted transition hover:bg-white/5 hover:text-chrome"
+          >
+            Show more · {total - shown.length} more
+          </button>
+        )}
+
         <p className="mt-3 text-[11px] text-chrome-muted">
-          Showing {rows.length} of {total} · tap a price to open negotiations
+          Showing {shown.length} of {total} · tap a price to open negotiations
         </p>
 
         {negotiating && (
