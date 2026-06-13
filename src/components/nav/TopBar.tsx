@@ -12,6 +12,7 @@ import { dailyKey } from '@/lib/daily';
 import { runScore, formatScore } from '@/lib/score';
 import { DEFAULT_KIT } from '@/lib/kits';
 import CrestBadge from '@/components/ui/CrestBadge';
+import MoneyCounter from '@/components/ui/MoneyCounter';
 
 interface TopBarProps {
   /** Open the New Run setup modal. */
@@ -125,17 +126,14 @@ export default function TopBar({ onNewRun, onTutorial, onMainMenu }: TopBarProps
         </span>
       </button>
 
-      {/* Bank — hidden in the Draft tournament (bank locked at £0) */}
+      {/* Bank — hidden in the Draft tournament (bank locked at £0). The amount
+          counts up/down to its new value (a signing, a sale) rather than
+          snapping — no key-remount, which would reset the counter mid-tween. */}
       {!draftTournament && (
-        <motion.span
-          key={bankroll}
-          initial={{ scale: 1.1 }}
-          animate={{ scale: 1 }}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-1 px-2.5 py-1.5 sm:px-3"
-        >
+        <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-1 px-2.5 py-1.5 sm:px-3">
           <Coins size={13} className="hidden text-crt-amber sm:block" />
-          <span className="font-data text-[13px] text-crt-amber">£{bankroll}M</span>
-        </motion.span>
+          <MoneyCounter value={bankroll} className="font-data text-[13px] text-crt-amber" />
+        </span>
       )}
 
       {/* Run status — MW/R + lives + streak in one pill */}

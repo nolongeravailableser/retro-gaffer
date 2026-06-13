@@ -31,6 +31,7 @@ import MatchPitchView from './MatchPitchView';
 import MatchReport from './MatchReport';
 import type { RatingContext } from '@/lib/ratings';
 import CrestBadge from '@/components/ui/CrestBadge';
+import MoneyCounter from '@/components/ui/MoneyCounter';
 import type { MatchResult, MatchEvent, Player } from '@/lib/types';
 
 interface MatchViewProps {
@@ -680,7 +681,13 @@ export default function MatchView({
                         <span className="font-display text-[13px] text-chrome">Net</span>
                         <span className={`font-display text-[15px] ${payoutNet >= 0 ? 'text-crt-green' : 'text-rose-300'}`}>
                           {payoutNet >= 0 ? '+' : '−'}£{Math.abs(payoutNet)}M
-                          <span className="ml-2 text-[11px] text-crt-amber">→ £{bankroll}M</span>
+                          {/* Roll the new balance up from the pre-match total. */}
+                          <MoneyCounter
+                            value={bankroll}
+                            from={bankroll - payoutNet}
+                            className="ml-2 text-[11px] text-crt-amber"
+                            format={(n) => `→ £${n}M`}
+                          />
                         </span>
                       </div>
                     </div>

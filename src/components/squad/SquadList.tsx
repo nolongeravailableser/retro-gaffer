@@ -68,7 +68,7 @@ function PlayerSheet({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.16 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34, opacity: { duration: 0.15 } }}
       className="overflow-hidden"
     >
       <div className="border-b border-crt-green/20 bg-surface-2 px-3 py-3">
