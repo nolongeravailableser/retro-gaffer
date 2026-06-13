@@ -50,6 +50,7 @@ import NewRunModal from '@/components/run/NewRunModal';
 import RunOverModal from '@/components/run/RunOverModal';
 import JourneyBar from '@/components/run/JourneyBar';
 import OnboardingModal from '@/components/run/OnboardingModal';
+import CareerTour, { careerTourSeen } from '@/components/career/CareerTour';
 import StartMenu from '@/components/run/StartMenu';
 import DraftRoom from '@/components/run/DraftRoom';
 import JobMarket from '@/components/career/JobMarket';
@@ -105,6 +106,7 @@ export default function App() {
   // (lg+) ignores this and shows both columns — see the `lg:flex` overrides.
   const [squadView, setSquadView] = useState<'formation' | 'squad'>('formation');
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tourDone, setTourDone] = useState(careerTourSeen);
   const [matchOpen, setMatchOpen] = useState(false);
   const [opponent, setOpponent] = useState<MatchTeam | null>(null);
   const [matchSeed, setMatchSeed] = useState<string | null>(null);
@@ -592,6 +594,11 @@ export default function App() {
           tutorialOnly={onboarded}
           onClose={() => setTutorialOpen(false)}
         />
+      )}
+      {/* First-career guided tour — after onboarding, career-only, once per device.
+          Non-blocking (the card floats over the live screen it's describing). */}
+      {career && onboarded && !tourDone && runStatus === 'playing' && !matchOpen && (
+        <CareerTour onGoToTab={setActiveTab} onFinish={() => setTourDone(true)} />
       )}
     </div>
   );

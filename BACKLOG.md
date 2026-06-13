@@ -341,14 +341,20 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   - *Notes:* UI-only → **balance-neutral, Opus-fit (Track A), no persistence** (the mobile
     toggle is transient UI state). Resolves the real inconsistency the user hit (clickable in the
     squad list, not on the pitch). Pairs with the player profile (#1).
-- **R8. Career FTUE — guided tutorial journey + navigation/money affordances (CONFIRMED 2026-06-13)**
-  — new players have no clear guide for moving between tabs in Career: on Home there's no cue to
-  go to the Market, the money-to-spend isn't obvious, and there's no guidance on what to be
-  mindful of when spending. Want: a one-time **guided tour through each page** (Home / Squad /
-  Market / Club) explaining what it is, what it does, and what to do next — plus persistent
-  affordances (a visible **bankroll/transfer-budget** indicator, a "go to Market" cue when the
-  squad needs players, market-spending guidance). Builds on the existing `CoachMark`s + onboarding
-  (they're too light for Career). Opus-fit (UI/copy), balance-neutral. Pairs with R6/finance (F).
+- **R8. Career FTUE — guided tutorial journey + navigation/money affordances (✅ SHIPPED 2026-06-13)**
+  — `src/components/career/CareerTour.tsx`: a one-time, career-only, device-scoped guided tour that
+  walks **Home → Squad → Market → Club** in order, *actually switching the tab behind a floating,
+  non-blocking card* (`onGoToTab` → `setActiveTab`) so you see the real screen while it explains
+  what each page is and what to do next (progress dots, Back/Next, Skip; `gaffer-career-tour`
+  localStorage, `careerTourSeen()`). Shown after onboarding (`career && onboarded && !tourDone &&
+  playing && !matchOpen`) so the two never collide. The **money affordances** are largely already
+  present and the tour points at them: the TopBar bankroll, the TransferMarket pinned **Bank /
+  Wages-vs-Budget bar / Squad count** header (live-verified showing £38M · £2M/£5.3M · 15/16), and
+  the JourneyBar "go to Market" routing when the squad needs players. UI/copy only → balance-neutral,
+  no persistence (device localStorage, not the save). Gates: tsc · build · e2e (e2e exercises the
+  tour on a fresh career). Live-verified: tour auto-appears, steps through all four tabs, finishes on
+  "Let's go" and persists. (A "Replay tour" button was deferred — the existing Replay-tutorial covers
+  mechanics refreshers; the tour is one-time FTUE.)
 - **F-FINANCE. Finance page (FM-style) (CONFIRMED 2026-06-13)** — a dedicated finance view
   (likely a Club sub-nav pill) consolidating the money picture: **transfer budget, current wage
   spend vs wage budget, season income/expenses** (prize money, sponsorship, matchday, upkeep,
