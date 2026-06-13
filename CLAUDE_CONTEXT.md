@@ -4,7 +4,7 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **📍 CURRENT STATE — 2026-06-13 (later session, in progress).** Working the Track A / Opus-doable
-> backlog hands-off (play-test → **R7 ✅** → **R6 ✅** → **R8 ✅** → F-FINANCE → R4). **R7**: squad-page
+> backlog hands-off (play-test → **R7 ✅** → **R6 ✅** → **R8 ✅** → **F-FINANCE ✅** → R4). **R7**: squad-page
 > rethink — profile from pitch slots + bench, mobile Formation⇄Squad toggle (desktop keeps two-column),
 > Auto-Pick on the pitch (shared `SquadActions`). **R6**: FM-style market — Sort (Overall/Fee/Name ↑↓,
 > Fee↑ = bargains) + Affordable + collapsible Filters (granular Position + Min/Max fee range) +
@@ -12,12 +12,15 @@
 > `lib/marketFilter.ts`. **R8**: first-career guided tour (`components/career/CareerTour.tsx`) walking
 > Home→Squad→Market→Club (switches the tab behind a non-blocking card), one-time/device-scoped, after
 > onboarding; money affordances surfaced (TopBar bank + market Bank/Wages-budget header + JourneyBar
-> routing). e2e updated to skip the tour + click-until-match-opens. All see BACKLOG R7/R6/R8. Last
-> session's deep-career work play-test-verified (B4 + R1 seen live; N3/D10/N1 wiring confirmed +
-> unit-tested). HEAD now post-R8, local == `origin/main`, persistence **v31** (R7/R6/R8 = no bump,
-> UI-only), gates green (**469 tests** + build + e2e; all balance-neutral → sim skipped with
-> justification; baseline intact — Classic 36.8%, career PL median £71M / 43% champ). Live at
-> https://retro-gaffer.vercel.app/.
+> routing). e2e updated to skip the tour + click-until-match-opens. **F-FINANCE**: new Club ▸ Finance
+> pill (career-only, `components/finance/FinancePanel.tsx`) — Transfer-budget/Wage-bill-vs-budget/
+> Sponsorship cards + a per-matchweek cash-flow breakdown (Win/Draw/Loss nets) + a Last-match receipt
+> from `lastIncome`; figures from a pure, unit-tested `lib/cashflow.ts` mirroring the store's resolve
+> math (no drift). All see BACKLOG R7/R6/R8/F-FINANCE. Last session's deep-career work play-test-verified
+> (B4 + R1 seen live; N3/D10/N1 wiring confirmed + unit-tested). HEAD now post-F-FINANCE, local ==
+> `origin/main`, persistence **v31** (all four = no bump, UI-only/presentation), gates green
+> (**473 tests** + build + e2e; all balance-neutral → sim skipped with justification; baseline intact —
+> Classic 36.8%, career PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
 >
 > **`BACKLOG.md` is the source of truth** for what's next — confirmed features + a dependency-aware
 > **Track A (Opus/Sonnet, buildable now) / Track B (Fable-blocked: balance/taste-critical)** roadmap,

@@ -355,12 +355,17 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   tour on a fresh career). Live-verified: tour auto-appears, steps through all four tabs, finishes on
   "Let's go" and persists. (A "Replay tour" button was deferred — the existing Replay-tutorial covers
   mechanics refreshers; the tour is one-time FTUE.)
-- **F-FINANCE. Finance page (FM-style) (CONFIRMED 2026-06-13)** — a dedicated finance view
-  (likely a Club sub-nav pill) consolidating the money picture: **transfer budget, current wage
-  spend vs wage budget, season income/expenses** (prize money, sponsorship, matchday, upkeep,
-  fines), bankroll. Much of the data already exists (`wages.ts` wageBill/wageBudget, `finance.ts`,
-  `stadium.ts` upkeep, `lastIncome` breakdown) — this surfaces it in one place. Opus-fit
-  (presentation over existing data), balance-neutral, no persistence.
+- **F-FINANCE. Finance page (FM-style) (✅ SHIPPED 2026-06-13)** — `src/components/finance/FinancePanel.tsx`,
+  a new **Club ▸ Finance** pill (career-only). Three snapshot cards (Transfer budget = bank · Wage
+  bill vs budget with bar · Season sponsorship incl. TV split), a **Per-matchweek** cash-flow
+  breakdown (win/draw reward, gate & central income with live attendance, interest; wages, upkeep,
+  fine rate) with Win/Draw/Loss net cells, and a **Last match** itemised receipt from `lastIncome`
+  → net. Every figure is computed with the SAME primitives the store applies on resolve (tier mult
+  × season scale × matchday/upkeep/fines), extracted to a pure, unit-tested `src/lib/cashflow.ts`
+  (`matchweekCashflow`, +4 tests in `tests/cashflow.test.ts`) so the display can't silently drift
+  from the economy. Presentation only (store/resolve path untouched) → balance-neutral, sim skipped,
+  no persistence. Gates: tsc · 473 tests · build · e2e. Live-verified in a career (National League:
+  budget £38M, wages £2M/£5M, sponsorship £3M, win-net £4M).
 - **F-WAGES. Negotiable player wages (CONFIRMED 2026-06-13)** — today personal terms are
   take-it-or-leave-it: the wage DEMAND is fixed (`wageDemand`) and you only meet or fail it; you
   can't negotiate it down. Make the wage offer negotiable (like the fee bid). NOTE: wages are

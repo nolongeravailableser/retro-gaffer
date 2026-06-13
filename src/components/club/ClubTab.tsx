@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import CareerHub from '@/components/career/CareerHub';
+import FinancePanel from '@/components/finance/FinancePanel';
 import RecordsPanel from '@/components/records/RecordsPanel';
 import ScenariosPanel from '@/components/scenarios/ScenariosPanel';
 import PvpPanel from '@/components/pvp/PvpPanel';
@@ -10,7 +11,7 @@ import SavePanel from '@/components/save/SavePanel';
 import { dailyKey } from '@/lib/daily';
 import type { OpponentTeam } from '@/lib/codec';
 
-type Pill = 'club' | 'records' | 'challenges' | 'compete' | 'settings';
+type Pill = 'club' | 'finance' | 'records' | 'challenges' | 'compete' | 'settings';
 
 interface ClubTabProps {
   /** PvP needs a full XI to play an imported opponent. */
@@ -41,7 +42,7 @@ export default function ClubTab({
   const pills: { id: Pill; label: string }[] = draftTournament
     ? [{ id: 'settings', label: 'Settings' }]
     : [
-        ...(career ? [{ id: 'club' as Pill, label: 'Club' }] : []),
+        ...(career ? [{ id: 'club' as Pill, label: 'Club' }, { id: 'finance' as Pill, label: 'Finance' }] : []),
         { id: 'records', label: 'Records' },
         { id: 'challenges', label: 'Challenges' },
         { id: 'compete', label: 'Compete' },
@@ -77,6 +78,7 @@ export default function ClubTab({
       )}
 
       {pill === 'club' && career && <CareerHub />}
+      {pill === 'finance' && career && <FinancePanel />}
       {pill === 'records' && <RecordsPanel />}
       {pill === 'challenges' && <ScenariosPanel onStart={onScenarioStart} />}
       {pill === 'compete' && (
