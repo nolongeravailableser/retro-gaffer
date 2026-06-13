@@ -257,6 +257,23 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   — riskier (canvas re-drive + match-modal HMR), left for later. Gates: tsc · 413 tests · build · e2e.
 - **R5. Individual development plans** — one meaningful choice per wonderkid (focus or
   senior mentor to grow a target stat over a season). Avoids FM's over-engineered training.
+- **R6. FM-style transfer-market search & filters (CONFIRMED 2026-06-13)** — a proper
+  search/filter system for the Career/League market (`components/shop/TransferMarket.tsx`), and
+  critically **surface EVERY player — including the low-skilled / low-value long tail.**
+  - *Today:* 3 segments (free <64 / open ≥64 / rivals) + a coarse Role filter + name search,
+    sorted affordable-then-overall-DESC and **capped at `MAX_ROWS = 60`**. So the cheapest /
+    lowest-rated players sort to the bottom and get cut by the 60-cap — effectively unfindable.
+    That's the core gap to fix.
+  - *Want (FM-style):* richer filters — **value/price range**, granular **position** (not just
+    Role; ties into [[A2]] player roles), nationality, league/era, overall & key-stat ranges,
+    age/contract (career) — plus **sort options incl. value ASC** (find the bargains/journeymen),
+    and **no hidden tail** (pagination / lazy-load / "show all", or at least a sort that reaches
+    the bottom). Acceptance: any owned-pool player is reachable via the market UI.
+  - *Reuse:* the **DraftRoom board** (`DraftRoom.tsx`) already has position tabs + name search +
+    Value/Rating sort (asc/desc) + Affordable filter over the full pool (≤200) — lift that pattern.
+  - *Notes:* surfacing/filtering only → **balance-neutral, Opus-fit (Track A), no persistence**.
+    Pairs with the pool work ([[#2]] ensures variety EXISTS; R6 ensures you can FIND it) and the
+    player profile (rows already open it). Re-check perf if removing the cap (the pool is ~668).
 
 ### Next-level features FM has never nailed (brainstorm 2 — 2026-06-13)
 
