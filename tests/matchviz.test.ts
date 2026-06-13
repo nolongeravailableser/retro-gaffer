@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildVizTimeline, anchorsFromSquad, ballAt } from '@/lib/matchviz';
+import { buildVizTimeline, anchorsFromSquad, ballAt, goalScenes } from '@/lib/matchviz';
 import { simulateMatch, type MatchTeam } from '@/lib/engine';
 import type { Player, Role } from '@/lib/types';
 
@@ -100,6 +100,34 @@ describe('buildVizTimeline', () => {
     buildVizTimeline(before.events, 'viz-iso', teamA.squad, teamB.squad);
     const after = simulateMatch(teamA, teamB, 'viz-iso');
     expect(after).toEqual(before);
+  });
+});
+
+describe('goalScenes (highlights reel source)', () => {
+  it('returns exactly the goal scenes, in order, matching the scoreline', () => {
+    // Find a match with goals; the reel should hold one scene per goal.
+    for (let s = 0; s < 25; s++) {
+      const { result, tl } = timelineFor(`reel-${s}`);
+      const totalGoals = result.score.a + result.score.b;
+      if (totalGoals === 0) continue;
+      const reel = goalScenes(tl.scenes);
+      expect(reel).toHaveLength(totalGoals);
+      expect(reel.every((sc) => sc.kind === 'goal')).toBe(true);
+      expect(reel.every((sc) => sc.flash?.text?.startsWith('GOAL'))).toBe(true);
+      return;
+    }
+    throw new Error('no scoring match found in 25 seeds');
+  });
+
+  it('is empty for a goalless match (the reel hides itself)', () => {
+    for (let s = 0; s < 25; s++) {
+      const { result, tl } = timelineFor(`nilnil-${s}`);
+      if (result.score.a + result.score.b === 0) {
+        expect(goalScenes(tl.scenes)).toHaveLength(0);
+        return;
+      }
+    }
+    // No 0-0 found is fine — the non-empty case is covered above.
   });
 });
 

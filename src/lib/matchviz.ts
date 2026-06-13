@@ -241,6 +241,12 @@ export function buildVizTimeline(
   };
 }
 
+/** The goal scenes from a built timeline, in match order — the highlights reel
+ *  plays exactly these (each carries its build-up choreography + scorer flash). */
+export function goalScenes(scenes: readonly VizScene[]): VizScene[] {
+  return scenes.filter((s) => s.kind === 'goal');
+}
+
 /** Eased lerp between scene ball keyframes at local progress t (0–1). */
 export function ballAt(scene: VizScene, t: number): { x: number; y: number } {
   const pts = scene.ball;

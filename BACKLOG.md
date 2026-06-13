@@ -272,13 +272,17 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
 - **R3. Fuzzy scouting in the career market** — lower-league players show a fuzzy rating +
   potential range until you pay to scout them (deterministic fuzz → Daily-safe). Recreates
   the "find the next star" thrill; reuses the youth-potential ★-range pattern.
-- **R4. Match highlights reel + where-it-was-won heatmap** — ⏳ PARTIAL (SHIPPED 2026-06-13):
-  the **shot map + channel read** ("where it was won") is done — `src/lib/shotmap.ts` (pure, 5
-  tests) derives shots from the viz timeline's goal/chance scenes; `components/match/ShotMap.tsx`
-  plots them on a mini-pitch (yours attacking right, theirs left, goals filled / chances hollow)
-  with a per-side channel read, rendered at FT under the verdict. Pairs with E11. **FAST-FOLLOW
-  (deferred): the animated replay reel** (re-driving MatchPitchView's rAF loop over goal scenes)
-  — riskier (canvas re-drive + match-modal HMR), left for later. Gates: tsc · 413 tests · build · e2e.
+- **R4. Match highlights reel + where-it-was-won heatmap** — ✅ COMPLETE (2026-06-13). Part 1
+  (shot map + channel read) shipped earlier. **The animated reel is now shipped too:**
+  `src/components/match/HighlightsReel.tsx` re-drives the SAME `MatchPitchView` canvas (no duplicate
+  drawing) over a goals-only mini-timeline (`goalScenes()` added to `lib/matchviz.ts`, +2 tests),
+  replaying each goal's build-up choreography in turn — looping autoplay + prev/pause/next + a
+  per-goal scorer·team caption, skipping itself on a 0-0. Rendered at FT between the verdict and the
+  shot map (MatchView). Pure presentation (engine/economy untouched; the matchviz "never perturbs
+  the engine" test still passes) → balance-neutral, sim skipped, no persistence. Gates: tsc · 475
+  tests · build · e2e. Live-verified: a 1-1 (Crimson Casuals v Selby) replayed both goals on the
+  canvas with correct scorer attribution (Sparky Boggins → Carl Hodgkiss), autoplay advancing 1→2,
+  two canvases (main FT pitch + reel) coexisting cleanly, no console errors.
 - **R5. Individual development plans** — one meaningful choice per wonderkid (focus or
   senior mentor to grow a target stat over a season). Avoids FM's over-engineered training.
 - **R6. FM-style transfer-market search & filters (✅ SHIPPED 2026-06-13)** — built + gated green

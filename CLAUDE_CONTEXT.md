@@ -4,7 +4,11 @@
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
 > **📍 CURRENT STATE — 2026-06-13 (later session, in progress).** Working the Track A / Opus-doable
-> backlog hands-off (play-test → **R7 ✅** → **R6 ✅** → **R8 ✅** → **F-FINANCE ✅** → R4). **R7**: squad-page
+> backlog hands-off — **ALL DONE** (play-test ✅ → **R7 ✅** → **R6 ✅** → **R8 ✅** → **F-FINANCE ✅**
+> → **R4 ✅**; the whole Track A / Opus-doable queue is now shipped — only Track B remains, Fable-blocked).
+> **R4**: animated highlights reel (`components/match/HighlightsReel.tsx`) re-drives the MatchPitchView
+> canvas over a goals-only mini-timeline at full-time (autoplay loop + prev/pause/next, per-goal
+> scorer caption, skips a 0-0), between the verdict and shot map. **R7**: squad-page
 > rethink — profile from pitch slots + bench, mobile Formation⇄Squad toggle (desktop keeps two-column),
 > Auto-Pick on the pitch (shared `SquadActions`). **R6**: FM-style market — Sort (Overall/Fee/Name ↑↓,
 > Fee↑ = bargains) + Affordable + collapsible Filters (granular Position + Min/Max fee range) +
@@ -17,10 +21,15 @@
 > Sponsorship cards + a per-matchweek cash-flow breakdown (Win/Draw/Loss nets) + a Last-match receipt
 > from `lastIncome`; figures from a pure, unit-tested `lib/cashflow.ts` mirroring the store's resolve
 > math (no drift). All see BACKLOG R7/R6/R8/F-FINANCE. Last session's deep-career work play-test-verified
-> (B4 + R1 seen live; N3/D10/N1 wiring confirmed + unit-tested). HEAD now post-F-FINANCE, local ==
-> `origin/main`, persistence **v31** (all four = no bump, UI-only/presentation), gates green
-> (**473 tests** + build + e2e; all balance-neutral → sim skipped with justification; baseline intact —
+> (B4 + R1 seen live; N3/D10/N1 wiring confirmed + unit-tested). HEAD now post-R4, local ==
+> `origin/main`, persistence **v31** (all five = no bump, UI-only/presentation), gates green
+> (**475 tests** + build + e2e; all balance-neutral → sim skipped with justification; baseline intact —
 > Classic 36.8%, career PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
+> **NEXT:** the only remaining backlog work is **Track B (Fable-blocked)** — A1/A2/A3 playing styles
+> & roles, C6 traits, C7 partnerships, R2 adaptive league, D9 trader loop, N7 footedness, #2b pool
+> authoring, F-WAGES, F-SQUAD. Tell Claude when Fable is available. (Also parked, Opus-doable but
+> lower priority: N2 smart fast-forward, R3 fuzzy scouting, R5 dev plans, N4 project pitch, D8 perks,
+> D10/N1 mechanical payoffs, N5 nemesis, N6 async world.)
 >
 > **`BACKLOG.md` is the source of truth** for what's next — confirmed features + a dependency-aware
 > **Track A (Opus/Sonnet, buildable now) / Track B (Fable-blocked: balance/taste-critical)** roadmap,
