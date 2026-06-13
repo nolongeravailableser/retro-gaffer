@@ -255,10 +255,15 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
 
 ### Next-level features FM has never nailed (brainstorm 2 — 2026-06-13)
 
-- **N1. The world moves & tells the story** ⭐ — players you sell become stars elsewhere,
-  old clubs rise/fall, ex-players turn into rival managers — surfaced as emotional payoff
-  ("the kid you sold for £2M just won the league"). Tractable with the compressed pool; a
-  genuine differentiator.
+- **N1. The world moves & tells the story** ⭐ — ✅ SHIPPED 2026-06-13 (ex-player half).
+  `src/lib/alumni.ts` (pure, 7 tests): every player who leaves your clubs (sell / cashed-in
+  bid / Bosman) is remembered in a top-level persisted `alumni` list (carries across clubs =
+  the manager's, resets on a new career); `alumniNews()` surfaces a seeded "where are they now"
+  story season-end (a star winning a trophy, a cut veteran sliding down the leagues), posted as
+  a `news` inbox message. Persistence **v31** (+migration: legacy → `alumni: []`, verified on the
+  R7 save). Narrative-only → balance-neutral. Gates: tsc · 445 tests · build · e2e · sim. (Live
+  news needs a multi-season career to surface — logic + migration fully tested.) **Fast-follow:
+  old-clubs-rise/fall + ex-players-become-managers (the bigger generative half).**
 - **N2. Smart fast-forward** — fast-sim low-stakes matches but pull the user in at dramatic
   moments (hat-trick, relegation six-pointer, last-minute equaliser). Protects the snappy
   identity; beats FM's all-or-nothing "go on holiday."

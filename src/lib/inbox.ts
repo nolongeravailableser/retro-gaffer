@@ -16,6 +16,7 @@ export type InboxKind =
   | 'offer' // a rival club bids for one of your players (actionable)
   | 'transfer' // a completed transfer (in/out)
   | 'morale' // a player's mood (man-management)
+  | 'news' // a "where are they now" story about an ex-player
   | 'achievement'; // an unlocked achievement
 
 /** A rival's bid for one of your players — the payload an `offer` message acts on. */
@@ -234,6 +235,17 @@ export function moraleMessage(week: number, playerId: string, playerName: string
     body: `${playerName} has grown unsettled — short on form or starved of football. Give him minutes, or he'll agitate to leave.`,
     read: false,
   };
+}
+
+/** A "where are they now" story about a player who left you (FYI flavour). */
+export function newsMessage(
+  week: number,
+  season: number,
+  alumnusId: string,
+  title: string,
+  body: string
+): InboxMessage {
+  return { id: `news-${season}-${alumnusId}`, week, kind: 'news', title, body, read: false };
 }
 
 /** An incoming bid from a rival club for one of your players (actionable). */

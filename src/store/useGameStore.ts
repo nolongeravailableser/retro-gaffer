@@ -150,8 +150,10 @@ import {
   confidenceWarning,
   signingMessage,
   pledgePayoffMessage,
+  newsMessage,
   type InboxMessage,
 } from '@/lib/inbox';
+import { recordAlumnus, alumniNews, type Alumnus } from '@/lib/alumni';
 import { morale as playerMorale, moraleBand } from '@/lib/morale';
 import {
   boardConfidence,
@@ -428,6 +430,9 @@ interface GameState {
   /** FM-style club inbox (Career/League): results, injuries, board notes, bids.
    *  Newest first; empty outside the simulation modes. */
   inbox: InboxMessage[];
+  /** Players who left your clubs (sold / cashed-in / Bosman) — the manager's
+   *  alumni, for "where are they now" world news. Carries across clubs. */
+  alumni: Alumnus[];
   /** Weekly training focus (Career/League). Tilts the squad subtly each match. */
   training: TrainingFocus;
   /** Per-player match sharpness 0–100 (rises starting, decays benched). Career/League. */
@@ -645,6 +650,7 @@ function freshRun(
     cup: null as CupState | null,
     draft: null as DraftState | null,
     inbox: [] as InboxMessage[],
+    alumni: [] as Alumnus[],
     training: DEFAULT_FOCUS as TrainingFocus,
     sharpness: {} as Record<string, number>,
     fatigue: {} as Record<string, number>,
@@ -699,6 +705,7 @@ function saveSlice(s: GameState) {
     cup: s.cup,
     draft: s.draft,
     inbox: s.inbox,
+    alumni: s.alumni,
     training: s.training,
     sharpness: s.sharpness,
     fatigue: s.fatigue,
@@ -1355,6 +1362,10 @@ export const useGameStore = create<GameState>()(
             xi: s.xi.map((slot) => (slot === id ? null : slot)),
             bench: s.bench.filter((b) => b !== id),
             selectedPlayerId: s.selectedPlayerId === id ? null : s.selectedPlayerId,
+            // Remember him — the world moves on, and so does he (career only).
+            alumni: s.career
+              ? recordAlumnus(s.alumni, { id, name: player.name, season: s.career.season, ovr: overall(player) })
+              : s.alumni,
             notice: null,
           };
         });
@@ -1580,6 +1591,10 @@ export const useGameStore = create<GameState>()(
             bench: s.bench.filter((b) => b !== playerId),
             selectedPlayerId: s.selectedPlayerId === playerId ? null : s.selectedPlayerId,
             league,
+            alumni:
+              s.career && player
+                ? recordAlumnus(s.alumni, { id: playerId, name: playerName, season: s.career.season, ovr: overall(player) })
+                : s.alumni,
             inbox: s.inbox.map((m) =>
               m.id === messageId ? { ...m, read: true, resolved: 'accepted' as const } : m
             ),
@@ -2372,6 +2387,7 @@ export const useGameStore = create<GameState>()(
               expectationMessage(1, 1, boardExpectation(tier)),
               sponsorshipMessage(1, 1, division(tier).name, sponsorship),
             ],
+            alumni: [], // a brand-new career starts with no ex-players
             best: s.best,
             scenarioStars: s.scenarioStars,
             careerBest: s.careerBest,
@@ -2570,6 +2586,13 @@ export const useGameStore = create<GameState>()(
           const departedNames = contracts.departed.map((id) => getPlayer(id)?.name ?? 'A player');
 
           const nextSeason = prev.season + 1;
+          // Remember the Bosman departures, then see if any ex-player is worth a
+          // "where are they now" story this season (seeded → Daily-safe).
+          const alumni = contracts.departed.reduce((acc, id) => {
+            const p = getPlayer(id);
+            return p ? recordAlumnus(acc, { id, name: p.name, season: prev.season, ovr: overall(p) }) : acc;
+          }, s.alumni);
+          const news = alumniNews(alumni, nextSeason, s.runSeed);
           // Apply promotion/relegation: the review already resolved which tier we
           // play in next. A fresh league is generated for that division.
           const tier = review.toTier;
@@ -2582,6 +2605,7 @@ export const useGameStore = create<GameState>()(
             ...(departedNames.length ? [departureMessage(1, nextSeason, departedNames)] : []),
             expectationMessage(1, nextSeason, boardExpectation(tier)),
             sponsorshipMessage(1, nextSeason, division(tier).name, sponsorship),
+            ...(news ? [newsMessage(1, nextSeason, news.alumnusId, news.title, news.body)] : []),
           ]);
           const startLives = resolveConfig(s.mode, s.mutator).startingLives;
           const seed = nextSeed(s.shopSeed);
@@ -2610,6 +2634,7 @@ export const useGameStore = create<GameState>()(
             xi,
             bench,
             inbox,
+            alumni,
             collection,
             bankroll: Math.max(0, s.bankroll + review.bonus + sponsorship - renewalSpend),
             round: 1,

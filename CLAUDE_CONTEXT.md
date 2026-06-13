@@ -19,6 +19,13 @@
 > manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
 > narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
 >
+> **▶ Phase 2 #2 — N1 WORLD MOVES (ex-player half) ✅ SHIPPED + PUSHED. Opus.** `lib/alumni.ts`
+> (pure, 7 tests): players who leave (sell/cashed-in/Bosman) → top-level persisted `alumni`
+> (carries across clubs, resets on new career); seeded `alumniNews()` posts a season-end "where
+> are they now" `news` inbox message. Persistence **v31** (+migration legacy→`alumni:[]`,
+> verified on R7). Narrative-only → balance-neutral. Gates: tsc · **445 tests** (+7) · build · e2e
+> · sim. Fast-follow: old-clubs-rise/fall + ex-players-as-managers (the generative half).
+>
 > **▶ Phase 2 #1 — N3 EMERGENT NARRATIVE SEASONS ✅ SHIPPED + PUSHED. Opus.** `lib/narrative.ts`
 > (pure, 9 tests) frames the run-in (title/promotion/survival/final-day, mathematically-alive) →
 > tone-coloured banner atop the FixtureHero. Presentation-only → balance-neutral. Gates: tsc ·

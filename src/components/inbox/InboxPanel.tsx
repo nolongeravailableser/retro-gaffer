@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Frown, Check, X, Bell, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, Trophy, HeartPulse, Gavel, Megaphone, ArrowLeftRight, Frown, Newspaper, Check, X, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { isWindowOpen, totalWeeks } from '@/lib/league';
 import { needsAction, type InboxKind, type InboxMessage } from '@/lib/inbox';
@@ -11,6 +11,7 @@ const KIND_ICON: Record<InboxKind, React.ElementType> = {
   offer: Gavel,
   transfer: ArrowLeftRight,
   morale: Frown,
+  news: Newspaper,
   achievement: Trophy,
 };
 
@@ -21,6 +22,7 @@ const KIND_TINT: Record<InboxKind, string> = {
   offer: 'text-fuchsia-300',
   transfer: 'text-sky-300',
   morale: 'text-orange-300',
+  news: 'text-violet-300',
   achievement: 'text-crt-amber',
 };
 
