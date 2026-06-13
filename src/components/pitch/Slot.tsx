@@ -59,7 +59,7 @@ export default function Slot({
         data-testid={`slot-${slotIndex}`}
         aria-label={player ? `${player.name} (${role})` : `Empty ${style.label} slot`}
         className={[
-          'flex h-[4.75rem] w-[4.25rem] flex-col items-center justify-center rounded-lg border-2 px-1 text-center transition sm:h-28 sm:w-32 sm:px-2',
+          'flex h-[5.5rem] w-[4.25rem] flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-1 text-center transition sm:h-28 sm:w-32 sm:px-2',
           player
             ? `${style.border} bg-pitch-800/90 shadow-card`
             : 'border-dashed border-white/20 bg-pitch-900/40',
@@ -81,17 +81,15 @@ export default function Slot({
             >
               {label}{outOfPosition ? ' !' : ''}
             </span>
-            <span className="mt-1 line-clamp-2 font-display text-[11px] leading-tight sm:text-sm">
+            <span className="line-clamp-2 font-display text-[11px] leading-tight sm:text-sm">
               {player.name}
             </span>
-            <span className="mt-1">
-              <OvrBadge value={overall(player)} />
-            </span>
+            <OvrBadge value={overall(player)} />
           </>
         ) : (
           <>
             <Plus size={16} className="text-white/30" />
-            <span className={`mt-1 font-display text-xs ${style.text}`}>{label}</span>
+            <span className={`font-display text-xs ${style.text}`}>{label}</span>
           </>
         )}
       </motion.button>
