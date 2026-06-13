@@ -12,7 +12,16 @@
 > `git reset --hard`/`git clean` prompting. **Model checkpoint pref still stands** — recommend
 > + wait per task. Fable is temporarily unavailable, so Track B waits.
 >
-> **▶ Track A #1 — FM-style PLAYER PROFILE ✅ SHIPPED (local, not yet pushed). Opus.**
+> **▶ Track A #2 — "WHY YOU LOST" ANALYSIS ✅ SHIPPED + PUSHED. Opus.**
+> `lib/matchAnalysis.ts` (pure, 7 tests) reads the deterministic result back — xG (chances),
+> score-vs-xG (finishing/keeper), `teamStatProfile` dimensions (names the cause), red cards —
+> into a one-line verdict + ≤4 toned factors from your perspective. `components/match/
+> MatchVerdict.tsx` renders it at FT above the timeline. Pure lib NOT imported by engine/store/
+> sim → balance-neutral (sim skipped, justified). Gates: tsc · **408 tests** (+7) · build · e2e.
+> Live-verified a real R7 match: 1-0 win → "Edged it — a tight one settled your way · chances
+> even xG 1.5–1.0 · resolute defending." (R7 save backed up + restored.)
+>
+> **▶ Track A #1 — FM-style PLAYER PROFILE ✅ SHIPPED + PUSHED (commit 31a9980). Opus.**
 > `components/player/PlayerProfile.tsx` — full-screen context-adaptive overlay (z-80, owned/
 > market/rival), reachable from squad rows + market cards. Surfaces previously-hidden data
 > (discipline, eligible positions, contract/Bosman, age/development, market+sell value, wage,

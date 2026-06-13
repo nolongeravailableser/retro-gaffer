@@ -158,8 +158,14 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
 - **D8. Manager perks** — light progression for the persistent manager across clubs.
 - **D9. Develop-and-sell trader loop** — make buy-low/develop/sell-high a visible playstyle.
 - **D10. Rivalries** — a repeatedly-faced club becomes a mechanical rival.
-- **E11. "Why you lost" post-match analysis** — plain-English causation from the
-  deterministic engine (our standout idea — plays to the engine's unique strength).
+- **E11. "Why you lost" post-match analysis** — ✅ SHIPPED 2026-06-13.
+  `src/lib/matchAnalysis.ts` (pure, 7 tests) reads the deterministic result back — xG
+  (chances created), score-vs-xG (finishing/keeper), the squads' `teamStatProfile`
+  dimensions (names the cause), red cards — into a one-line verdict + ≤4 toned factors,
+  all from side A's perspective. `components/match/MatchVerdict.tsx` renders it at full-time
+  above the timeline (MatchView). Pure lib not imported by engine/store/sim → balance-neutral
+  (sim skipped with justification). Live-verified: a 1-0 win → "Edged it — a tight one settled
+  your way · chances even xG 1.5–1.0 · resolute defending." gates: tsc · 408 tests · build · e2e.
 - **E12. Squad depth chart / planner** — XI + backups per position, flagged weak spots.
 
 ## 2. Player pool — balance & breadth (CONFIRMED 2026-06-13)

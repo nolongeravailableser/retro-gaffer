@@ -29,6 +29,7 @@ import { MATCH_REWARD } from '@/lib/economy';
 import { useGameStore } from '@/store/useGameStore';
 import MatchPitchView from './MatchPitchView';
 import MatchReport from './MatchReport';
+import MatchVerdict from './MatchVerdict';
 import type { RatingContext } from '@/lib/ratings';
 import CrestBadge from '@/components/ui/CrestBadge';
 import MoneyCounter from '@/components/ui/MoneyCounter';
@@ -629,6 +630,13 @@ export default function MatchView({
                     </div>
                   ))}
                 </div>
+
+                {/* Why it happened — plain-English causation from the engine. */}
+                <MatchVerdict
+                  result={result}
+                  teamA={{ name: live.teamA.name, squad: live.teamA.squad }}
+                  teamB={{ name: live.opponent.name, squad: live.opponent.squad }}
+                />
 
                 {/* Key-events timeline + player ratings */}
                 <MatchReport
