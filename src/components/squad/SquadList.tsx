@@ -1,143 +1,24 @@
-import { useState } from 'react';
 import {
   Ban, HeartCrack, MousePointerClick, GripVertical, Wand2, Eraser, BatteryLow,
-  Snowflake, Smile, Meh, Frown, ArrowDownToLine,
+  Snowflake, Smile, Meh, Frown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getPlayer } from '@/store/useGameStore';
-import { sellValue } from '@/lib/economy';
-import { marketSellValue } from '@/lib/market';
 import { sharpnessBand, fatigueBand } from '@/lib/training';
 import { morale as playerMorale, moraleBand, moraleLabel } from '@/lib/morale';
-import { LEAGUE_NEUTRAL_TIER, overall } from '@/lib/wages';
+import { overall } from '@/lib/wages';
 import { avgRating } from '@/lib/ratings';
-import { deriveStats, STAT_LABELS, type ExtendedStatKey } from '@/lib/stats';
 import { Draggable } from '@/components/dnd/dnd';
 import { ROLE_STYLES } from '@/components/ui/roleStyles';
 import { positionLabel } from '@/lib/playerMeta';
 import OvrBadge from '@/components/ui/OvrBadge';
-import type { Player, Role } from '@/lib/types';
+import type { Role } from '@/lib/types';
 
 interface SquadListProps {
   multipliers: Map<string, number>;
 }
 
 const ROLE_ORDER: Role[] = ['GK', 'DEF', 'MID', 'FWD'];
-
-/** Tier colour for a 0–99 sub-stat (text + bar fill). */
-const statColor = (v: number) =>
-  v >= 80 ? 'text-tier-elite' : v >= 65 ? 'text-tier-ok' : v >= 50 ? 'text-tier-low' : 'text-tier-poor';
-const statFill = (v: number) =>
-  v >= 80 ? 'bg-tier-elite' : v >= 65 ? 'bg-tier-ok' : v >= 50 ? 'bg-tier-low' : 'bg-tier-poor';
-
-function StatLine({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-2 text-[11px]">
-      <span className="w-8 shrink-0 font-data text-[9px] uppercase text-chrome-muted/70">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${statFill(value)}`} style={{ width: `${Math.min(value, 100)}%` }} />
-      </div>
-      <span className={`w-6 shrink-0 text-right font-data text-[11px] tabular-nums ${statColor(value)}`}>{value}</span>
-    </div>
-  );
-}
-
-/** The expanded detail sheet for the selected player — full stats, history,
- *  and the actions (bench / sell) that used to crowd every row. */
-function PlayerSheet({
-  p, onPitch, chemBonus, saleValue,
-}: {
-  p: Player;
-  onPitch: boolean;
-  chemBonus: number;
-  saleValue: number;
-}) {
-  const sendToBench = useGameStore((s) => s.sendToBench);
-  const sell = useGameStore((s) => s.sell);
-  const playerHistory = useGameStore((s) => s.playerHistory);
-  const [confirmSell, setConfirmSell] = useState(false);
-  const ext = deriveStats(p);
-  const h = playerHistory[p.id];
-  const avg = h ? avgRating(h) : null;
-  const keys: ExtendedStatKey[] =
-    p.role === 'GK' ? ['goalkeeping', 'defending', 'passing', 'physical', 'composure', 'discipline']
-      : ['pace', 'shooting', 'passing', 'defending', 'physical', 'composure'];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 34, opacity: { duration: 0.15 } }}
-      className="overflow-hidden"
-    >
-      <div className="border-b border-crt-green/20 bg-surface-2 px-3 py-3">
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <div className="min-w-0 text-[11px] text-chrome-muted">
-            <p>
-              {p.club && <span className="text-chrome">{p.club}</span>}
-              {p.era && <span> · {p.era}</span>}
-              {p.nationality && <span> · {p.nationality}</span>}
-            </p>
-            {chemBonus > 0 && <p className="text-crt-green">✦ chemistry +{chemBonus}% in this XI</p>}
-          </div>
-          <OvrBadge value={overall(p)} size="md" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <StatLine label="ATK" value={p.stats.attack} />
-          <StatLine label="DEF" value={p.stats.defense} />
-          {keys.map((k) => (
-            <StatLine key={k} label={STAT_LABELS[k]} value={ext[k]} />
-          ))}
-        </div>
-
-        {h && h.apps > 0 && (
-          <p className="mt-2 font-data text-[11px] text-chrome-muted">
-            This run: {h.apps} app{h.apps !== 1 ? 's' : ''}
-            {avg !== null && <span className="text-crt-amber"> · ★{avg.toFixed(1)}</span>}
-            {h.goals > 0 && <span className="text-crt-green"> · {h.goals}⚽</span>}
-            {h.assists > 0 && <span className="text-sky-300"> · {h.assists}🅰</span>}
-            {h.motm > 0 && <span className="text-crt-amber"> · {h.motm}× MOTM</span>}
-          </p>
-        )}
-
-        <div className="mt-2.5 flex items-center gap-2">
-          {onPitch ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); sendToBench(p.id); }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 py-1.5 font-display text-xs text-chrome hover:bg-white/5"
-            >
-              <ArrowDownToLine size={12} /> To bench
-            </button>
-          ) : (
-            <span className="flex-1 text-center text-[11px] text-chrome-muted">
-              Tap a pitch slot to field him
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirmSell) sell(p.id);
-              else setConfirmSell(true);
-            }}
-            data-testid={`sell-${p.id}`}
-            className={[
-              'flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 font-display text-xs transition',
-              confirmSell
-                ? 'border-rose-400/70 bg-rose-500/20 text-rose-200'
-                : 'border-rose-400/30 text-rose-300/90 hover:bg-rose-500/10',
-            ].join(' ')}
-          >
-            {confirmSell ? 'Sure? Tap to sell' : `Sell · £${saleValue}M`}
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 export default function SquadList({ multipliers }: SquadListProps) {
   const owned = useGameStore((s) => s.owned);
@@ -147,21 +28,13 @@ export default function SquadList({ multipliers }: SquadListProps) {
   const injuries = useGameStore((s) => s.injuries);
   const playerHistory = useGameStore((s) => s.playerHistory);
   const selectedPlayerId = useGameStore((s) => s.selectedPlayerId);
-  const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const openProfile = useGameStore((s) => s.openProfile);
   const clubName = useGameStore((s) => s.clubName);
-  const careerTier = useGameStore((s) => s.career?.tier ?? null);
   const inLeague = useGameStore((s) => s.league !== null);
   const sharpness = useGameStore((s) => s.sharpness);
   const fatigue = useGameStore((s) => s.fatigue);
   const autoPickXI = useGameStore((s) => s.autoPickXI);
   const benchAll = useGameStore((s) => s.benchAll);
-
-  // Career/League sell at market value (free agents fetch nothing); else 80% of cost.
-  const saleValue = (p: Player) => {
-    if (careerTier !== null) return marketSellValue(p, careerTier);
-    if (inLeague) return marketSellValue(p, LEAGUE_NEUTRAL_TIER);
-    return sellValue(p);
-  };
 
   const onPitch = new Set(xi.filter((id): id is string => !!id));
   const onBench = new Set(bench);
@@ -232,8 +105,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
             <div className="flex items-center gap-2 border-b border-crt-green/30 bg-crt-green/10 px-3 py-1.5 text-xs text-crt-green">
               <MousePointerClick size={11} />
               <span>
-                <span className="font-display">{selected.name}</span> — tap a slot to place,
-                or use the actions below
+                <span className="font-display">{selected.name}</span> — tap a slot to field him
               </span>
             </div>
           </motion.div>
@@ -246,7 +118,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
             className="overflow-hidden"
           >
             <div className="border-b border-white/5 px-3 py-1.5 text-[11px] text-chrome-muted">
-              Tap a player for details &amp; placement; drag to a slot also works.
+              Tap a player for their profile; drag to a slot to field him.
             </div>
           </motion.div>
         )}
@@ -309,7 +181,7 @@ export default function SquadList({ multipliers }: SquadListProps) {
                 return (
                   <div key={id}>
                     <div
-                      onClick={() => selectPlayer(isSelected ? null : id)}
+                      onClick={() => openProfile(id)}
                       className={[
                         'flex cursor-pointer select-none items-center gap-2 px-3 py-2 transition-colors',
                         isSelected
@@ -379,18 +251,6 @@ export default function SquadList({ multipliers }: SquadListProps) {
                       {/* OVR */}
                       <OvrBadge value={overall(p)} />
                     </div>
-
-                    {/* Detail sheet under the selected row */}
-                    <AnimatePresence initial={false}>
-                      {isSelected && (
-                        <PlayerSheet
-                          p={p}
-                          onPitch={onPitch.has(id)}
-                          chemBonus={chemBonus}
-                          saleValue={saleValue(p)}
-                        />
-                      )}
-                    </AnimatePresence>
                   </div>
                 );
               })}

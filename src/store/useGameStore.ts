@@ -392,6 +392,9 @@ interface GameState {
   bench: string[];
   /** Picked-up player for click-to-assign, or null. */
   selectedPlayerId: string | null;
+  /** Player whose full-screen profile overlay is open, or null. Transient UI
+   *  state (not persisted) — the profile is reachable from squad/market/etc. */
+  profilePlayerId: string | null;
   /** Transient toast for blocked actions (e.g. "Not enough funds"). */
   notice: string | null;
   /** Tone of the current notice — drives the toast's colour/icon/lifetime. */
@@ -553,6 +556,10 @@ interface GameState {
 
   // selection + placement
   selectPlayer: (id: string | null) => void;
+  /** Open the full-screen player profile overlay for a player id. */
+  openProfile: (id: string) => void;
+  /** Close the player profile overlay. */
+  closeProfile: () => void;
   slotClicked: (slotIndex: number) => void;
   placeInSlot: (id: string, slotIndex: number) => void;
   sendToBench: (id: string) => void;
@@ -651,6 +658,7 @@ function freshRun(
     xi: emptyXi(),
     bench: [] as string[],
     selectedPlayerId: null,
+    profilePlayerId: null,
     notice: null,
     noticeKind: 'info' as NoticeKind,
     record: { w: 0, d: 0, l: 0 },
@@ -1939,6 +1947,9 @@ export const useGameStore = create<GameState>()(
         set((s) => ({
           selectedPlayerId: s.selectedPlayerId === id ? null : id,
         })),
+
+      openProfile: (id) => set({ profilePlayerId: id }),
+      closeProfile: () => set({ profilePlayerId: null }),
 
       slotClicked: (slotIndex) => {
         const { selectedPlayerId, xi } = get();

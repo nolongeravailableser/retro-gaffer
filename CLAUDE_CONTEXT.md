@@ -3,6 +3,27 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
+> **🗂️ BACKLOG + ROADMAP now live in `BACKLOG.md` (2026-06-13).** After the redesign the
+> user opened a brainstorm → a confirmed feature backlog with a dependency-aware **Track A
+> (now, Sonnet/Opus) / Track B (Fable-blocked, balance/taste-critical)** roadmap + per-task
+> model + a per-task definition-of-done. **Working through it in order.** Autonomy is now
+> broad: `.claude/settings.local.json` got a hands-off allow-list (npm/npx/git/gh/node/
+> python3/sed/preview_* + Edit/Write) with a deny-list keeping `rm -rf`/`sudo`/force-push/
+> `git reset --hard`/`git clean` prompting. **Model checkpoint pref still stands** — recommend
+> + wait per task. Fable is temporarily unavailable, so Track B waits.
+>
+> **▶ Track A #1 — FM-style PLAYER PROFILE ✅ SHIPPED (local, not yet pushed). Opus.**
+> `components/player/PlayerProfile.tsx` — full-screen context-adaptive overlay (z-80, owned/
+> market/rival), reachable from squad rows + market cards. Surfaces previously-hidden data
+> (discipline, eligible positions, contract/Bosman, age/development, market+sell value, wage,
+> humanized chem links). Store: transient `profilePlayerId` + `openProfile`/`closeProfile`
+> (NOT persisted → no version bump). Inline `PlayerSheet` removed (overlay replaces it). Gates:
+> tsc · **401 tests** (+4 `profile.test.ts`) · build · e2e · career sim baseline unchanged
+> (£71M PL median / 43% champ — proves it's balance-neutral). Live-verified owned context both
+> viewports; fixed a Sell-hidden-in-legacy-Classic bug (draft gate now `draft !== null`).
+> Market context type-checked + reuses the tested `NegotiationModal` (not yet live-played).
+> See `BACKLOG.md` item 1 for the fast-follows. HEAD still `787f822` until this commits.
+>
 > **⚡ UI REDESIGN — ALL 7 PHASES SHIPPED & LIVE (2026-06-13, user-approved "build it
 > and push to live").** Full proposal + per-screen rationale: `design-mockups/index.html`
 > (10 standalone HTML mockups — throwaway reference, not wired to the app). Every phase

@@ -37,6 +37,7 @@ export default function TransferMarket() {
   const career = useGameStore((s) => s.career);
   const league = useGameStore((s) => s.league);
   const autoFillSquad = useGameStore((s) => s.autoFillSquad);
+  const openProfile = useGameStore((s) => s.openProfile);
 
   const [role, setRole] = useState<RoleFilter>('ALL');
   const [segment, setSegment] = useState<Segment>('open');
@@ -238,12 +239,18 @@ export default function TransferMarket() {
                 <span className={`w-9 shrink-0 rounded px-1 py-0.5 text-center font-data text-[10px] font-semibold ${rs.text} ${rs.bg}`}>
                   {p.position ? positionShort(p.position) : p.role}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-sm text-chrome">{p.name}</p>
+                <button
+                  type="button"
+                  onClick={() => openProfile(p.id)}
+                  data-testid={`profile-open-${p.id}`}
+                  title="View full profile"
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate font-display text-sm text-chrome transition-colors hover:text-crt-green">{p.name}</p>
                   <p className="truncate text-[10px] text-chrome-muted">
                     {atClub ? <span className="text-fuchsia-300">at {atClub}</span> : `${p.club} · ${p.era}`}
                   </p>
-                </div>
+                </button>
                 {bonus > 0 && (
                   <span className="shrink-0 font-data text-[11px] text-crt-green" title="Chemistry this player would add to your current XI">
                     +{bonus}%

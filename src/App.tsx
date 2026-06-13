@@ -51,6 +51,7 @@ import OnboardingModal from '@/components/run/OnboardingModal';
 import StartMenu from '@/components/run/StartMenu';
 import DraftRoom from '@/components/run/DraftRoom';
 import JobMarket from '@/components/career/JobMarket';
+import PlayerProfile from '@/components/player/PlayerProfile';
 import TransferMarket from '@/components/shop/TransferMarket';
 import InboxPanel from '@/components/inbox/InboxPanel';
 import TrainingPanel from '@/components/training/TrainingPanel';
@@ -529,6 +530,10 @@ export default function App() {
       />
 
       <CareerReview />
+      {/* Full-screen player profile (z-80): the FM-style "click into a player"
+          hub, reachable from squad rows and market cards. Renders only when a
+          profile is open. */}
+      <PlayerProfile />
       <RunOverModal onNewRun={() => setNewRunOpen(true)} />
       {/* Classic draft (z-65): snake-draft your squad against the AI clubs. */}
       <DraftRoom />
