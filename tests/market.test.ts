@@ -115,6 +115,42 @@ describe('rivalBids — incoming offers for your players', () => {
   });
 });
 
+describe('rivalBids — difficulty aggression (R2)', () => {
+  const clubs: BidderClub[] = [
+    { id: 'ai0', name: 'Strong FC', strength: 1600, needsRoles: ['FWD'] },
+    { id: 'ai1', name: 'Weak FC', strength: 400, needsRoles: ['FWD'] },
+  ];
+  const squad = Array.from({ length: 8 }, (_, i) => mk('FWD', 92 + (i % 6), 55));
+
+  it('aggression 1 reproduces the default behaviour exactly', () => {
+    for (let i = 0; i < 10; i++) {
+      const seed = `agg-${i}`;
+      expect(rivalBids(squad, clubs, 3, seed, new Set(), 1)).toEqual(rivalBids(squad, clubs, 3, seed));
+    }
+  });
+
+  it('fiercer rivals bid more often, calmer ones less, over many weeks', () => {
+    const total = (agg: number) => {
+      let n = 0;
+      for (let i = 0; i < 80; i++) n += rivalBids(squad, clubs, 3, `w-${i}`, new Set(), agg).length;
+      return n;
+    };
+    expect(total(1.5)).toBeGreaterThan(total(1.0));
+    expect(total(1.0)).toBeGreaterThan(total(0.5));
+  });
+
+  it('scales the weekly cap: fierce can exceed the base cap, calm is tighter', () => {
+    let maxHigh = 0;
+    let maxLow = 0;
+    for (let i = 0; i < 80; i++) {
+      maxHigh = Math.max(maxHigh, rivalBids(squad, clubs, 3, `c-${i}`, new Set(), 1.5).length);
+      maxLow = Math.max(maxLow, rivalBids(squad, clubs, 3, `c-${i}`, new Set(), 0.5).length);
+    }
+    expect(maxHigh).toBeGreaterThan(MAX_OFFERS_PER_WEEK); // 1.5 → cap 3
+    expect(maxLow).toBeLessThanOrEqual(1); // 0.5 → cap 1
+  });
+});
+
 describe('aiClubSigning — living market', () => {
   const bidders: BidderClub[] = [
     { id: 'ai0', name: 'Strong FC', strength: 1600, needsRoles: ['FWD'] },

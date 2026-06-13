@@ -209,10 +209,18 @@ export function rivalBids(
   bidders: readonly BidderClub[],
   tier: number,
   seed: string | number,
-  exclude: ReadonlySet<string> = new Set()
+  exclude: ReadonlySet<string> = new Set(),
+  /** Difficulty's rival poaching/bidding pressure (DifficultyConfig.rivalAggression).
+   *  1 = current behaviour (Standard / standalone); <1 calmer, >1 fiercer. */
+  aggression = 1
 ): RivalBid[] {
   if (bidders.length === 0) return [];
   const rng = new Rng(`${seed}`);
+  // Difficulty scales how hard rivals chase your stars — more frequent bids and a
+  // higher weekly cap. Clamped so even a fierce regime stays believable. At
+  // aggression 1 these reduce to the original constants exactly.
+  const chance = Math.min(0.95, OFFER_CHANCE * aggression);
+  const maxOffers = Math.max(1, Math.round(MAX_OFFERS_PER_WEEK * aggression));
   // Stars first — they're the ones rivals come calling for.
   const eligible = owned
     .filter((p) => overall(p) >= OFFER_MIN_OVERALL && !isFreeAgent(p) && !exclude.has(p.id))
@@ -220,8 +228,8 @@ export function rivalBids(
 
   const out: RivalBid[] = [];
   for (const p of eligible) {
-    if (out.length >= MAX_OFFERS_PER_WEEK) break;
-    if (!rng.chance(OFFER_CHANCE)) continue;
+    if (out.length >= maxOffers) break;
+    if (!rng.chance(chance)) continue;
     // Prefer clubs that need this role; fall back to the whole field.
     const needers = bidders.filter((c) => c.needsRoles.includes(p.role));
     const pool = needers.length ? needers : bidders;

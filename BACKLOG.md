@@ -50,7 +50,7 @@ model checkpoint and wait for the user's pick.
 - A3 Tactical familiarity — Fable (S)
 - C6 Signature traits — Fable (M) — then surfaces in the profile
 - C7 Growing partnerships — Fable (M)
-- R2 Adaptive league (rivalAggression) — Fable (M)
+- R2 Adaptive league (rivalAggression) — Fable (M) — ⏳ PARTIAL: safe slice shipped on Opus (see R2 below); dynamic dominance loop still Fable
 - D9 Develop-and-sell loop — Fable (M)
 - N7 Footedness + flank balance — Fable (L)
 
@@ -267,8 +267,18 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
   the career inbox panel crash-free (it kicks off from a fresh-career Home tab). Note: a
   triage-layout screenshot wasn't captured this session (the manual throwaway-career start was
   flaky / didn't persist). Gates: tsc · 429 tests · build · e2e.
-- **R2. Adaptive league** — wire the parked `rivalAggression` lever so rivals invest/poach
-  harder as you dominate; keeps a long dynasty tense. Career-only, sim-gated.
+- **R2. Adaptive league** — ⏳ PARTIAL (safe slice SHIPPED 2026-06-14 on Opus). The parked
+  `DifficultyConfig.rivalAggression` (0.5/1.0/1.5) was defined + value-tested but **never consumed**;
+  it's now wired into `rivalBids` (`src/lib/market.ts` — scales `OFFER_CHANCE` + the weekly
+  `MAX_OFFERS` cap, clamped; threaded from the store career-only, standalone/Standard byte-identical).
+  So difficulty finally bites on the market: Hardcore rivals chase your stars harder, Easy leaves you
+  be. **Balance-safe by construction** — incoming offers are optional and `career.sim` never sells, so
+  baselines are unchanged (sim confirmed: career champ 43.3%, all 3 sim files green; +3 tests in
+  `tests/market.test.ts`). Gates: tsc · 478 tests · build · sim · e2e. **DEFERRED to Fable (the
+  headline half):** the *dynamic* "as you dominate, rivals invest/catch up to keep a dynasty tense"
+  loop — that needs rivals strengthening (`aiClubSigning`) scaled by a live dominance signal, whose
+  "how much catch-up feels right" tuning has **no objective sim gate today** (`career.sim` models
+  rivals at fixed strength), so it's a feel/balance call = Fable's remit. Not done on Opus by design.
 - **R3. Fuzzy scouting in the career market** — lower-league players show a fuzzy rating +
   potential range until you pay to scout them (deterministic fuzz → Daily-safe). Recreates
   the "find the next star" thrill; reuses the youth-potential ★-range pattern.

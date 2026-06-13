@@ -1039,7 +1039,11 @@ function resolveLeagueRound(s: GameState, result: MatchResult): Partial<GameStat
         );
         return { id: c.id, name: c.name, strength: c.strength, needsRoles };
       });
-    const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${nextMw}`, openOffers);
+    // Difficulty's rival-aggression lever scales how hard rivals chase your stars
+    // (career only; standalone leagues stay neutral). Offers are optional, so this
+    // changes pressure/flavour, not the balance baselines.
+    const bidAggression = s.career ? getDifficulty(s.difficulty).rivalAggression : 1;
+    const bids = rivalBids(ownedPlayers, bidders, marketTierOf(s) ?? LEAGUE_NEUTRAL_TIER, `${s.runSeed}-offer-${nextMw}`, openOffers, bidAggression);
     for (const b of bids) newMsgs.push(offerMessage(nextMw, b));
 
     // Living market: a rival may sign an open-market player of its own — they

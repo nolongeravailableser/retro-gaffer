@@ -21,15 +21,19 @@
 > Sponsorship cards + a per-matchweek cash-flow breakdown (Win/Draw/Loss nets) + a Last-match receipt
 > from `lastIncome`; figures from a pure, unit-tested `lib/cashflow.ts` mirroring the store's resolve
 > math (no drift). All see BACKLOG R7/R6/R8/F-FINANCE. Last session's deep-career work play-test-verified
-> (B4 + R1 seen live; N3/D10/N1 wiring confirmed + unit-tested). HEAD now post-R4, local ==
-> `origin/main`, persistence **v31** (all five = no bump, UI-only/presentation), gates green
-> (**475 tests** + build + e2e; all balance-neutral → sim skipped with justification; baseline intact —
-> Classic 36.8%, career PL median £71M / 43% champ). Live at https://retro-gaffer.vercel.app/.
-> **NEXT:** the only remaining backlog work is **Track B (Fable-blocked)** — A1/A2/A3 playing styles
-> & roles, C6 traits, C7 partnerships, R2 adaptive league, D9 trader loop, N7 footedness, #2b pool
-> authoring, F-WAGES, F-SQUAD. Tell Claude when Fable is available. (Also parked, Opus-doable but
-> lower priority: N2 smart fast-forward, R3 fuzzy scouting, R5 dev plans, N4 project pitch, D8 perks,
-> D10/N1 mechanical payoffs, N5 nemesis, N6 async world.)
+> (B4 + R1 seen live; N3/D10/N1 wiring confirmed + unit-tested). **Then (Fable unavailable) a
+> single 100%-no-Fable Track-B slice on Opus: R2 partial** — wired the parked `rivalAggression`
+> (0.5/1.0/1.5) into `rivalBids` so difficulty bites on incoming-offer pressure (career-only,
+> Standard/standalone byte-identical). Balance-safe by construction (offers optional, `career.sim`
+> never sells → sim baselines unchanged, confirmed). The dynamic dominance/catch-up loop (the
+> headline half) is DEFERRED to Fable — no objective sim gate for the catch-up tuning. HEAD now
+> post-R2-slice, local == `origin/main`, persistence **v31** (no bump), gates green (**478 tests** +
+> build + **sim** + e2e; career champ 43.3% / Classic 36.8% baselines intact). Live at
+> https://retro-gaffer.vercel.app/.
+> **NEXT:** remaining work is **Track B (Fable)** — A1/A2/A3 playing styles & roles, C6 traits,
+> C7 partnerships, **R2's dynamic loop**, D9 trader, N7 footedness, #2b pool authoring, F-WAGES,
+> F-SQUAD. Tell Claude when Fable lands. (Parked Opus-doable lower-priority: N2 fast-forward, R3
+> fuzzy scouting, R5 dev plans, N4 project pitch, D8 perks, D10/N1 payoffs, N5 nemesis, N6 async.)
 >
 > **`BACKLOG.md` is the source of truth** for what's next — confirmed features + a dependency-aware
 > **Track A (Opus/Sonnet, buildable now) / Track B (Fable-blocked: balance/taste-critical)** roadmap,
