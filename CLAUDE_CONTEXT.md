@@ -12,11 +12,17 @@
 > `git reset --hard`/`git clean` prompting. **Model checkpoint pref still stands** — recommend
 > + wait per task. Fable is temporarily unavailable, so Track B waits.
 >
-> **▶ Track A Phase 1 is being worked HANDS-OFF on Opus (user batch-authorized 2026-06-13:
-> "proceed through all of Phase 1 on Opus, commit+push each once green").** #1 profile ✅, #2
-> why-you-lost ✅, #3 shot map ✅ (below). Remaining: #4 B5 mentality shift · #5 B4 pre-match
-> briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
-> checkpoint during the batch (flag only real decisions / Fable needs).
+> **▶ TRACK A PHASE 1 COMPLETE (#1–#8, all SHIPPED + PUSHED).** Then user batch-authorized
+> **Phase 2 "Opus-safe first" (AskUserQuestion 2026-06-13):** do the pure-narrative/presentation
+> items hands-off on Opus — **N3 ✅ (below), then N1 (world moves), D10 (rivalries, narrative-
+> scoped)** — and **QUEUE for Fable** the balance/tuning items: **D8 manager perks, N5 nemesis
+> manager, and N4's economy payoff** (the project-pitch's "judged-against-it" bonus; a
+> narrative-only N4 could be Opus later). Commit+push each once green; flag real decisions.
+>
+> **▶ Phase 2 #1 — N3 EMERGENT NARRATIVE SEASONS ✅ SHIPPED + PUSHED. Opus.** `lib/narrative.ts`
+> (pure, 9 tests) frames the run-in (title/promotion/survival/final-day, mathematically-alive) →
+> tone-coloured banner atop the FixtureHero. Presentation-only → balance-neutral. Gates: tsc ·
+> **438 tests** (+9) · build · e2e. (Banner needs a season run-in to see live — logic fully tested.)
 >
 > **▶ Track A #8 — #2a POOL STRANDING AUDIT ✅ DONE (read-only). Opus.** Verdict: **NO
 > stranding** — coarse-role supply for a single 12-club league is GK ×2.92 / DEF ×2.75 / MID

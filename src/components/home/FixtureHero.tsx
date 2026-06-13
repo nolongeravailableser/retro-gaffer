@@ -11,6 +11,7 @@ import {
 } from '@/lib/wages';
 import { matchdayIncome, facilityUpkeep } from '@/lib/stadium';
 import { opponentBriefing } from '@/lib/briefing';
+import { seasonNarrative, type StoryTone } from '@/lib/narrative';
 import type { Player } from '@/lib/types';
 import { getMutator } from '@/lib/mutators';
 import { runConfig, getScenario } from '@/lib/scenarios';
@@ -25,6 +26,14 @@ import { resolveKits, DEFAULT_KIT } from '@/lib/kits';
 import CrestBadge from '@/components/ui/CrestBadge';
 import Stars from '@/components/ui/Stars';
 import type { MatchTeam } from '@/lib/engine';
+
+/** Accent per narrative tone (title = gold, promotion = green, survival = rose). */
+const STORY_STYLE: Record<StoryTone, string> = {
+  title: 'border-crt-amber/50 bg-crt-amber/10 text-crt-amber',
+  promotion: 'border-crt-green/50 bg-crt-green/10 text-crt-green',
+  survival: 'border-rose-400/50 bg-rose-500/10 text-rose-200',
+  final: 'border-sky-400/40 bg-sky-500/10 text-sky-200',
+};
 
 interface FixtureHeroProps {
   /** This round's opponent (for the preview), or null if no XI fielded. */
@@ -118,6 +127,23 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
     league && roundOpponent ? league.clubs.find((c) => c.name === roundOpponent.name) : null;
   const oppRow = oppClub ? rows?.find((t) => t.teamId === oppClub.id) : null;
   const oppPos = oppClub && rows ? rows.findIndex((t) => t.teamId === oppClub.id) + 1 : 0;
+
+  // Emergent season narrative — frame the run-in (title decider / promotion /
+  // survival / final day) when the table says this one matters.
+  const story =
+    league && rows && yourRow && yourPos > 0
+      ? seasonNarrative({
+          tier: career ? career.tier : null,
+          matchweek: league.matchweek,
+          totalWeeks: leagueWeeks,
+          clubs: rows.length,
+          yourPos,
+          yourPoints: yourRow.points,
+          leaderPoints: rows[0]?.points ?? 0,
+          promoCutoffPoints: rows[PROMOTION_SPOTS - 1]?.points ?? 0,
+          dropLinePoints: rows[rows.length - RELEGATION_SPOTS]?.points ?? 0,
+        })
+      : null;
 
   const kits = resolveKits(kit ?? DEFAULT_KIT, roundOpponent?.name ?? 'Opponent');
 
@@ -245,6 +271,14 @@ export default function FixtureHero({ roundOpponent, playerTeam }: FixtureHeroPr
           )}
         </div>
       </div>
+
+      {/* Emergent narrative — the run-in framed (title / promotion / survival / final day) */}
+      {story && (
+        <div className={`mx-auto mb-3 max-w-md rounded-lg border px-3 py-2 text-center ${STORY_STYLE[story.tone]}`}>
+          <p className="font-display text-sm uppercase tracking-wide">{story.headline}</p>
+          <p className="mt-0.5 text-[11px] text-chrome-muted">{story.stakes}</p>
+        </div>
+      )}
 
       {/* Edge bar — relative strength, verdict in words */}
       {roundOpponent && playerTeam && (

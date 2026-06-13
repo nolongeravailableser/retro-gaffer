@@ -262,8 +262,13 @@ market values + draft → **re-gate with `npm run sim`** (draft stranding 0/360,
 - **N2. Smart fast-forward** — fast-sim low-stakes matches but pull the user in at dramatic
   moments (hat-trick, relegation six-pointer, last-minute equaliser). Protects the snappy
   identity; beats FM's all-or-nothing "go on holiday."
-- **N3. Emergent narrative seasons** — the engine recognizes & frames drama (title decider,
-  survival Sunday, cup giant-killing run) with stakes/build-up. Leans on the FixtureHero.
+- **N3. Emergent narrative seasons** — ✅ SHIPPED 2026-06-13. `src/lib/narrative.ts` (pure, 9
+  tests) `seasonNarrative()` reads the standings in the run-in (last 5 MW) and frames the fixture
+  when it carries earned stakes — title race / promotion / survival / final day (with
+  mathematically-alive checks; null otherwise). Rendered as a tone-coloured banner atop the
+  FixtureHero. Presentation-only → balance-neutral. Works for career (tier-aware) + standalone/
+  draft leagues. Gates: tsc · 438 tests · build · e2e. (Banner not live-screenshotted — needs a
+  season run-in; 9 logic tests cover all tones + the silent path, which the e2e also exercises.)
 - **N4. The project pitch** — on joining a club, pitch a multi-season project (youth
   revolution / instant glory / rebuild) and be judged against THAT. Extends the pledge
   system into a season-zero narrative contract.
