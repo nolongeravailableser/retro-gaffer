@@ -151,7 +151,13 @@ Captured from the 2026-06-13 brainstorm; promote to a numbered spec above once c
   see N7 footedness for the only L/R mechanic worth its complexity.)
 - **A3. Tactical familiarity** — a style/formation strengthens with commitment.
 - **B4. Pre-match briefing + counter** — show opponent threat, pick one counter.
-- **B5. In-match mentality shift** — discrete push/shut-up-shop decisions in the existing overlay.
+- **B5. In-match mentality shift** — ✅ SHIPPED 2026-06-13. A second decision point at the 70'
+  (`TACTICAL_MINUTE`) in MatchView's `advance()`, reusing the half-time talk machinery
+  (`applyTalk`/`aiTalkFor`, the same overlay): "Tactical shift · 70' — push for more or see it
+  out?" with All-out attack / Stay the course / Park the bus. **Interactive-only** (gated on
+  `interactive`): non-interactive/PvP keeps the single 46→90 segment byte-identical, and the
+  balance sim uses `simulateMatch` regardless → balance untouched. Covered by e2e (loops
+  answering both talks). Live-verified the 70' overlay (score-aware copy). Gates: tsc · 413 tests · build · e2e.
 - **C6. Signature traits** — a punchy handful (Poacher, Set-piece specialist, Big-game,
   Injury-prone, Wantaway), derived deterministically, with clear match effects.
 - **C7. Growing partnerships** — duos that share minutes develop a visible chemistry bonus.

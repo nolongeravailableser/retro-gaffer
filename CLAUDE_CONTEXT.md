@@ -18,6 +18,13 @@
 > briefing · #6 E12 depth chart · #7 R1 triaged inbox · #8 #2a pool audit. No per-task model
 > checkpoint during the batch (flag only real decisions / Fable needs).
 >
+> **▶ Track A #4 — B5 IN-MATCH MENTALITY SHIFT ✅ SHIPPED + PUSHED. Opus.** A 2nd decision
+> point at `TACTICAL_MINUTE`=70 in MatchView's `advance()`, reusing the half-time talk
+> machinery + overlay ("Tactical shift · 70' — push for more or see it out?": attack/steady/
+> park). INTERACTIVE-ONLY (gated): non-interactive/PvP keeps the single 46→90 segment
+> byte-identical; sim uses simulateMatch → balance untouched. e2e loops answering both talks.
+> Live-verified the 70' overlay (score-aware copy). Gates: tsc · 413 tests · build · e2e.
+>
 > **▶ Track A #3 — "WHERE IT WAS WON" SHOT MAP ✅ SHIPPED + PUSHED. Opus.** (R4 is PARTIAL —
 > shot map done, animated replay reel deferred.) `lib/shotmap.ts` (pure, 5 tests) derives shots
 > from the viz timeline's goal/chance scenes; `components/match/ShotMap.tsx` plots them on a

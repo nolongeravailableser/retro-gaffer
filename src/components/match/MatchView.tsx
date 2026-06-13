@@ -84,7 +84,10 @@ function eventClass(kind: string): string {
   }
 }
 
-type Pause = { type: 'halftime' } | { type: 'injury'; playerId: string };
+type Pause = { type: 'halftime' } | { type: 'tactical' } | { type: 'injury'; playerId: string };
+
+/** Minute of the second, late-game tactical-shift decision (interactive only). */
+const TACTICAL_MINUTE = 70;
 
 /**
  * A match in flight. Interactive matches are simulated in SEGMENTS that pause
@@ -101,6 +104,8 @@ interface LiveMatch {
   /** First minute not yet simulated (91 = done). */
   nextMinute: number;
   talkDone: boolean;
+  /** Whether the late tactical-shift decision has been offered (fires once). */
+  tacticalDone: boolean;
   xg: { a: number; b: number };
   pause: Pause | null;
   /** Set once the 90 minutes are complete. */
@@ -109,17 +114,26 @@ interface LiveMatch {
 
 /** Run segments until the next decision point (or full-time). Pure. */
 function advance(lm: LiveMatch, interactive: boolean, tuning: EngineTuning): LiveMatch {
-  let { events, carry, nextMinute, xg, talkDone } = lm;
+  let { events, carry, nextMinute, xg, talkDone, tacticalDone } = lm;
   events = [...events];
   while (nextMinute <= 90) {
     if (nextMinute === 46 && !talkDone) {
       events.push(halfTimeEvent());
       talkDone = true;
       if (interactive) {
-        return { ...lm, events, carry, nextMinute, xg, talkDone, pause: { type: 'halftime' } };
+        return { ...lm, events, carry, nextMinute, xg, talkDone, tacticalDone, pause: { type: 'halftime' } };
       }
     }
-    const to = nextMinute <= 45 ? 45 : 90;
+    // A second, late-game decision point — push for a winner or shut up shop.
+    // Interactive-only: non-interactive (PvP) keeps the single 46→90 segment so
+    // its results are byte-identical to before (the balance sim uses
+    // simulateMatch and is unaffected either way).
+    if (interactive && nextMinute === TACTICAL_MINUTE + 1 && !tacticalDone) {
+      tacticalDone = true;
+      return { ...lm, events, carry, nextMinute, xg, talkDone, tacticalDone, pause: { type: 'tactical' } };
+    }
+    const to =
+      nextMinute <= 45 ? 45 : interactive && nextMinute <= TACTICAL_MINUTE ? TACTICAL_MINUTE : 90;
     const seg = simulateSegment(lm.teamA, lm.opponent, lm.seed, tuning, nextMinute, to, carry, interactive);
     events.push(...seg.events);
     carry = seg.carry;
@@ -127,14 +141,14 @@ function advance(lm: LiveMatch, interactive: boolean, tuning: EngineTuning): Liv
     xg = { a: xg.a + seg.xg.a, b: xg.b + seg.xg.b };
     if (seg.stop === 'injury') {
       return {
-        ...lm, events, carry, nextMinute, xg, talkDone,
+        ...lm, events, carry, nextMinute, xg, talkDone, tacticalDone,
         pause: { type: 'injury', playerId: carry.injuredId! },
       };
     }
   }
   events.push(fullTimeEvent());
   const result = finalizeResult(events, carry, xg);
-  return { ...lm, events, carry, nextMinute, xg, talkDone, pause: null, result };
+  return { ...lm, events, carry, nextMinute, xg, talkDone, tacticalDone, pause: null, result };
 }
 
 /** Per-option effect tags so the half-time choice is informed, not vibes. */
@@ -233,6 +247,7 @@ export default function MatchView({
       carry: freshCarry(),
       nextMinute: 1,
       talkDone: false,
+      tacticalDone: false,
       xg: { a: 0, b: 0 },
       pause: null,
       result: null,
@@ -293,22 +308,26 @@ export default function MatchView({
   // so chasing teams attack and protecting teams park, readably.
   const decideTalk = (talk: TeamTalk) =>
     setLive((lm) => {
-      if (!lm || lm.pause?.type !== 'halftime') return lm;
+      if (!lm || (lm.pause?.type !== 'halftime' && lm.pause?.type !== 'tactical')) return lm;
+      const isTactical = lm.pause.type === 'tactical';
+      const minute = isTactical ? TACTICAL_MINUTE : 46;
       const teamA = applyTalk(lm.teamA, talk);
       const aiTalk = aiTalkFor(lm.carry.goalsB, lm.carry.goalsA);
       const opponent = aiTalk ? applyTalk(lm.opponent, aiTalk) : lm.opponent;
       const events = [...lm.events];
       if (talk.id !== 'steady') {
         events.push({
-          minute: 46,
+          minute,
           side: 'A' as const,
           kind: 'flavour' as const,
-          text: `📣 The gaffer's orders: ${talk.name.toLowerCase()}!`,
+          text: isTactical
+            ? `📣 Late shift — ${talk.name.toLowerCase()}!`
+            : `📣 The gaffer's orders: ${talk.name.toLowerCase()}!`,
         });
       }
       if (aiTalk) {
         events.push({
-          minute: 46,
+          minute,
           side: 'B' as const,
           kind: 'flavour' as const,
           text: `📣 ${lm.opponent.name} respond: ${aiTalk.name.toLowerCase()}!`,
@@ -510,7 +529,7 @@ export default function MatchView({
                 <span className="font-display uppercase tracking-wide">Full-Time</span>
               ) : pauseActive ? (
                 <span className="font-display uppercase tracking-wide text-crt-amber">
-                  {pauseActive.type === 'halftime' ? 'Half-Time' : 'Play stopped'}
+                  {pauseActive.type === 'halftime' ? 'Half-Time' : pauseActive.type === 'tactical' ? 'Tactical' : 'Play stopped'}
                 </span>
               ) : (
                 <>
@@ -839,18 +858,19 @@ export default function MatchView({
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-20 flex items-center justify-center overflow-y-auto bg-pitch-950/95 p-4 backdrop-blur-md"
             >
-              {pauseActive.type === 'halftime' ? (
+              {pauseActive.type === 'halftime' || pauseActive.type === 'tactical' ? (
                 <motion.div
                   initial={{ scale: 0.95, y: 8 }}
                   animate={{ scale: 1, y: 0 }}
                   className="w-full max-w-md rounded-xl border border-crt-amber/50 bg-surface-2 p-4 shadow-card"
                 >
                   <p className="flex items-center gap-2 font-display text-[15px] uppercase tracking-wide text-crt-amber">
-                    <Megaphone size={16} /> Half-time team talk
+                    <Megaphone size={16} />
+                    {pauseActive.type === 'tactical' ? `Tactical shift · ${TACTICAL_MINUTE}'` : 'Half-time team talk'}
                   </p>
                   <p className="mb-3 mt-0.5 text-xs text-chrome-muted">
                     {scoreA > scoreB ? `You lead ${scoreA}–${scoreB}.` : scoreA < scoreB ? `You trail ${scoreA}–${scoreB}.` : `Level at ${scoreA}–${scoreB}.`}{' '}
-                    Your call shapes the second half.
+                    {pauseActive.type === 'tactical' ? 'Push for more, or see it out?' : 'Your call shapes the second half.'}
                   </p>
                   <div className="flex flex-col gap-2">
                     {TEAM_TALKS.map((t) => (
