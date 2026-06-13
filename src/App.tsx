@@ -58,6 +58,7 @@ import CupBracket from '@/components/cup/CupBracket';
 import { unreadCount } from '@/lib/inbox';
 import CareerReview from '@/components/career/CareerReview';
 import ClubTab from '@/components/club/ClubTab';
+import CoachMark from '@/components/ui/CoachMark';
 import TopBar from '@/components/nav/TopBar';
 import MainNav, { type Tab } from '@/components/nav/MainNav';
 
@@ -374,6 +375,13 @@ export default function App() {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         {activeTab === 'home' && (
           <div className="flex flex-col gap-4">
+            {runStatus === 'playing' && (
+              <CoachMark id="home">
+                <b className="text-chrome">This is match day.</b> Check the edge bar to see if
+                you're favoured, set your stake, and kick off from the big button above.
+                Win/Draw/Loss show exactly what each result pays before you commit.
+              </CoachMark>
+            )}
             <EventBanner />
             <AvailabilityStrip hideWhenClear />
             {runStatus === 'playing' ? (
@@ -396,6 +404,13 @@ export default function App() {
         )}
 
         {activeTab === 'squad' && (
+          <div className="flex flex-col gap-4">
+          <CoachMark id="squad">
+            <b className="text-chrome">Your tactics board.</b> Tap a player in the list for
+            details, then tap a pitch slot to field him — or just hit <b className="text-crt-green">Auto-Pick</b>.
+            The number on each card is his overall; the green pip is a chemistry link
+            (players sharing a club, nation or era boost each other).
+          </CoachMark>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(320px,1fr)]">
             {/* Pitch FIRST on every viewport — it's the decision surface.
                 New signings are handled by auto-assign + the toast, not by
@@ -435,10 +450,19 @@ export default function App() {
               <SquadList multipliers={multipliers} />
             </div>
           </div>
+          </div>
         )}
 
         {activeTab === 'market' && (
           <div className="flex flex-col gap-4">
+            {!draftTournament && (
+              <CoachMark id="market">
+                <b className="text-chrome">Your first signings.</b> Players sharing a club,
+                nation or era link up for a chemistry boost — the green % shows what a
+                signing adds to your current XI. Short on cash? Free agents always cost £0,
+                or let <b className="text-crt-green">Fill (free)</b> build a legal side in one tap.
+              </CoachMark>
+            )}
             {draftTournament ? (
               // Locked, not hidden — the tab stays put and explains itself.
               <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-surface-1 px-6 py-10 text-center">

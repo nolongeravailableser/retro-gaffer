@@ -3,21 +3,48 @@
 > Maintained by Claude. Updated whenever a significant task completes, a major bug is
 > fixed, or work wraps for the day. Treat this as the source of truth for "where are we."
 >
-> **⚡ UI REDESIGN IN PROGRESS (2026-06-12, user-approved "build it and push to live").**
-> Full proposal + per-screen rationale: `design-mockups/index.html` (10 standalone HTML
-> mockups — throwaway visuals, not wired to the app). Build order: P1 chrome →
-> P2 Home hero → P3 Squad → P4 Market → P5 Match → P6 Club hub → P7 front door/
-> onboarding/draft. Each phase gates on tsc + vitest + build + e2e (+ `npm run sim`
-> when lib/store is touched) before pushing to main (auto-deploys).
-> **P1 SHIPPED:** one-row `TopBar` (absorbs old header+Hud+New Game/Daily → ☰ menu,
-> toasts ported) + 4-tab `MainNav` (Home/Squad/Market/Club — stable across modes;
-> Draft locks Market instead of hiding 5 tabs) + `ClubTab` pill sub-nav hosting
-> Records/Challenges/Compete/Settings (+ Career hub pill). Old TabNav/Hud deleted.
-> Tab ids renamed (`formation/transfers/season/…` → `home/squad/market/club`) —
-> StartMenu/App routing updated. Tailwind gained `surface-1/2/3`, `tier-*`, `font-data`
-> (IBM Plex Mono, added to the font link). **e2e smoke was STALE on main** (StartMenu
-> z-55 blocks `kickoff-cta` after onboarding skip — pre-existing fail); rewritten to go
-> through the real front door (new testids `menu-new-career`, `start-pending-mode`).
+> **⚡ UI REDESIGN — ALL 7 PHASES SHIPPED & LIVE (2026-06-13, user-approved "build it
+> and push to live").** Full proposal + per-screen rationale: `design-mockups/index.html`
+> (10 standalone HTML mockups — throwaway reference, not wired to the app). Every phase
+> gated on tsc + 394 vitest + build + e2e before pushing (no lib/store/engine changes →
+> sims untouched by construction; Classic 36.8% economy intact).
+> - **P1 chrome:** one-row `TopBar` (old 4-row header+Hud+New Game/Daily → ☰ menu, toasts
+>   ported) + stable 4-tab `MainNav` (home/squad/market/club — Draft LOCKS Market with a
+>   reason instead of hiding 5 tabs) + `ClubTab` pill sub-nav (Career hub / Records /
+>   Challenges / Compete / Settings). TabNav/Hud deleted. Tokens: `surface-1/2/3`,
+>   `tier-*`, `font-data` (IBM Plex Mono added to font link).
+> - **P2 Home:** `FixtureHero` replaces SeasonPanel's playing state (SeasonPanel remains
+>   as the dismissed-RunOver end card): crests + table positions, relative-strength edge
+>   bar with plain-English verdict, W/D/L stakes + "How is this calculated?" expander,
+>   wager STEPPER (testids wager-input/none/quarter/max kept), cup/boss/draft variants.
+> - **P3 Squad:** pitch-first on all viewports; `OvrBadge` (tier-coloured, lib overall())
+>   is THE player number everywhere; roster rows = role/name/status-chips/form/chem/OVR
+>   with an inline player sheet (full stats, history, To-bench, two-tap Sell — the 11
+>   permanent sell buttons are gone); live ATK/DEF/links chips by the formation picker.
+> - **P4 Market:** Free agents / Open market / At rivals as primary segments with inline
+>   rules; pinned bank/wage-bar/squad header; labelled fee buttons ("Poach · £xM weakens
+>   them"); window-closed = browsable but desaturated.
+> - **P5 Match:** decisions (talk/sub) are now a FULL overlay over the match (never below
+>   the fold; talk-*/sub-* testids kept, e2e drives them); FT payout = itemised receipt →
+>   net → new balance; cup FT = "Glory, not gold" via a new `knockout` prop captured at
+>   kick-off (also fixes a latent bug: cup FT used to show the previous league game's
+>   stale lastIncome).
+> - **P6 Club hub:** facilities show NEXT-level payoff; history rows carry 🏆 CUP chips
+>   (`rec.cupWon`); reputation meter explains itself; honours grid fits 5 tiles.
+> - **P7 front door + teaching + draft:** StartMenu gets floodlight CSS atmosphere,
+>   wordmark, Resume card with a season-progress bar, Daily chip with today's rule +
+>   two-tap start (testid `menu-daily`). Onboarding is ONE identity step (club+manager+
+>   kit merged; `skip-onboarding`/`onboarding-finish` kept) — the 5-card tour now only
+>   serves "How to play" replays; teaching moved to 3 one-time `CoachMark`s (Home/Squad/
+>   Market, localStorage `gaffer-coach-*`, device-scoped). DraftRoom: "DRAFT NIGHT · on
+>   the clock" header, budget bar exposing the hidden XI-reserve guard (spent/reserved/
+>   free), rival latest-picks ticker, your-picks rail, disabled picks say why.
+> - **e2e smoke was STALE on main** (StartMenu z-55 blocked `kickoff-cta` after
+>   onboarding skip — pre-existing fail); rewritten through the real front door
+>   (testids `menu-new-career`, `start-pending-mode`). Dead `SquadPanel.tsx` deleted.
+> - **Where the mockups deliberately weren't followed:** no fifth Cup tab (hero variant
+>   instead); ladder modes keep SeasonPanel internals under the new hero (containment);
+>   NegotiationModal/SavePanel flows untouched (restyle-by-token only).
 >
 > **Last updated:** 2026-06-12 (later session — **Career difficulty rebalance** +
 > live-playtest QA + a trap fix + a **career economy retighten** + **contract-renewal

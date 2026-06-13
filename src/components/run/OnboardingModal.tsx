@@ -66,7 +66,11 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
   const existingManager = useGameStore((s) => s.managerName);
   const existingKit = useGameStore((s) => s.kit);
 
-  const [stage, setStage] = useState<'club' | 'kit' | 'tour'>(tutorialOnly ? 'tour' : 'club');
+  // First-run is ONE identity step (name + kit together) then straight into the
+  // game — the mechanics are taught by coach-marks at first contact, not by a
+  // lecture before kick-off (design-mockups/08). The 5-card tour remains as the
+  // "How to play" reference for replays.
+  const [stage] = useState<'identity' | 'tour'>(tutorialOnly ? 'tour' : 'identity');
   const [club, setClub] = useState(existingClub ?? '');
   const [manager, setManager] = useState(existingManager ?? '');
   const [kit, setKit] = useState<Kit>(existingKit ?? DEFAULT_KIT);
@@ -100,22 +104,20 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
           <div className="mx-auto mb-1 flex items-center justify-center gap-2 text-crt-green">
             <Trophy size={20} />
             <h2 className="font-display text-xl tracking-wide">
-              {stage === 'club' ? 'WELCOME, GAFFER' : stage === 'kit' ? 'DESIGN YOUR KIT' : 'HOW IT WORKS'}
+              {stage === 'identity' ? 'FOUND YOUR CLUB' : 'HOW IT WORKS'}
             </h2>
             <Sparkles size={20} />
           </div>
           <p className="text-xs text-chrome-muted">
-            {stage === 'club'
-              ? 'Name your club and take charge.'
-              : stage === 'kit'
-                ? 'The colours your XI will wear on the pitch.'
-                : `${card + 1} of ${CARDS.length}`}
+            {stage === 'identity'
+              ? 'Name it, dress it. Everything can be changed later in Club → Settings.'
+              : `${card + 1} of ${CARDS.length}`}
           </p>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          {stage === 'club' ? (
+          {stage === 'identity' ? (
             <div className="flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="font-display text-xs uppercase tracking-wide text-chrome-muted">
@@ -151,9 +153,12 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
               >
                 <Dice5 size={13} /> Surprise me
               </button>
+              {/* Kit — same step: one identity moment, live shirt preview */}
+              <div className="rounded-lg border border-white/10 bg-pitch-900/40 p-3">
+                <p className="mb-2 font-display text-xs uppercase tracking-wide text-chrome-muted">Club kit</p>
+                <KitPicker value={kit} onChange={setKit} compact />
+              </div>
             </div>
-          ) : stage === 'kit' ? (
-            <KitPicker value={kit} onChange={setKit} />
           ) : (
             <motion.div
               key={card}
@@ -186,52 +191,24 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-crt-dim bg-pitch-900/80 px-5 py-3">
-          {stage === 'club' ? (
-            <>
-              {tutorialOnly ? (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="text-xs font-display text-chrome-muted hover:text-chrome"
-                >
-                  Cancel
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={finish}
-                  data-testid="skip-onboarding"
-                  className="text-xs font-display text-chrome-muted hover:text-chrome"
-                  title="Start playing now — you can set all of this later in the Club tab"
-                >
-                  Skip setup
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setStage('kit')}
-                data-testid="onboarding-next"
-                className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
-              >
-                Next <ArrowRight size={15} />
-              </button>
-            </>
-          ) : stage === 'kit' ? (
+          {stage === 'identity' ? (
             <>
               <button
                 type="button"
-                onClick={() => setStage('club')}
-                className="flex items-center gap-1 text-xs font-display text-chrome-muted hover:text-chrome"
+                onClick={finish}
+                data-testid="skip-onboarding"
+                className="text-xs font-display text-chrome-muted hover:text-chrome"
+                title="Start playing now — you can set all of this later in Club → Settings"
               >
-                <ArrowLeft size={14} /> Back
+                Skip setup
               </button>
               <button
                 type="button"
-                onClick={() => setStage('tour')}
-                data-testid="onboarding-next"
+                onClick={finish}
+                data-testid="onboarding-finish"
                 className="flex items-center gap-1.5 rounded-md border border-crt-green/50 bg-crt-green/20 px-4 py-2 font-display text-sm text-crt-green hover:bg-crt-green/30"
               >
-                Next <ArrowRight size={15} />
+                <Play size={15} /> Start playing
               </button>
             </>
           ) : (
@@ -240,12 +217,11 @@ export default function OnboardingModal({ tutorialOnly, onClose }: OnboardingMod
                 type="button"
                 onClick={() => {
                   if (card > 0) setCard((c) => c - 1);
-                  else if (tutorialOnly) onClose(); // no setup stages when just replaying
-                  else setStage('kit');
+                  else onClose(); // the tour is only ever a replay now
                 }}
                 className="flex items-center gap-1 text-xs font-display text-chrome-muted hover:text-chrome"
               >
-                <ArrowLeft size={14} /> {card === 0 ? (tutorialOnly ? 'Close' : 'Back') : 'Prev'}
+                <ArrowLeft size={14} /> {card === 0 ? 'Close' : 'Prev'}
               </button>
               {lastCard ? (
                 <button

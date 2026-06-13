@@ -88,30 +88,86 @@ export default function DraftRoom() {
         transition={{ type: 'spring', stiffness: 240, damping: 22 }}
         className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border-2 border-crt-amber bg-pitch-950 shadow-glow"
       >
-        {/* Header: progress + budget + role needs */}
-        <div className="border-b border-crt-dim bg-pitch-900/80 px-4 py-2.5">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2 font-display text-base text-crt-amber">
-              <Gavel size={19} /> The Draft
+        {/* Header: occasion + budget bar + role needs (design-mockups/09) */}
+        <div className="border-b border-crt-dim bg-gradient-to-b from-crt-amber/10 to-pitch-900/80 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="flex items-center gap-2 font-display text-base tracking-wide text-crt-amber">
+              <Gavel size={19} /> DRAFT NIGHT
             </span>
-            <span className="font-ticker text-xs text-chrome-muted">
-              Pick {you.roster.length + 1}/{DRAFT_SQUAD_SIZE} · budget{' '}
-              <span className="text-crt-green">£{you.budget}M</span>
+            <span className="animate-pulse rounded-full border border-crt-amber/50 px-2.5 py-0.5 font-data text-[10px] uppercase tracking-wider text-crt-amber">
+              On the clock · pick {you.roster.length + 1} of {DRAFT_SQUAD_SIZE}
             </span>
           </div>
-          <div className="mt-1.5 flex flex-wrap gap-1.5 font-ticker text-[11px]">
+          {/* Budget bar — makes the hidden XI-reserve guard visible */}
+          {(() => {
+            const spent = you.roster.reduce((s, id) => s + (draft.meta[id]?.value ?? 0), 0);
+            const reserve = ROLES.reduce(
+              (s, r) => s + stillNeeds(r) * (cheapestByRole[r] ?? 0),
+              0
+            );
+            const total = spent + you.budget;
+            const free = Math.max(0, you.budget - reserve);
+            const pct = (n: number) => `${total > 0 ? Math.round((n / total) * 100) : 0}%`;
+            return (
+              <div className="mt-2">
+                <div className="flex justify-between font-data text-[9px] uppercase tracking-wider text-chrome-muted">
+                  <span>Budget £{total}M</span>
+                  <span>
+                    spent £{spent}M{reserve > 0 && <> · <span className="text-sky-300">reserved for XI £{reserve}M</span></>} · free <span className="text-crt-green">£{free}M</span>
+                  </span>
+                </div>
+                <div className="mt-1 flex h-2 overflow-hidden rounded-full border border-white/10 bg-white/5">
+                  <div className="bg-crt-amber/80" style={{ width: pct(spent) }} />
+                  <div className="flex-1" />
+                  <div className="bg-sky-300/50" style={{ width: pct(reserve) }} />
+                </div>
+              </div>
+            );
+          })()}
+          <div className="mt-2 flex flex-wrap gap-1.5 font-data text-[11px]">
             {ROLES.map((r) => {
               const need = stillNeeds(r);
               return (
-                <span key={r} className={`rounded px-1.5 py-0.5 ${need > 0 ? 'bg-rose-500/15 text-rose-300' : 'bg-crt-green/15 text-crt-green'}`}>
-                  {r} {have[r] ?? 0}/{DRAFT_NEED[r]}{need === 0 && <Check size={10} className="ml-0.5 inline" />}
+                <span key={r} className={`rounded px-1.5 py-0.5 ${need > 0 ? 'border border-crt-amber/40 text-crt-amber' : 'bg-crt-green/15 text-crt-green'}`}>
+                  {r} {have[r] ?? 0}/{DRAFT_NEED[r]}{need > 0 ? ` · need ${need}` : ''}{need === 0 && <Check size={10} className="ml-0.5 inline" />}
                 </span>
               );
             })}
             {mustFill && requiredLeft > 0 && (
-              <span className="rounded bg-crt-amber/20 px-1.5 py-0.5 text-crt-amber">Fill your XI to finish</span>
+              <span className="rounded bg-crt-amber/20 px-1.5 py-0.5 text-crt-amber">Final picks — fill your XI</span>
             )}
           </div>
+          {/* Rival room — their latest picks, so the 11 AI clubs feel present */}
+          {(() => {
+            const latest = draft.teams
+              .slice(1)
+              .map((t) => ({ club: t.name, pick: t.roster.at(-1) }))
+              .filter((x): x is { club: string; pick: string } => !!x.pick)
+              .slice(-3);
+            if (latest.length === 0) return null;
+            return (
+              <p className="mt-1.5 truncate font-data text-[10px] text-chrome-muted">
+                {latest.map((x, i) => (
+                  <span key={x.club}>
+                    {i > 0 && ' · '}
+                    <span className="text-chrome">{x.club}</span> took {getPlayer(x.pick)?.name ?? x.pick} £{draft.meta[x.pick]?.value}M
+                  </span>
+                ))}
+                <span className="text-chrome-muted/60"> · · · your pick</span>
+              </p>
+            );
+          })()}
+          {/* Your picks so far */}
+          {you.roster.length > 0 && (
+            <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
+              {you.roster.map((id) => (
+                <span key={id} className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-pitch-950/60 px-2 py-0.5 font-data text-[10px] text-chrome-muted">
+                  <span className="text-chrome-muted/60">{draft.meta[id]?.role}</span>
+                  <span className="text-chrome">{getPlayer(id)?.name ?? id}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Controls: position tabs + search + sort + affordable */}
@@ -189,10 +245,17 @@ export default function DraftRoom() {
                   type="button"
                   disabled={!can}
                   onClick={() => draftPick(id)}
-                  className={`shrink-0 rounded border px-2.5 py-1 font-display text-xs transition ${can ? 'border-crt-green text-crt-green hover:bg-crt-green hover:text-pitch-950' : 'border-white/10 text-chrome-muted/40'}`}
-                  title={can ? '' : mustFill ? 'Fill your remaining XI positions first' : 'Over budget'}
+                  className={`shrink-0 rounded-lg border px-2.5 py-1 text-center font-display text-xs leading-tight transition ${can ? 'border-crt-amber/50 text-crt-amber hover:bg-crt-amber hover:text-pitch-950' : 'border-white/10 text-chrome-muted/40'}`}
+                  title={can ? `Draft for £${m?.value}M` : mustFill ? 'Fill your remaining XI positions first' : 'Would break your XI reserve'}
                 >
-                  £{m?.value}M
+                  {can ? <>Draft · £{m?.value}M</> : (
+                    <>
+                      £{m?.value}M
+                      <span className="block font-data text-[8px] normal-case text-chrome-muted/60">
+                        {mustFill && stillNeeds(m.role) === 0 ? 'XI roles first' : 'breaks XI reserve'}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             );

@@ -58,9 +58,12 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
   const startCareer = useGameStore((s) => s.startCareer);
   const startClassicDraft = useGameStore((s) => s.startClassicDraft);
 
+  const newDailyRun = useGameStore((s) => s.newDailyRun);
+  const dailyCompleted = useGameStore((s) => s.dailyCompleted);
   const [view, setView] = useState<'main' | 'difficulty' | 'records'>('main');
   const [pendingMode, setPendingMode] = useState<'career' | 'classic'>('career');
   const [picked, setPicked] = useState<DifficultyId>(difficulty);
+  const [confirmDaily, setConfirmDaily] = useState(false);
 
   const hasRun =
     runStatus === 'playing' && (owned.length > 0 || !!career || !!league || !!cup || round > 1);
@@ -72,23 +75,49 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
     return `${getMode(mode).name} · Round ${round}`;
   };
 
+  // Season-progress for the Resume card — "where was I?" before you tap.
+  const runProgress = (() => {
+    if (!hasRun) return null;
+    if (league) {
+      const weeks = totalWeeks(league);
+      return { at: Math.min(league.matchweek, weeks), of: weeks, label: `MATCHWEEK ${Math.min(league.matchweek, weeks)} OF ${weeks}` };
+    }
+    const max = runConfig({ scenario: null, mode, mutator: null }).maxRounds;
+    if (!Number.isFinite(max)) return { at: 1, of: 1, label: `ROUND ${round} · ENDLESS` };
+    return { at: round, of: max as number, label: `ROUND ${round} OF ${max}` };
+  })();
+
+  const todaysRule = getMutator(dailyMutator(dailyKey()));
+  const dailyPlayed = dailyCompleted === dailyKey();
+
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center overflow-y-auto bg-pitch-950 p-4">
+      {/* Floodlight atmosphere — pure CSS, no assets (design-mockups/08). */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-[55%]" style={{ background: 'radial-gradient(900px 420px at 50% -10%, rgba(57,255,20,.12), transparent 60%)' }} />
+        <div className="absolute bottom-0 left-0 h-[40%] w-[50%]" style={{ background: 'radial-gradient(500px 260px at 10% 110%, rgba(255,176,0,.06), transparent 60%)' }} />
+        <div className="absolute -left-16 -top-10 h-[420px] w-[280px] rotate-12" style={{ background: 'linear-gradient(195deg, rgba(255,255,255,.045), transparent 65%)' }} />
+        <div className="absolute -right-16 -top-10 h-[420px] w-[280px] -rotate-12" style={{ background: 'linear-gradient(165deg, rgba(255,255,255,.045), transparent 65%)' }} />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 220, damping: 24 }}
-        className={`w-full ${view === 'records' ? 'max-w-2xl' : 'max-w-lg'}`}
+        className={`relative w-full ${view === 'records' ? 'max-w-2xl' : 'max-w-lg'}`}
       >
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CrestBadge name={clubName ?? 'Your club'} kit={kit ?? DEFAULT_KIT} size={34} />
-            <div>
-              <p className="font-display text-base text-crt-green">{clubName ?? 'Your club'}</p>
-              {managerName && <p className="text-xs text-chrome-muted">Manager: {managerName}</p>}
-            </div>
-          </div>
-          <p className="font-display text-sm tracking-wide text-crt-amber">RETRO GAFFER</p>
+        {/* Wordmark — match night, not a settings dialog */}
+        <div className="mb-5 text-center">
+          <p className="font-display text-3xl tracking-[0.12em] text-crt-green" style={{ textShadow: '0 0 28px rgba(57,255,20,.35)' }}>
+            ⚽ RETRO GAFFER
+          </p>
+          <p className="mt-0.5 font-data text-[10px] uppercase tracking-[0.3em] text-chrome-muted/70">
+            Thirty years of football · one dugout
+          </p>
+        </div>
+        <div className="mb-4 flex items-center justify-center gap-2.5">
+          <CrestBadge name={clubName ?? 'Your club'} kit={kit ?? DEFAULT_KIT} size={26} />
+          <p className="font-display text-sm text-chrome">{clubName ?? 'Your club'}</p>
+          {managerName && <p className="text-xs text-chrome-muted">· {managerName}</p>}
         </div>
 
         {view === 'main' ? (
@@ -99,12 +128,28 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
                 onClick={() => onEnter()}
                 className="flex w-full items-center gap-4 rounded-xl border-2 border-crt-green bg-pitch-900/70 px-5 py-4 text-left shadow-glow transition hover:bg-pitch-900"
               >
-                <Play className="shrink-0 text-crt-green" size={30} />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-crt-green text-pitch-950">
+                  <Play size={20} className="ml-0.5" />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-crt-green">Resume {career ? 'career' : 'run'}</p>
                   <p className="truncate text-xs text-chrome-muted">
-                    {runSummary()} · £{bankroll}M
+                    {runSummary()} · <span className="font-data text-crt-amber">£{bankroll}M</span>
                   </p>
+                  {/* Trajectory — where the season stands, before you tap */}
+                  {runProgress && (
+                    <div className="mt-1.5">
+                      <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-crt-green/80"
+                          style={{ width: `${Math.round((runProgress.at / Math.max(runProgress.of, 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 font-data text-[9px] tracking-wider text-chrome-muted/70">
+                        {runProgress.label}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <ArrowRight className="shrink-0 text-crt-green" size={18} />
               </button>
@@ -134,6 +179,40 @@ export default function StartMenu({ onEnter, onMoreModes, onTutorial }: StartMen
                   <p className="text-[11px] text-chrome-muted">Draft a squad, win the league</p>
                 </div>
               </button>
+            </div>
+
+            {/* Daily Gauntlet — the retention hook, on the front door with its live rule */}
+            <div className="flex justify-center">
+              {!confirmDaily ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDaily(true)}
+                  data-testid="menu-daily"
+                  className="flex items-center gap-2 rounded-full border border-crt-amber/40 bg-crt-amber/5 px-4 py-1.5 text-xs text-crt-amber transition hover:bg-crt-amber/15"
+                >
+                  <CalendarDays size={13} />
+                  Daily Gauntlet{todaysRule ? ` · today's rule: ${todaysRule.emoji} ${todaysRule.name}` : ''}
+                  {dailyPlayed && <span className="text-crt-amber/60">· played ✓</span>}
+                </button>
+              ) : (
+                <span className="flex items-center gap-2 rounded-full border border-crt-amber/60 bg-crt-amber/10 px-4 py-1.5 text-xs text-crt-amber">
+                  {dailyPlayed ? 'Replay for practice?' : 'Start today’s Daily?'}
+                  <button
+                    type="button"
+                    onClick={() => { newDailyRun(); setConfirmDaily(false); onEnter('home'); }}
+                    className="rounded-full border border-crt-green/50 bg-crt-green/15 px-2.5 py-0.5 font-display text-crt-green hover:bg-crt-green/25"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDaily(false)}
+                    className="rounded-full border border-white/20 px-2.5 py-0.5 font-display text-chrome-muted hover:text-chrome"
+                  >
+                    No
+                  </button>
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 pt-1 text-sm text-chrome-muted">
